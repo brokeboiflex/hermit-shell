@@ -1,0 +1,219 @@
+.happy-file-workspace {
+    /* A genuine two-dimensional layout: one toolbar spans the preview and
+       independently retained tree. Keeping the tree outside the file viewer
+       preserves its scroll, search focus and menu when the file changes. */
+    display: grid;
+    flex: 1 1 0%;
+    grid-template-areas: "toolbar toolbar" "notices notices" "document tree";
+    grid-template-columns: minmax(0, 1fr) minmax(0, clamp(160px, 30%, 280px));
+    grid-template-rows: auto auto minmax(0, 1fr);
+    min-width: 0;
+    min-height: 0;
+    background: var(--surface);
+}
+
+.happy-file-workspace:has(> .happy-file-workspace__tree[hidden]) {
+    grid-template-columns: minmax(0, 1fr) 0;
+}
+
+.happy-file-workspace > .happy-file-editor,
+.happy-file-workspace > .happy-file-preview,
+.happy-file-workspace > .happy-changed-file-diff {
+    display: contents;
+}
+
+.happy-file-workspace__notices {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    grid-area: notices;
+    min-width: 0;
+}
+
+.happy-file-workspace__body {
+    display: flex;
+    flex: 1 1 0%;
+    min-width: 0;
+    min-height: 0;
+    grid-area: document;
+}
+
+.happy-file-workspace__header {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: space-between;
+    min-height: var(--happy-subheader-height);
+    padding: 0 12px;
+    border-bottom: 1px solid var(--divider);
+    font-size: 12px;
+    grid-area: toolbar;
+}
+
+.happy-file-workspace .happy-file-editor__header,
+.happy-file-workspace .happy-file-preview__header,
+.happy-file-workspace .happy-changed-file-diff__bar {
+    grid-area: toolbar;
+    flex-wrap: wrap;
+    height: auto;
+    min-height: var(--happy-subheader-height);
+    padding: 6px 12px;
+}
+
+.happy-file-workspace .happy-file-editor__actions,
+.happy-file-workspace .happy-file-preview__actions,
+.happy-file-workspace .happy-changed-file-diff__bar-end {
+    flex-wrap: wrap;
+    margin-left: auto;
+}
+
+.happy-file-workspace__document {
+    display: flex;
+    flex: 1 1 0%;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+}
+
+.happy-file-workspace__tree {
+    display: flex;
+    grid-area: tree;
+    min-width: 0;
+    min-height: 0;
+    border-left: 1px solid var(--divider);
+}
+
+.happy-file-workspace__tree[hidden] {
+    display: none;
+}
+
+.happy-file-workspace__tree .happy-file-browser {
+    min-width: 0;
+}
+
+.happy-file-workspace__tree .happy-file-browser__controls {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: var(--happy-subheader-height);
+    gap: 4px;
+    padding: 4px 8px;
+}
+
+.happy-file-workspace__tree .happy-file-browser__scopes {
+    flex-wrap: wrap;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.happy-file-actions,
+.happy-file-actions__trigger {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 6px;
+}
+
+.happy-file-actions__trigger .happy-button__label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.happy-file-actions__trigger {
+    border-radius: var(--happy-radius-pill);
+    background: var(--surface-high);
+}
+
+.happy-file-menu {
+    z-index: var(--happy-z-overlay);
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    width: 232px;
+    max-width: calc(100vw - 16px);
+    max-height: var(--radix-dropdown-menu-content-available-height);
+    overflow-y: auto;
+    padding: 0;
+    border: 1px solid var(--modal-border);
+    border-radius: var(--happy-radius-md);
+    background: var(--surface);
+    box-shadow: 0 8px 24px var(--shadow-color);
+    color: var(--text);
+    font-family: var(--happy-font-ui);
+    font-size: 13px;
+    line-height: 20px;
+}
+
+.happy-file-menu__content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px;
+}
+
+.happy-file-menu * {
+    box-sizing: border-box;
+}
+
+.happy-file-menu [role="group"] {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.happy-file-menu__item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 32px;
+    padding: 6px 8px;
+    border-radius: var(--happy-radius-sm);
+    outline: none;
+    cursor: default;
+    user-select: none;
+}
+
+.happy-file-menu__item[data-highlighted] {
+    background: var(--surface-selected);
+}
+
+.happy-file-menu__item[data-disabled] {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.happy-file-menu__label {
+    overflow: hidden;
+    padding: 4px 8px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.happy-file-menu__separator {
+    height: 1px;
+    background: var(--divider);
+}
+
+.happy-file-workspace-tabs > .happy-tabbed-pane__bar {
+    gap: 4px;
+    background: var(--groupped-background);
+}
+
+.happy-file-workspace-tabs > .happy-tabbed-pane__bar .happy-tabs__tab {
+    align-self: center;
+    height: 32px;
+    border: 1px solid transparent;
+    border-radius: var(--happy-radius-md);
+    font-weight: 400;
+}
+
+.happy-file-workspace-tabs > .happy-tabbed-pane__bar .happy-tabs__tab[data-active] {
+    border-color: var(--divider);
+    background: var(--surface-selected);
+}
+
+.happy-file-workspace-tabs > .happy-tabbed-pane__bar .happy-tabs__tab-underline {
+    display: none;
+}

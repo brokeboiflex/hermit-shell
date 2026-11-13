@@ -88,6 +88,7 @@
 @import "./styles/info-panel.css";
 @import "./styles/file-tree.css";
 @import "./styles/file-panel.css";
+@import "./styles/file-workspace.css";
 @import "./styles/file-browser.css";
 @import "./styles/diff-surface.css";
 @import "./styles/file-family.css";
@@ -197,5 +198,6 @@
 @import "./styles/dither-chart.css";
 @import "./styles/work-story.css";
 @import "./styles/work-floaty.css";
+@import "./styles/project-command-shortcuts.css";
 @import "./styles/windows-sandbox-setup.css";
 @import "./styles/gen-ui.css";

@@ -213,6 +213,15 @@ export {
     type FileTreeSelectModifiers,
 } from "./FileTree";
 export { FilePanel, type FilePanelProps } from "./FilePanel";
+export { FileActionsMenu, type FileActionsMenuProps } from "./FileActionsMenu";
+export {
+    FileWorkspace,
+    FileWorkspaceBody,
+    FileWorkspaceEmpty,
+    FileWorkspaceNotices,
+    type FileWorkspaceControls,
+    type FileWorkspaceProps,
+} from "./FileWorkspace";
 export {
     FileBrowser,
     type FileBrowserLayout,
@@ -618,6 +627,10 @@ export {
 } from "./ConfirmPopover";
 export { Menu, type MenuItem, type MenuProps } from "./Menu";
 export { MenuButton, type MenuButtonProps } from "./MenuButton";
+export {
+    ProjectCommandShortcuts,
+    type ProjectCommandShortcutsProps,
+} from "./ProjectCommandShortcuts";
 export { Modal, type ModalProps, type ModalSize, type ModalTone } from "./Modal";
 export {
     WindowsSandboxSetup,

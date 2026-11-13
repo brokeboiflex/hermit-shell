@@ -2,13 +2,14 @@ import { useState } from "react";
 import { TabbedPane } from "../../src/TabbedPane";
 import { WorkFloaty, type WorkFloatyProps, type WorkFloatyRow } from "../../src/WorkFloaty";
 import { ComponentPage, DimensionRule, Specimen } from "../kit";
+import { ProjectCommandShortcutsExample } from "./ProjectCommandShortcutsExample";
 
 export const componentNumber = "C-299";
 
 const folder: WorkFloatyRow = {
     id: "folder",
-    label: "redesign",
-    mark: { type: "folder" },
+    label: "Changes",
+    mark: { type: "icon", icon: "files" },
     trailing: { type: "changes", added: 24, deleted: 0 },
 };
 const desktop: WorkFloatyRow = {
@@ -69,6 +70,9 @@ function Card(
     return (
         <WorkFloaty
             open
+            title="Hermit"
+            onClose={() => undefined}
+            shortcuts={<ProjectCommandShortcutsExample />}
             agents={props.agents}
             artifacts={props.artifacts}
             changes={props.changes}
@@ -81,7 +85,7 @@ function Card(
     );
 }
 
-/** The 280px card in a column standing in for the pane, whose 60% it may fill. */
+/** The 320px summary in a column standing in for the pane, whose 60% it may fill. */
 function Column(props: { readonly children: React.ReactNode; readonly height?: number }) {
     return (
         <div
@@ -90,7 +94,7 @@ function Column(props: { readonly children: React.ReactNode; readonly height?: n
                 flexDirection: "column",
                 alignItems: "flex-start",
                 gap: 8,
-                width: 312,
+                width: 376,
                 height: props.height ?? 420,
                 padding: 16,
                 boxSizing: "border-box",
@@ -105,8 +109,8 @@ export function WorkFloatyPage() {
     return (
         <ComponentPage
             number={componentNumber}
-            title="Work floaty"
-            summary="What a chat changed, published and has working, as sidebar rows on a fixed 280px card. Changes and artifacts first; agents and their history a half row below. Every row ends in one right-aligned column, and the card grows with its rows up to 60% of the pane before scrolling."
+            title="Work summary"
+            summary="A compact project card at the upper right: changes, pinned commands, artifacts and agents in separated groups. The 320px card overlays the content and keeps its existing navigation and history."
             width={1100}
         >
             <div style={{ display: "flex", flexWrap: "wrap", gap: 24 }}>
@@ -116,8 +120,8 @@ export function WorkFloatyPage() {
                     stage="surface"
                     detail="The chat's own folder · muted totals at rest"
                 >
-                    <Column height={140}>
-                        <DimensionRule label="280" />
+                    <Column height={420}>
+                        <DimensionRule label="320" />
                         <Card changes={[folder]} artifacts={[]} agents={[]} history={[]} />
                     </Column>
                 </Specimen>
@@ -128,7 +132,7 @@ export function WorkFloatyPage() {
                     detail="Folder · two projects · artifact · running and finished agents"
                 >
                     <Column height={600}>
-                        <DimensionRule label="280" />
+                        <DimensionRule label="320" />
                         <Card {...everything} />
                     </Column>
                 </Specimen>
@@ -139,7 +143,7 @@ export function WorkFloatyPage() {
                     detail="Past agents and artifacts, muted · chevron turned"
                 >
                     <Column height={720}>
-                        <DimensionRule label="280" />
+                        <DimensionRule label="320" />
                         <Card {...everything} expanded />
                     </Column>
                 </Specimen>

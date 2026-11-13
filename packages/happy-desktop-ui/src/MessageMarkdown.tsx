@@ -109,9 +109,7 @@ const LINK_MENU_PANEL: LinkOpenPlacement = "panel";
  */
 const MarkdownLinkDefaultContext = createContext<LinkOpenPlacement | undefined>(undefined);
 const FILE_MENU_REVEAL = "reveal";
-const FILE_MENU_ITEMS: readonly MenuItem[] = [
-    { kind: "item", id: FILE_MENU_REVEAL, label: "Show in Finder", icon: "folder-open" },
-];
+
 function linkMenuItems(defaultPlacement: LinkOpenPlacement | undefined): MenuItem[] {
     const detail = (placement: LinkOpenPlacement) =>
         placement === defaultPlacement ? { detail: "Default" } : {};
@@ -364,7 +362,7 @@ const MarkdownLink = ({
             </a>
         );
     }
-    // A file link's own menu shows the file in Finder above Copy link, where
+    // A file link's own menu shows the file in its folder above Copy link, where
     // the host can reveal files; otherwise the window's plain link menu stands.
     const fileMenu = (revealFile: (() => void) | undefined) => ({
         onContextMenu:
@@ -380,7 +378,14 @@ const MarkdownLink = ({
                 <LinkContextMenu
                     data-testid="message-md-file-menu"
                     href={href}
-                    items={FILE_MENU_ITEMS}
+                    items={[
+                        {
+                            kind: "item",
+                            id: FILE_MENU_REVEAL,
+                            label: reveal?.label ?? "Show in folder",
+                            icon: "folder-open",
+                        },
+                    ]}
                     onClose={() => setMenuAt(undefined)}
                     onSelect={(id) => {
                         setMenuAt(undefined);

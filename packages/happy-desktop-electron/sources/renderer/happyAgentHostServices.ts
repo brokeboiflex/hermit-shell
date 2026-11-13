@@ -246,23 +246,21 @@ export function happyAgentHostServicesCreate(
     const capability = capabilityOf(baseUrl);
     return {
         openInTargetsRead: async (): Promise<HappyAgentOpenInTargets> => {
-            const targets = await getJson<readonly HappyAgentOpenInTarget[]>(
-                baseUrl,
-                "/open-in-targets",
-            );
+            const targets = await getJson<HappyAgentOpenInTargets>(baseUrl, "/open-in-targets");
             const recent = recentTargetRead();
-            return { targets, ...(recent ? { recent } : {}) };
+            return { ...targets, ...(recent ? { recent } : {}) };
         },
-        openIn: async (workspaceId, target) => {
+        openIn: async (workspaceId, target, path) => {
             // Remembered before the launch rather than after it. Choosing the
             // application is the reader's act and is already done; whether the
             // application then starts is the machine's business, and a slow or
             // failed launch must not make the next reload forget what they
             // picked.
-            recentTargetWrite(target);
+            if (path === undefined) recentTargetWrite(target);
             await postJson<Record<string, never>>(baseUrl, "/open-in", {
                 workspaceId,
                 target: target.id,
+                ...(path === undefined ? {} : { path }),
             });
         },
         fileReveal: async (workspaceId, path) => {

@@ -3,7 +3,11 @@ import {
     type HappyAgentChangeTier,
     type HappyAgentChangeTierId,
 } from "./happyAgentChangeTiers.js";
-import type { HappyAgentGroupId } from "./happyAgentTypes.js";
+import type { HappyAgentGroupId, HappyAgentProjectId } from "./happyAgentTypes.js";
+import {
+    happyAgentCommandShortcutsParse,
+    type HappyAgentCommandShortcut,
+} from "./happyAgentCommandShortcutsStore.js";
 import type { HappyAgentFileLayout, HappyAgentFileScope } from "./happyAgentWorkspaceStore.js";
 
 /**
@@ -49,6 +53,10 @@ export interface HappyAgentGroupViewPreferences {
  */
 export interface HappyAgentViewPreferencesDocument {
     readonly groups: Readonly<Record<string, HappyAgentGroupViewPreferences>>;
+    /** User-authored commands, shared by a project's root and its worktrees. */
+    readonly projectShortcuts?: Readonly<
+        Record<HappyAgentProjectId, readonly HappyAgentCommandShortcut[]>
+    >;
     /**
      * Sections the Changes listing splits secondary files into, in match order.
      * One list for every project rather than one per project: which files
@@ -239,7 +247,18 @@ export function happyAgentViewPreferencesParse(
     // write leaves the per-project field out, so it is never read again.
     if (changeTiers.length === 0)
         changeTiers.push(...legacyTiersParse((value as { projects?: unknown }).projects));
-    return { groups: parsed, changeTiers: changeTiers.slice(0, HAPPY_AGENT_CHANGE_TIERS_MAX) };
+    const rawShortcuts = (value as { projectShortcuts?: unknown }).projectShortcuts;
+    const projectShortcuts: Record<HappyAgentProjectId, readonly HappyAgentCommandShortcut[]> = {};
+    if (typeof rawShortcuts === "object" && rawShortcuts !== null)
+        for (const [id, entries] of Object.entries(rawShortcuts)) {
+            const shortcuts = happyAgentCommandShortcutsParse(entries);
+            if (shortcuts.length > 0) projectShortcuts[id as HappyAgentProjectId] = shortcuts;
+        }
+    return {
+        groups: parsed,
+        changeTiers: changeTiers.slice(0, HAPPY_AGENT_CHANGE_TIERS_MAX),
+        ...(Object.keys(projectShortcuts).length > 0 ? { projectShortcuts } : {}),
+    };
 }
 
 /**
@@ -275,7 +294,7 @@ export function happyAgentViewPreferencesUpdate(
     const ids = Object.keys(groups);
     if (ids.length > GROUP_MAX)
         for (const id of ids.slice(0, ids.length - GROUP_MAX)) delete groups[id];
-    return { groups, changeTiers: document.changeTiers };
+    return { ...document, groups };
 }
 
 /** The remembered arrangements with the change tiers replaced. */
@@ -283,7 +302,7 @@ export function happyAgentViewPreferencesTiersUpdate(
     document: HappyAgentViewPreferencesDocument,
     changeTiers: readonly HappyAgentChangeTier[],
 ): HappyAgentViewPreferencesDocument {
-    return { groups: document.groups, changeTiers };
+    return { ...document, changeTiers };
 }
 
 export const HAPPY_AGENT_VIEW_PREFERENCES_EMPTY: HappyAgentViewPreferencesDocument = {

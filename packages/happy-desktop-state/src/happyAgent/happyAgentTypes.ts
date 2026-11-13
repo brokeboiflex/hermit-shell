@@ -1082,6 +1082,17 @@ export interface HappyAgentOpenInTarget {
     readonly iconUrl?: string;
 }
 
+/** An installed file opener, with explicit support for directory selections. */
+export interface HappyAgentFileOpenTarget extends HappyAgentOpenInTarget {
+    readonly acceptsFolders: boolean;
+}
+
+/** Native file actions offered by this host, absent where local files cannot be opened. */
+export interface HappyAgentFileActions {
+    readonly revealLabel: string;
+    readonly targets: readonly HappyAgentFileOpenTarget[];
+}
+
 /**
  * The applications a host offers, with the one opened most recently. The recent
  * application belongs to the same answer because a control that wears the
@@ -1096,6 +1107,7 @@ export interface HappyAgentOpenInTarget {
  */
 export interface HappyAgentOpenInTargets {
     readonly targets: readonly HappyAgentOpenInTarget[];
+    readonly fileActions?: HappyAgentFileActions;
     readonly recent?: HappyAgentOpenInTarget;
 }
 

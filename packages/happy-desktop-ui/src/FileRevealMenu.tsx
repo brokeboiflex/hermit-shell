@@ -7,7 +7,7 @@ const PATH_COPY = "path-copy";
 
 /**
  * The context menu a file's name carries wherever it is drawn as a heading:
- * show it in Finder, or copy its path. The path is relative to the workspace
+ * show it in the file manager, or copy its path. The path is relative to the workspace
  * the nearest `FileRevealContext` reveals into, or absolute. Without a host
  * that can reveal files the name has no menu of its own.
  */
@@ -31,7 +31,12 @@ export function useFileRevealMenu(path: string | undefined): {
                 <ContextMenu
                     data-testid="file-reveal-menu"
                     items={[
-                        { kind: "item", id: REVEAL, label: "Show in Finder", icon: "folder-open" },
+                        {
+                            kind: "item",
+                            id: REVEAL,
+                            label: reveal.label ?? "Show in folder",
+                            icon: "folder-open",
+                        },
                         { kind: "item", id: PATH_COPY, label: "Copy path", icon: "copy" },
                     ]}
                     onClose={() => setMenuAt(undefined)}

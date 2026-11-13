@@ -293,6 +293,8 @@ export interface HappyAgentPanelStore {
      * becomes whatever is opened from it.
      */
     terminalAdd(replacing?: HappyAgentPanelTabId): void;
+    /** Runs a saved command in a new named terminal in the active checkout. */
+    terminalCommandRun(name: string, command: string): void;
     /**
      * Adds a browser tab to the open group, optionally at one safe web URL, and
      * selects it. The page uses the open conversation's agent, so without one
@@ -370,7 +372,10 @@ export interface HappyAgentPanelStore {
 
 export interface HappyAgentPanelDeps {
     /** Opens one terminal in a session; the panel owns the returned lease. */
-    readonly terminalOpen: (sessionId: HappyAgentSessionId) => HappyAgentTerminalHandle;
+    readonly terminalOpen: (
+        sessionId: HappyAgentSessionId,
+        command?: string,
+    ) => HappyAgentTerminalHandle;
     /** Reads one conversation for a chat tab; the panel owns the returned lease. */
     readonly chatOpen?: (agentId: HappyAgentSessionId) => HappyAgentPanelChatHandle;
     /**
@@ -688,11 +693,15 @@ export function happyAgentPanelStoreCreate(deps: HappyAgentPanelDeps): HappyAgen
         });
     };
 
-    const terminalTabAdd = (group: HappyAgentGroupId, session: HappyAgentSessionId): void => {
+    const terminalTabAdd = (
+        group: HappyAgentGroupId,
+        session: HappyAgentSessionId,
+        command?: { readonly name: string; readonly command: string },
+    ): void => {
         const id = `tab_${nextTabNumber}` as HappyAgentPanelTabId;
         // Terminals are numbered across the workspace rather than per group so a
         // label never silently means two different shells.
-        const label = `Terminal ${nextTabNumber}`;
+        const label = command?.name ?? `Terminal ${nextTabNumber}`;
         nextTabNumber += 1;
         tabs.push({
             id,
@@ -700,7 +709,7 @@ export function happyAgentPanelStoreCreate(deps: HappyAgentPanelDeps): HappyAgen
             label,
             groupId: group,
             placement: "panel",
-            terminal: deps.terminalOpen(session),
+            terminal: deps.terminalOpen(session, command?.command),
         });
         activeByGroup.set(group, id);
         activeViewId = id;
@@ -1083,6 +1092,20 @@ export function happyAgentPanelStoreCreate(deps: HappyAgentPanelDeps): HappyAgen
                 (tab) => tab.id === replacing && tab.kind === "browser" && tab.groupId === groupId,
             );
             if (replaced >= 0) tabs.splice(replaced, 1, tabs.pop()!);
+            open = true;
+            remember();
+            recompute();
+        },
+        terminalCommandRun(name, command) {
+            if (
+                disposed ||
+                !groupId ||
+                !conversationId ||
+                terminalRefusal !== undefined ||
+                !command.trim()
+            )
+                return;
+            terminalTabAdd(groupId, conversationId, { name, command });
             open = true;
             remember();
             recompute();

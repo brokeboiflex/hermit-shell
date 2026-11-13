@@ -35,7 +35,12 @@ export interface HappyAgentHostServices {
      * because the host is what remembers the choice across a reload, and the
      * control that wears it needs the label and the icon, not only the id.
      */
-    openIn(groupId: HappyAgentGroupId, target: HappyAgentOpenInTarget): Promise<void>;
+    openIn(
+        groupId: HappyAgentGroupId,
+        target: HappyAgentOpenInTarget,
+        /** An individual file or folder; omitted when opening the project root. */
+        path?: string,
+    ): Promise<void>;
     /**
      * Selects one file in the machine's file manager. `path` is relative to
      * the group's root, or absolute for a file anywhere on the machine the

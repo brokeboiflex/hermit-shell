@@ -1,8 +1,17 @@
 import { partitionComponentProps } from "./componentProps";
-import { useCallback, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
+import {
+    useContext,
+    useCallback,
+    useRef,
+    useState,
+    type CSSProperties,
+    type KeyboardEvent,
+} from "react";
 import { defaultRangeExtractor, useVirtualizer } from "@tanstack/react-virtual";
 import { compactCount, changeCountLabel } from "./countText";
 import { ContextMenu } from "./ContextMenu";
+import { FileRevealContext } from "./LinkContextMenu";
+import type { MenuItem } from "./Menu";
 import { Icon } from "./Icon";
 import { fileTreeRowModel, type FileTreeRow } from "./fileTreeRows";
 import { ScrollArea } from "./Scrollbar";
@@ -97,10 +106,14 @@ export type FileTreeProps = {
     /** Directory paging request (the "Show more" affordance). */
     onLoadMore?: (id: string) => void;
     /**
-     * Shows a file or directory in Finder, offered from the row's context menu.
-     * Without it a right-click on a row does nothing of its own.
+     * Shows a file or directory in the host's file manager from the row's context menu.
+     * Without it a right-click still offers the other supplied file actions.
      */
     onReveal?: (id: string) => void;
+    /** Opens this file beside the conversation without replacing it. */
+    onOpenBeside?: (id: string) => void;
+    /** Offered only for a file the authoritative tree marks as changed. */
+    onShowChanges?: (id: string) => void;
     /** Why file-row selection/opening is unavailable while directory disclosure remains local. */
     filesUnavailable?: string;
     /** Per-depth indentation step. Defaults to 16px. */
@@ -774,6 +787,8 @@ export function FileTree(props: FileTreeProps) {
         "onFilePrefetch",
         "onLoadMore",
         "onReveal",
+        "onOpenBeside",
+        "onShowChanges",
         "filesUnavailable",
         "indent",
         "virtualize",
@@ -796,7 +811,88 @@ export function FileTree(props: FileTreeProps) {
     const [focusedRow, focusedRowSet] = useState<string | undefined>(undefined);
     /** The row whose context menu is up, and where the pointer asked for it. */
     const [menu, menuSet] = useState<{ id: string; x: number; y: number } | undefined>();
+    const fileActions = useContext(FileRevealContext);
     const onReveal = local.onReveal;
+    const openWith = onReveal ? fileActions?.openWith : undefined;
+    const menuNode =
+        menu === undefined ? undefined : model.rows.find((row) => row.node.id === menu.id)?.node;
+    const openTargets =
+        openWith?.targets.filter(
+            (target) => menuNode?.kind !== "directory" || target.acceptsFolders,
+        ) ?? [];
+    const menuItems: MenuItem[] =
+        menuNode === undefined
+            ? []
+            : [
+                  ...(menuNode.kind === "file" && local.filesUnavailable === undefined
+                      ? [
+                            ...(local.onOpen
+                                ? [
+                                      {
+                                          kind: "item",
+                                          id: "open",
+                                          label: "Open in main tab",
+                                          icon: "doc",
+                                      } as const,
+                                  ]
+                                : []),
+                            ...(local.onOpenBeside
+                                ? [
+                                      {
+                                          kind: "item",
+                                          id: "open-beside",
+                                          label: "Open in side panel",
+                                          icon: "panel-expand",
+                                      } as const,
+                                  ]
+                                : []),
+                            ...(local.onShowChanges && menuNode.gitStatus
+                                ? [
+                                      {
+                                          kind: "item",
+                                          id: "changes",
+                                          label: "Show changes",
+                                          icon: "file-diff",
+                                      } as const,
+                                  ]
+                                : []),
+                        ]
+                      : []),
+                  ...(openWith && openTargets.length > 0 && local.filesUnavailable === undefined
+                      ? [
+                            { kind: "label", label: "Open with" } as const,
+                            ...openTargets.map(
+                                (target): MenuItem => ({
+                                    kind: "item",
+                                    id: `open-with:${target.id}`,
+                                    label: target.label,
+                                    ...(target.iconUrl
+                                        ? { iconUrl: target.iconUrl }
+                                        : { icon: "open-external" }),
+                                }),
+                            ),
+                            { kind: "separator" } as const,
+                        ]
+                      : []),
+                  ...(onReveal
+                      ? [
+                            {
+                                kind: "item",
+                                id: "reveal",
+                                label: fileActions?.label ?? "Show in folder",
+                                icon: "folder-open",
+                            } as const,
+                        ]
+                      : []),
+                  { kind: "separator" },
+                  { kind: "item", id: "copy-path", label: "Copy path", icon: "copy" },
+                  {
+                      kind: "item",
+                      id: "copy-name",
+                      label: menuNode.kind === "directory" ? "Copy folder name" : "Copy file name",
+                      icon: "copy",
+                  },
+              ];
     /**
      * A row that has been asked for but is not drawn yet. Moving to a row a
      * long way down a virtualized listing has to scroll it into existence
@@ -972,7 +1068,7 @@ export function FileTree(props: FileTreeProps) {
             onDirectoryPrefetch={local.onDirectoryPrefetch}
             onFilePrefetch={local.onFilePrefetch}
             onLoadMore={local.onLoadMore}
-            {...(onReveal === undefined ? {} : { onMenu: (id, x, y) => menuSet({ id, x, y }) })}
+            onMenu={(id, x, y) => menuSet({ id, x, y })}
             onOpen={local.onOpen}
             onSelect={local.onSelect}
             onToggle={local.onToggle}
@@ -1063,21 +1159,33 @@ export function FileTree(props: FileTreeProps) {
                     ),
                 )
             )}
-            {menu !== undefined && onReveal !== undefined ? (
+            {menu !== undefined && menuNode !== undefined ? (
                 <ContextMenu
                     data-testid="file-tree-menu"
-                    items={[
-                        {
-                            kind: "item",
-                            id: "reveal",
-                            label: "Show in Finder",
-                            icon: "folder-open",
-                        },
-                    ]}
+                    items={menuItems[0]?.kind === "separator" ? menuItems.slice(1) : menuItems}
                     onClose={() => menuSet(undefined)}
-                    onSelect={() => {
+                    onSelect={(action) => {
+                        if (action === "copy-path" || action === "copy-name") {
+                            void navigator.clipboard
+                                .writeText(action === "copy-path" ? menu.id : menuNode.name)
+                                .then(
+                                    () => menuSet(undefined),
+                                    () => undefined,
+                                );
+                            return;
+                        }
                         menuSet(undefined);
-                        onReveal(menu.id);
+                        if (action === "reveal") onReveal?.(menu.id);
+                        if (local.filesUnavailable !== undefined) return;
+                        const target = openWith?.targets.find(
+                            (target) => action === `open-with:${target.id}`,
+                        );
+                        if (target) {
+                            // The owning workspace reports launch failures through its file error state.
+                            void openWith!.open(menu.id, target).catch(() => undefined);
+                        } else if (action === "open") local.onOpen?.(menu.id);
+                        else if (action === "open-beside") local.onOpenBeside?.(menu.id);
+                        else if (action === "changes") local.onShowChanges?.(menu.id);
                     }}
                     x={menu.x}
                     y={menu.y}

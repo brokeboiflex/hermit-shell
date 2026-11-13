@@ -10,9 +10,10 @@ import { ChangeStats } from "./ChangeStats";
 import { CodeEditor, type CodeEditorReveal } from "./CodeEditor";
 import { FileTreeFamilyIcon, fileTreeFamily } from "./FileTree";
 import { FilePathLabel } from "./FilePathLabel";
+import { FileActionsMenu } from "./FileActionsMenu";
+import { FileWorkspaceBody, type FileWorkspaceControls } from "./FileWorkspace";
 import { useFileRevealMenu } from "./FileRevealMenu";
 import { SegmentedControl } from "./SegmentedControl";
-import { Ionicon } from "./vectorIcons/VectorIcon";
 export type FileEditorProps = {
     className?: string;
     "data-testid"?: string;
@@ -33,7 +34,10 @@ export type FileEditorProps = {
     onRevert?: () => void;
     onClose?: () => void;
     /** Saves the file to the reader's machine. Absent hides the control. */
-    onDownload?: () => void;
+    onDownload?: () => void | Promise<void>;
+    onOpenInTab?: () => void;
+    onShowChanges?: () => void;
+    files?: FileWorkspaceControls;
     /** Unsaved local edits exist. Drives Command-S and Revert. */
     dirty?: boolean;
     /** A save is in flight. */
@@ -103,6 +107,9 @@ export function FileEditor(props: FileEditorProps) {
         "onRevert",
         "onClose",
         "onDownload",
+        "onOpenInTab",
+        "onShowChanges",
+        "files",
         "dirty",
         "saving",
         "saveDisabled",
@@ -175,6 +182,16 @@ export function FileEditor(props: FileEditorProps) {
                     className="happy-file-editor__actions"
                     data-happy-desktop-ui="file-editor-actions"
                 >
+                    {local.onShowChanges ? (
+                        <Button
+                            icon="file-diff"
+                            onClick={local.onShowChanges}
+                            size="small"
+                            variant="ghost"
+                        >
+                            Show changes
+                        </Button>
+                    ) : null}
                     {local.created ? (
                         <span
                             className="happy-file-editor__tag"
@@ -237,18 +254,25 @@ export function FileEditor(props: FileEditorProps) {
                             {local.revertLabel ?? "Revert"}
                         </Button>
                     ) : null}
-                    {local.onDownload ? (
+                    <FileActionsMenu
+                        path={local.path}
+                        text={local.value}
+                        onDownload={local.onDownload}
+                        onOpenInTab={local.onOpenInTab}
+                        onShowChanges={local.onShowChanges}
+                    />
+                    {local.files ? (
                         <Button
-                            aria-label="Download"
-                            data-testid="file-editor-download"
+                            aria-label={
+                                local.files.filesVisible ? "Hide file tree" : "Show file tree"
+                            }
+                            aria-pressed={local.files.filesVisible}
+                            icon="files"
                             iconOnly
-                            onClick={() => local.onDownload?.()}
+                            onClick={local.files.onFilesToggle}
                             size="small"
-                            title="Download"
                             variant="ghost"
-                        >
-                            <Ionicon name="download-outline" size={14} />
-                        </Button>
+                        />
                     ) : null}
                     {local.onClose ? (
                         <Button
@@ -262,32 +286,34 @@ export function FileEditor(props: FileEditorProps) {
                     ) : null}
                 </span>
             </header>
-            {local.banner ? (
-                <div
-                    className="happy-file-editor__banner"
-                    data-happy-desktop-ui="file-editor-banner"
-                >
-                    {local.banner}
-                </div>
-            ) : null}
-            {reading ? (
-                local.rendered
-            ) : (
-                <CodeEditor
-                    className="happy-file-editor__area"
-                    documentKey={local.documentKey}
-                    name={local.path}
-                    onSave={() => {
-                        if (canSave()) local.onSave?.();
-                    }}
-                    onValueChange={(value) => local.onValueChange?.(value)}
-                    placeholder={local.placeholder}
-                    readOnly={local.readOnly}
-                    {...(local.reveal === undefined ? {} : { reveal: local.reveal })}
-                    value={local.value}
-                    wrap={local.wrap}
-                />
-            )}
+            <FileWorkspaceBody>
+                {local.banner ? (
+                    <div
+                        className="happy-file-editor__banner"
+                        data-happy-desktop-ui="file-editor-banner"
+                    >
+                        {local.banner}
+                    </div>
+                ) : null}
+                {reading ? (
+                    local.rendered
+                ) : (
+                    <CodeEditor
+                        className="happy-file-editor__area"
+                        documentKey={local.documentKey}
+                        name={local.path}
+                        onSave={() => {
+                            if (canSave()) local.onSave?.();
+                        }}
+                        onValueChange={(value) => local.onValueChange?.(value)}
+                        placeholder={local.placeholder}
+                        readOnly={local.readOnly}
+                        {...(local.reveal === undefined ? {} : { reveal: local.reveal })}
+                        value={local.value}
+                        wrap={local.wrap}
+                    />
+                )}
+            </FileWorkspaceBody>
         </section>
     );
 }

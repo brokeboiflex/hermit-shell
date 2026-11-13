@@ -5,6 +5,7 @@ import { FileEditor } from "../../src/FileEditor";
 import { MarkdownDocument } from "../../src/MarkdownDocument";
 import { TabbedPane } from "../../src/TabbedPane";
 import { ComponentPage, DimensionRule, Specimen } from "../kit";
+import { FileWorkspaceExample } from "./FileWorkspaceExample";
 
 /** The component plan this page documents. The selector and the page header read the same value. */
 export const componentNumber = "C-054";
@@ -280,6 +281,22 @@ export function FileEditorPage() {
                     260,
                     { path: "docs/notes.md" },
                 )}
+            </Specimen>
+            <Specimen
+                detail="Reference: the supplied right-hand Files workspace. Browse, filter, collapse the tree, switch source or changes, and open the file actions menu. Native actions report their target in this fixture."
+                label="Files workspace"
+                number="10"
+                stage="surface"
+            >
+                <FileWorkspaceExample />
+            </Specimen>
+            <Specimen
+                detail="The Files tab before selecting a document; the searchable tree stays on the right."
+                label="Open file"
+                number="11"
+                stage="surface"
+            >
+                <FileWorkspaceExample empty />
             </Specimen>
         </ComponentPage>
     );

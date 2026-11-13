@@ -52,6 +52,8 @@ export interface HappyAgentTerminalStore {
 export interface HappyAgentTerminalHandle extends HappyAgentTerminalStore, Disposable {}
 
 export interface HappyAgentTerminalDeps {
+    /** A saved command to run through the server's shell instead of an interactive prompt. */
+    readonly command?: string;
     readonly client: Pick<HappyAgentClient, "getAgent" | "openTerminal" | "stopTerminal">;
     readonly hostServices: Pick<HappyAgentHostServices, "terminalConnect">;
     /**
@@ -175,6 +177,7 @@ export function happyAgentTerminalOpen(
                 cols,
                 rows,
                 colorScheme: deps.colorScheme,
+                ...(deps.command === undefined ? {} : { command: deps.command }),
             });
         })
         .then(

@@ -34,6 +34,8 @@ export type FileBrowserProps = {
     onFilePrefetch?: FileTreeProps["onFilePrefetch"];
     onLoadMore?: FileTreeProps["onLoadMore"];
     onReveal?: FileTreeProps["onReveal"];
+    onOpenBeside?: FileTreeProps["onOpenBeside"];
+    onShowChanges?: FileTreeProps["onShowChanges"];
     loading?: boolean;
     loadingLabel?: string;
     emptyLabel?: string;
@@ -97,6 +99,8 @@ export function FileBrowser(props: FileBrowserProps) {
         "onFilePrefetch",
         "onLoadMore",
         "onReveal",
+        "onOpenBeside",
+        "onShowChanges",
         "loading",
         "loadingLabel",
         "emptyLabel",
@@ -260,6 +264,8 @@ export function FileBrowser(props: FileBrowserProps) {
                     onLoadMore={local.onLoadMore}
                     onOpen={local.onOpen}
                     onReveal={local.onReveal}
+                    onOpenBeside={local.onOpenBeside}
+                    onShowChanges={local.onShowChanges}
                     onSelect={local.onSelect}
                     onToggle={local.onToggle}
                     selectedId={local.selectedId}

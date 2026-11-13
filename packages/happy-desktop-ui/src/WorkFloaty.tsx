@@ -1,8 +1,9 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { Avatar } from "./Avatar";
 import { ChangeStats } from "./ChangeStats";
 import { compactCount } from "./countText";
 import { Icon, type IconName } from "./Icon";
+import { MenuButton } from "./MenuButton";
 import { ScrollArea } from "./Scrollbar";
 import { SIDEBAR_ROW_GAP, SIDEBAR_ROW_HEIGHT } from "./Sidebar";
 import { Spinner } from "./Spinner";
@@ -39,6 +40,10 @@ export interface WorkFloatyRow {
 
 export interface WorkFloatyProps {
     readonly open: boolean;
+    readonly title?: string;
+    readonly onClose?: () => void;
+    /** The project's pinned commands, composed by the owner. */
+    readonly shortcuts?: ReactNode;
     /** The places the work changed files: its own folder or checkout first, then each other one. */
     readonly changes: readonly WorkFloatyRow[];
     readonly artifacts: readonly WorkFloatyRow[];
@@ -58,15 +63,12 @@ export interface WorkFloatyProps {
 }
 
 /**
- * C-299 Work floaty — what a chat changed, published and has working, in
- * sidebar rows on a fixed-width card. Outputs come first, then the agents and
- * their history after a half-row gap. A section with nothing in it takes no
- * space, and a card with nothing at all is not drawn.
+ * C-299 Work summary — project context, changes, pinned commands and live
+ * outputs in a compact card at the content's upper-right corner.
  */
 export function WorkFloaty(props: WorkFloatyProps) {
-    const outputs = [...props.changes, ...props.artifacts];
     const working = props.agents.length > 0 || props.history.length > 0;
-    if (!props.open || (outputs.length === 0 && !working)) return null;
+    if (!props.open) return null;
     const row = (item: WorkFloatyRow, muted: boolean) => (
         <button
             className="happy-work-floaty__row"
@@ -119,7 +121,7 @@ export function WorkFloaty(props: WorkFloatyProps) {
     );
     return (
         <aside
-            aria-label="Work activity"
+            aria-label="Summary"
             className="happy-work-floaty"
             data-happy-desktop-ui="work-floaty"
             data-placement={props.placement ?? "inline"}
@@ -133,13 +135,45 @@ export function WorkFloaty(props: WorkFloatyProps) {
         >
             <ScrollArea>
                 <div className="happy-work-floaty__content">
-                    {outputs.length > 0 ? (
+                    <div className="happy-work-floaty__group">
+                        <header className="happy-work-floaty__heading">
+                            <span className="happy-work-floaty__title" title={props.title}>
+                                {props.title ?? "Summary"}
+                            </span>
+                            {props.onClose ? (
+                                <MenuButton
+                                    align="end"
+                                    icon="more"
+                                    items={[
+                                        {
+                                            kind: "item",
+                                            id: "hide",
+                                            label: "Hide summary",
+                                            icon: "close",
+                                        },
+                                    ]}
+                                    label="Summary options"
+                                    onSelect={props.onClose}
+                                    overlay
+                                    size="small"
+                                    variant="ghost"
+                                />
+                            ) : null}
+                        </header>
+                        {props.changes.map((item) => row(item, false))}
+                    </div>
+                    {props.shortcuts ? (
+                        <div className="happy-work-floaty__group">{props.shortcuts}</div>
+                    ) : null}
+                    {props.artifacts.length > 0 ? (
                         <div className="happy-work-floaty__group">
-                            {outputs.map((item) => row(item, false))}
+                            <span className="happy-work-floaty__heading">Artifacts</span>
+                            {props.artifacts.map((item) => row(item, false))}
                         </div>
                     ) : null}
                     {working ? (
                         <div className="happy-work-floaty__group">
+                            <span className="happy-work-floaty__heading">Agents</span>
                             {props.agents.map((item) => row(item, false))}
                             {props.history.length > 0 ? (
                                 <button

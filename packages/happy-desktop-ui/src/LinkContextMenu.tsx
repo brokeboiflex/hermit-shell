@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import type { HappyAgentFileLink } from "happy-desktop-state";
+import type { HappyAgentFileLink, HappyAgentFileOpenTarget } from "happy-desktop-state";
 import { ContextMenu, type ContextMenuProps } from "./ContextMenu";
 
 /**
@@ -18,6 +18,12 @@ export const LinkCopyContext = createContext<(href: string) => string | undefine
  * Absent where no host can reveal files, and file links offer only Copy link.
  */
 export interface FileReveal {
+    /** Supplied by the host; generic wording is also suitable for standalone fixtures. */
+    readonly label?: string;
+    readonly openWith?: {
+        readonly targets: readonly HappyAgentFileOpenTarget[];
+        readonly open: (path: string, target: HappyAgentFileOpenTarget) => Promise<void>;
+    };
     readonly path: (path: string) => void;
     readonly link: (link: HappyAgentFileLink) => void;
 }

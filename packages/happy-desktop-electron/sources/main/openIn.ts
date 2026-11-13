@@ -1,18 +1,22 @@
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { readdir, readFile, rm, stat } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
-import { isAbsolute, join } from "node:path";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import { promisify } from "node:util";
+
+import open from "open";
+import which from "which";
+import type { HappyAgentFileActions } from "happy-desktop-state";
 
 const execFileAsync = promisify(execFile);
 
 /**
- * The applications a project directory can be handed to. The renderer only ever
- * names one of these ids: it never sends a bundle id, an executable, a flag, or
- * an argument, so nothing it says can become part of a command line. Everything
- * that does reach the command line is the fixed data below.
+ * Applications for local projects and files. The renderer names a catalog id
+ * and a file path; it never chooses an executable, bundle id, or launch flags.
+ * The proxy resolves the path against the authoritative local workspace before
+ * it is passed as one argument, without a command shell.
  *
  * Editions are several bundle ids behind one id — PyCharm Professional and
  * Community are one entry to the reader, and the first one installed wins.
@@ -20,6 +24,8 @@ const execFileAsync = promisify(execFile);
 interface OpenInApp {
     readonly id: string;
     readonly label: string;
+    readonly kind: "file-manager" | "terminal" | "editor" | "file-editor" | "project";
+    readonly commands?: { readonly win32?: readonly string[]; readonly linux?: readonly string[] };
     /**
      * What the installed bundle is named on disk. This is what actually finds an
      * application: the directories below are read directly, because Spotlight
@@ -37,49 +43,166 @@ interface OpenInApp {
 }
 
 const OPEN_IN_APPS: readonly OpenInApp[] = [
-    { id: "finder", label: "Finder", appNames: ["Finder.app"], bundleIds: ["com.apple.finder"] },
+    {
+        id: "explorer",
+        label: "File Explorer",
+        kind: "file-manager",
+        appNames: [],
+        bundleIds: [],
+        commands: { win32: ["explorer.exe"] },
+    },
+    {
+        id: "file-manager",
+        label: "File manager",
+        kind: "file-manager",
+        appNames: [],
+        bundleIds: [],
+        commands: { linux: ["xdg-open"] },
+    },
+    {
+        id: "windows-terminal",
+        label: "Windows Terminal",
+        kind: "terminal",
+        appNames: [],
+        bundleIds: [],
+        commands: { win32: ["wt.exe"] },
+    },
+    {
+        id: "powershell",
+        label: "PowerShell",
+        kind: "terminal",
+        appNames: [],
+        bundleIds: [],
+        commands: { win32: ["pwsh.exe", "powershell.exe"] },
+    },
+    {
+        id: "gnome-terminal",
+        label: "Terminal",
+        kind: "terminal",
+        appNames: [],
+        bundleIds: [],
+        commands: { linux: ["gnome-terminal"] },
+    },
+    {
+        id: "konsole",
+        label: "Konsole",
+        kind: "terminal",
+        appNames: [],
+        bundleIds: [],
+        commands: { linux: ["konsole"] },
+    },
+    {
+        id: "xfce-terminal",
+        label: "Xfce Terminal",
+        kind: "terminal",
+        appNames: [],
+        bundleIds: [],
+        commands: { linux: ["xfce4-terminal"] },
+    },
+    {
+        id: "notepad",
+        label: "Notepad",
+        kind: "file-editor",
+        appNames: [],
+        bundleIds: [],
+        commands: { win32: ["notepad.exe"] },
+    },
+    {
+        id: "notepad-plus-plus",
+        label: "Notepad++",
+        kind: "file-editor",
+        appNames: [],
+        bundleIds: [],
+        commands: { win32: ["notepad++.exe"] },
+    },
+
+    {
+        id: "finder",
+        kind: "file-manager",
+        label: "Finder",
+        appNames: ["Finder.app"],
+        bundleIds: ["com.apple.finder"],
+    },
     {
         id: "terminal",
+        kind: "terminal",
         label: "Terminal",
         appNames: ["Terminal.app"],
         bundleIds: ["com.apple.Terminal"],
     },
-    { id: "iterm", label: "iTerm", appNames: ["iTerm.app"], bundleIds: ["com.googlecode.iterm2"] },
+    {
+        id: "iterm",
+        kind: "terminal",
+        label: "iTerm",
+        appNames: ["iTerm.app"],
+        bundleIds: ["com.googlecode.iterm2"],
+    },
     {
         id: "ghostty",
+        kind: "terminal",
+        commands: { linux: ["ghostty"] },
         label: "Ghostty",
         appNames: ["Ghostty.app"],
         bundleIds: ["com.mitchellh.ghostty"],
     },
-    { id: "kitty", label: "kitty", appNames: ["kitty.app"], bundleIds: ["net.kovidgoyal.kitty"] },
+    {
+        id: "kitty",
+        kind: "terminal",
+        commands: { linux: ["kitty"] },
+        label: "kitty",
+        appNames: ["kitty.app"],
+        bundleIds: ["net.kovidgoyal.kitty"],
+    },
     {
         id: "warp",
+        kind: "terminal",
         label: "Warp",
         appNames: ["Warp.app"],
         bundleIds: ["dev.warp.Warp-Stable", "dev.warp.Warp"],
     },
     {
         id: "vscode",
+        kind: "editor",
+        commands: { win32: ["Code.exe"], linux: ["code"] },
         label: "VS Code",
         appNames: ["Visual Studio Code.app"],
         bundleIds: ["com.microsoft.VSCode"],
     },
     {
         id: "cursor",
+        kind: "editor",
+        commands: { win32: ["Cursor.exe"], linux: ["cursor"] },
         label: "Cursor",
         appNames: ["Cursor.app"],
         bundleIds: ["com.todesktop.230313mzl4w4u92"],
     },
-    { id: "zed", label: "Zed", appNames: ["Zed.app"], bundleIds: ["dev.zed.Zed"] },
+    {
+        id: "zed",
+        kind: "editor",
+        commands: { win32: ["zed.exe"], linux: ["zed"] },
+        label: "Zed",
+        appNames: ["Zed.app"],
+        bundleIds: ["dev.zed.Zed"],
+    },
     {
         id: "sublime-text",
+        kind: "editor",
+        commands: { win32: ["sublime_text.exe"], linux: ["subl"] },
         label: "Sublime Text",
         appNames: ["Sublime Text.app"],
         bundleIds: ["com.sublimetext.4", "com.sublimetext.3"],
     },
-    { id: "xcode", label: "Xcode", appNames: ["Xcode.app"], bundleIds: ["com.apple.dt.Xcode"] },
+    {
+        id: "xcode",
+        kind: "editor",
+        label: "Xcode",
+        appNames: ["Xcode.app"],
+        bundleIds: ["com.apple.dt.Xcode"],
+    },
     {
         id: "intellij",
+        kind: "editor",
+        commands: { win32: ["idea64.exe", "idea.exe"], linux: ["idea"] },
         label: "IntelliJ IDEA",
         appNames: [
             "IntelliJ IDEA.app",
@@ -91,6 +214,8 @@ const OPEN_IN_APPS: readonly OpenInApp[] = [
     },
     {
         id: "pycharm",
+        kind: "editor",
+        commands: { win32: ["pycharm64.exe", "pycharm.exe"], linux: ["pycharm"] },
         label: "PyCharm",
         appNames: [
             "PyCharm.app",
@@ -102,51 +227,77 @@ const OPEN_IN_APPS: readonly OpenInApp[] = [
     },
     {
         id: "webstorm",
+        kind: "editor",
+        commands: { win32: ["webstorm64.exe", "webstorm.exe"], linux: ["webstorm"] },
         label: "WebStorm",
         appNames: ["WebStorm.app"],
         bundleIds: ["com.jetbrains.WebStorm"],
     },
     {
         id: "rustrover",
+        kind: "editor",
+        commands: { win32: ["rustrover64.exe", "rustrover.exe"], linux: ["rustrover"] },
         label: "RustRover",
         appNames: ["RustRover.app"],
         bundleIds: ["com.jetbrains.rustrover"],
     },
     {
         id: "goland",
+        kind: "editor",
+        commands: { win32: ["goland64.exe", "goland.exe"], linux: ["goland"] },
         label: "GoLand",
         appNames: ["GoLand.app"],
         bundleIds: ["com.jetbrains.goland"],
     },
     {
         id: "datagrip",
+        kind: "editor",
+        commands: { win32: ["datagrip64.exe", "datagrip.exe"], linux: ["datagrip"] },
         label: "DataGrip",
         appNames: ["DataGrip.app"],
         bundleIds: ["com.jetbrains.datagrip"],
     },
     {
         id: "android-studio",
+        kind: "editor",
+        commands: { win32: ["studio64.exe", "studio.exe"], linux: ["studio", "android-studio"] },
         label: "Android Studio",
         appNames: ["Android Studio.app"],
         bundleIds: ["com.google.android.studio"],
     },
     {
         id: "sourcetree",
+        kind: "project",
         label: "Sourcetree",
         appNames: ["Sourcetree.app", "SourceTree.app"],
         // The direct download and the App Store build ship different ids.
         bundleIds: ["com.torusknot.SourceTreeNotMAS", "com.torusknot.SourceTree"],
     },
-    { id: "fork", label: "Fork", appNames: ["Fork.app"], bundleIds: ["com.DanPristupov.Fork"] },
-    { id: "tower", label: "Tower", appNames: ["Tower.app"], bundleIds: ["com.fournova.Tower3"] },
+    {
+        id: "fork",
+        kind: "project",
+        label: "Fork",
+        appNames: ["Fork.app"],
+        bundleIds: ["com.DanPristupov.Fork"],
+    },
+    {
+        id: "tower",
+        kind: "project",
+        label: "Tower",
+        appNames: ["Tower.app"],
+        bundleIds: ["com.fournova.Tower3"],
+    },
     {
         id: "github-desktop",
+        kind: "project",
         label: "GitHub Desktop",
         appNames: ["GitHub Desktop.app"],
         bundleIds: ["com.github.GitHubClient"],
     },
     {
         id: "antigravity",
+        kind: "editor",
+        commands: { win32: ["Antigravity.exe"], linux: ["antigravity"] },
         label: "Antigravity",
         appNames: ["Antigravity.app"],
         bundleIds: ["com.google.antigravity"],
@@ -353,18 +504,82 @@ async function bundlePathFind(candidate: OpenInApp): Promise<string | undefined>
     return undefined;
 }
 
+/** Windows registered executable locations, including per-user installations. */
+async function windowsAppPathsRead(): Promise<ReadonlyMap<string, string>> {
+    const names = OPEN_IN_APPS.flatMap((app) => app.commands?.win32 ?? []);
+    // Only the catalog's fixed executable names enter this script, never a file path or renderer data.
+    const script = String.raw`
+$result = @{}
+foreach ($root in @('HKCU:\Software\Microsoft\Windows\CurrentVersion\App Paths', 'HKLM:\Software\Microsoft\Windows\CurrentVersion\App Paths')) {
+    foreach ($name in @(${names.map((name) => `'${name}'`).join(",")})) {
+        if ($result.ContainsKey($name)) { continue }
+        $key = Get-Item -LiteralPath (Join-Path $root $name) -ErrorAction SilentlyContinue
+        if ($null -ne $key) {
+            $value = $key.GetValue('')
+            if ($value -is [string]) { $result[$name] = $value.Trim('"') }
+        }
+    }
+}
+ConvertTo-Json -InputObject $result -Compress
+`;
+    try {
+        const { stdout } = await execFileAsync(
+            "powershell.exe",
+            ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", script],
+            { timeout: 10_000, windowsHide: true },
+        );
+        const values: unknown = JSON.parse(stdout);
+        if (typeof values !== "object" || values === null) return new Map();
+        return new Map(
+            Object.entries(values).filter(
+                (entry): entry is [string, string] =>
+                    typeof entry[1] === "string" && isAbsolute(entry[1]) && existsSync(entry[1]),
+            ),
+        );
+    } catch {
+        return new Map();
+    }
+}
+
+async function commandPathFind(
+    candidate: OpenInApp,
+    registered: ReadonlyMap<string, string>,
+): Promise<string | undefined> {
+    const commands =
+        process.platform === "win32" ? candidate.commands?.win32 : candidate.commands?.linux;
+    for (const command of commands ?? []) {
+        const registeredPath = registered.get(command);
+        if (registeredPath) return registeredPath;
+        const executable = await which(command, { nothrow: true });
+        if (executable) return resolve(executable);
+    }
+    return undefined;
+}
+
 /**
  * Which of the known applications are installed, with each one's bundle path and
  * icon. A failure to read one is not worth reporting: it simply does not appear
  * in the menu, and detection runs again later.
  */
 async function appsDetect(): Promise<ReadonlyMap<string, DetectedApp>> {
+    if (!["darwin", "win32", "linux"].includes(process.platform)) return new Map();
+    const registered =
+        process.platform === "win32" ? await windowsAppPathsRead() : new Map<string, string>();
     const entries = await Promise.all(
         OPEN_IN_APPS.map(async (candidate) => {
             try {
-                const path = await bundlePathFind(candidate);
+                const path =
+                    process.platform === "darwin"
+                        ? await bundlePathFind(candidate)
+                        : await commandPathFind(candidate, registered);
                 if (path === undefined) return undefined;
-                return [candidate.id, { path, iconUrl: await iconRead(path) }] as const;
+                return [
+                    candidate.id,
+                    {
+                        path,
+                        iconUrl: process.platform === "darwin" ? await iconRead(path) : undefined,
+                    },
+                ] as const;
             } catch {
                 return undefined;
             }
@@ -388,68 +603,162 @@ function detectedRead(): Promise<ReadonlyMap<string, DetectedApp>> {
  * rather than assumed.
  */
 export async function openInTargetsRead(): Promise<readonly OpenInTarget[]> {
-    if (process.platform !== "darwin") return [];
     const installed = await detectedRead();
-    return OPEN_IN_APPS.filter((candidate) => installed.has(candidate.id)).map((candidate) => ({
+    return OPEN_IN_APPS.filter(
+        (candidate) => candidate.kind !== "file-editor" && installed.has(candidate.id),
+    ).map((candidate) => ({
         id: candidate.id,
         label: candidate.label,
         iconUrl: installed.get(candidate.id)?.iconUrl,
     }));
 }
 
-/**
- * Opens `directory` in the named application.
- *
- * The bundle is addressed by the path detection found and confirmed, not by a
- * display name `open -a` would have to match and not by a LaunchServices id that
- * may resolve to a copy the reader cannot see. The argument array is passed to
- * `execFile` directly: there is no shell, so there is no quoting to get wrong.
- *
- * The caller is responsible for `directory` being a project root it has
- * independently authorized; this function does not take the renderer's word for
- * a path any more than it takes its word for an application.
- */
-export async function openInRun(targetId: string, directory: string): Promise<void> {
-    if (process.platform !== "darwin")
-        throw new Error("Opening a project in another application is only supported on macOS.");
-    // A hidden-window run (main/hiddenWindows.ts) never puts another
-    // application in front of the person.
+/** File capabilities are explicit so the renderer never guesses the host OS from an app id. */
+export async function fileActionsRead(): Promise<HappyAgentFileActions | undefined> {
+    const installed = await detectedRead();
+    const applications = OPEN_IN_APPS.filter((candidate) => installed.has(candidate.id));
+    if (!applications.some((candidate) => candidate.kind === "file-manager")) return undefined;
+    return {
+        revealLabel:
+            process.platform === "darwin"
+                ? "Show in Finder"
+                : process.platform === "win32"
+                  ? "Show in File Explorer"
+                  : "Show in file manager",
+        targets: [
+            { id: "default-app", label: "Default app", acceptsFolders: true },
+            ...applications
+                .filter(
+                    (app) =>
+                        app.kind === "editor" ||
+                        app.kind === "file-editor" ||
+                        app.kind === "terminal",
+                )
+                .map((app) => ({
+                    id: app.id,
+                    label: app.label,
+                    iconUrl: installed.get(app.id)?.iconUrl,
+                    acceptsFolders: app.kind !== "file-editor",
+                })),
+        ],
+    };
+}
+
+function externalOpenGuard(): void {
     if (process.env.HAPPY_DESKTOP_WINDOWS_HIDDEN !== undefined)
-        throw new Error("A hidden-window run cannot open a project in another application.");
-    const target = OPEN_IN_APPS.find((candidate) => candidate.id === targetId);
-    if (!target) throw new Error("That application is not one this app can open projects in.");
-    const path = (await detectedRead()).get(target.id)?.path;
-    if (path === undefined) throw new Error(`${target.label} does not appear to be installed.`);
+        throw new Error("A hidden-window run cannot open another application.");
+}
+
+async function localPathStat(path: string) {
+    if (!isAbsolute(path)) throw new Error("Only a path on this computer can be opened.");
     try {
-        await execFileAsync("/usr/bin/open", ["-a", path, directory], { timeout: 10_000 });
+        return await stat(path);
     } catch {
-        throw new Error(`${target.label} could not open this project.`);
+        throw new Error("That file or folder is not on this computer.");
     }
 }
 
-/**
- * Shows one file or folder selected in a Finder window.
- *
- * The caller resolves `path` to an absolute location on this machine. Revealing
- * only selects an item in Finder — nothing is opened or run — so any path the
- * reader can see may be revealed, not only a project's own files.
- */
-export async function fileReveal(path: string): Promise<void> {
-    if (process.platform !== "darwin")
-        throw new Error("Showing a file in Finder is only supported on macOS.");
-    // A hidden-window run (main/hiddenWindows.ts) never puts another
-    // application in front of the person.
-    if (process.env.HAPPY_DESKTOP_WINDOWS_HIDDEN !== undefined)
-        throw new Error("A hidden-window run cannot show a file in Finder.");
-    if (!isAbsolute(path)) throw new Error("Only a path on this Mac can be shown in Finder.");
-    try {
-        await stat(path);
-    } catch {
-        throw new Error("That file is not on this Mac.");
+/** A detached program owns its window; no shell ever interprets the selected file path. */
+function applicationLaunch(
+    executable: string,
+    args: readonly string[],
+    cwd: string,
+): Promise<void> {
+    return new Promise((resolve, reject) => {
+        const child = spawn(executable, [...args], { cwd, detached: true, stdio: "ignore" });
+        child.once("error", reject);
+        child.once("spawn", () => {
+            child.unref();
+            resolve();
+        });
+    });
+}
+
+function terminalArguments(id: string, directory: string): readonly string[] {
+    switch (id) {
+        case "windows-terminal":
+            return ["-d", directory];
+        case "powershell":
+            return ["-NoLogo", "-NoProfile", "-NoExit"];
+        case "konsole":
+            return ["--workdir", directory];
+        case "kitty":
+            return ["--directory", directory];
+        case "ghostty":
+            return [`--working-directory=${directory}`];
+        case "gnome-terminal":
+        case "xfce-terminal":
+            return [`--working-directory=${directory}`];
+        default:
+            return [];
     }
+}
+
+/** Opens an authorized local project or selected file in a host-detected application. */
+export async function openInRun(
+    targetId: string,
+    path: string,
+    scope: "workspace" | "file" = "workspace",
+): Promise<void> {
+    externalOpenGuard();
+    const info = await localPathStat(path);
+    const directory = info.isDirectory() ? path : dirname(path);
+    if (targetId === "default-app" && scope === "file") {
+        if (!(await fileActionsRead())) throw new Error("This host cannot open local files.");
+        await open(path);
+        return;
+    }
+    const target = OPEN_IN_APPS.find((candidate) => candidate.id === targetId);
+    if (
+        !target ||
+        (scope === "file" &&
+            target.kind !== "editor" &&
+            target.kind !== "file-editor" &&
+            target.kind !== "terminal")
+    )
+        throw new Error("That application is not available for this file.");
+    if (target.kind === "file-editor" && (scope === "workspace" || info.isDirectory()))
+        throw new Error(`${target.label} opens files, not folders.`);
+    const executable = (await detectedRead()).get(target.id)?.path;
+    if (executable === undefined)
+        throw new Error(`${target.label} does not appear to be installed.`);
+    const destination = target.kind === "terminal" ? directory : path;
     try {
-        await execFileAsync("/usr/bin/open", ["-R", path], { timeout: 10_000 });
+        if (process.platform === "darwin") {
+            await execFileAsync("/usr/bin/open", ["-a", executable, destination], {
+                timeout: 10_000,
+            });
+        } else if (target.kind === "file-manager") {
+            await open(directory);
+        } else {
+            await applicationLaunch(
+                executable,
+                target.kind === "terminal"
+                    ? terminalArguments(target.id, directory)
+                    : [destination],
+                directory,
+            );
+        }
     } catch {
-        throw new Error("Finder could not show this file.");
+        throw new Error(
+            `${target.label} could not open this ${scope === "file" ? "file or folder" : "project"}.`,
+        );
+    }
+}
+
+/** Reveal through the current OS's file manager; Linux opens the containing directory. */
+export async function fileReveal(path: string): Promise<void> {
+    externalOpenGuard();
+    const info = await localPathStat(path);
+    if (process.platform === "darwin") {
+        await execFileAsync("/usr/bin/open", ["-R", path], { timeout: 10_000 });
+    } else if (process.platform === "win32") {
+        const explorer = (await detectedRead()).get("explorer")?.path;
+        if (!explorer) throw new Error("File Explorer is not available.");
+        await applicationLaunch(explorer, ["/select," + path], dirname(path));
+    } else if (process.platform === "linux") {
+        await open(info.isDirectory() ? path : dirname(path));
+    } else {
+        throw new Error("This host cannot reveal local files.");
     }
 }

@@ -1,3 +1,5 @@
+import { FileActionsMenu } from "./FileActionsMenu";
+import { FileWorkspaceBody, type FileWorkspaceControls } from "./FileWorkspace";
 import { parseDiffFromFile, type SelectedLineRange } from "@pierre/diffs";
 import { FileDiff, useStableCallback } from "@pierre/diffs/react";
 import { useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
@@ -59,6 +61,9 @@ export type ChangedFileDiffProps = {
      * leaves the header to the change's counts. Defaults to naming it.
      */
     pathShown?: boolean;
+    files?: FileWorkspaceControls;
+    onOpenInTab?: () => void;
+    onDownload?: () => void | Promise<void>;
     /** Stable loaded-document identity used by the edit mode's bounded state cache. */
     documentKey?: string;
     /** Stable identity for the working-tree side of the diff, when clean. */
@@ -449,113 +454,135 @@ export function ChangedFileDiff(props: ChangedFileDiffProps) {
                             value={props.wrap === true ? "wrap" : "scroll"}
                         />
                     ) : null}
+                    <FileActionsMenu
+                        path={props.path}
+                        text={props.newContent}
+                        onDownload={props.onDownload}
+                        onOpenInTab={props.onOpenInTab}
+                    />
+                    {props.files ? (
+                        <Button
+                            aria-label={
+                                props.files.filesVisible ? "Hide file tree" : "Show file tree"
+                            }
+                            aria-pressed={props.files.filesVisible}
+                            icon="files"
+                            iconOnly
+                            onClick={props.files.onFilesToggle}
+                            size="small"
+                            variant="ghost"
+                        />
+                    ) : null}
                 </span>
             </div>
 
-            <ScrollArea
-                className="happy-changed-file-diff__body"
-                data-happy-desktop-ui="changed-file-diff-body"
-                viewportClassName="happy-changed-file-diff__viewport"
-                viewportRef={viewportRef}
-            >
-                {mode === "rendered" ? (
-                    // A whole document viewer that scrolls itself, like the file.
-                    props.renderedDiff
-                ) : mode === "file" ? (
-                    // The caller's preview is the whole file surface — rendered
-                    // face, source, and the editor inside it — so it wins where
-                    // there is one. Without it, the file is its text.
-                    (props.preview ?? (
-                        <CodeEditor
-                            className="happy-changed-file-diff__editor"
-                            documentKey={props.documentKey}
-                            name={props.path}
-                            // The shortcut every editor has. Without it the only way
-                            // to save is to stop typing and reach for a button,
-                            // which is not how anyone edits a file.
-                            onSave={() => {
-                                if (!props.saveDisabled) props.onSave?.();
-                            }}
-                            onValueChange={(content) => props.onContentChange?.(content)}
-                            readOnly={props.saving === true}
-                            value={props.newContent}
-                            wrap={props.wrap}
-                        />
-                    ))
-                ) : diff === undefined ? null : (
-                    <FileDiff<ChangedFileDiffAnnotation>
-                        className="happy-changed-file-diff__renderer happy-diff-surface"
-                        fileDiff={diff}
-                        options={diffOptions}
-                        selectedLines={selection}
-                        // The whole header name, ours, through the slot the
-                        // renderer leaves ahead of its own. The renderer's mark
-                        // and title stand down in `PIERRE_DIFF_HEADER_CSS`.
-                        renderHeaderPrefix={() =>
-                            props.pathShown === false ? null : (
-                                <DiffFileTitle
-                                    path={props.path}
-                                    {...(props.oldPath === undefined || props.oldPath === props.path
-                                        ? {}
-                                        : { previousPath: props.oldPath })}
-                                />
-                            )
-                        }
-                        {...(lineAnnotations === undefined ? {} : { lineAnnotations })}
-                        {...(commenting
-                            ? {
-                                  renderAnnotation: (annotation) => {
-                                      const held = annotation.metadata;
-                                      const author = {
-                                          // One letter, because that is what
-                                          // fits an avatar and what an
-                                          // initial is; the whole word is
-                                          // for the line beside it.
-                                          authorInitials: props.commentAuthorInitials ?? "Y",
-                                          authorName: props.commentAuthorName ?? "You",
-                                      };
-                                      // The draft's characters are read here
-                                      // rather than carried through the
-                                      // annotation, so typing one redraws
-                                      // this note and nothing else.
-                                      if (held.type === "draft")
-                                          return props.commentDraft === undefined ? null : (
+            <FileWorkspaceBody>
+                <ScrollArea
+                    className="happy-changed-file-diff__body"
+                    data-happy-desktop-ui="changed-file-diff-body"
+                    viewportClassName="happy-changed-file-diff__viewport"
+                    viewportRef={viewportRef}
+                >
+                    {mode === "rendered" ? (
+                        // A whole document viewer that scrolls itself, like the file.
+                        props.renderedDiff
+                    ) : mode === "file" ? (
+                        // The caller's preview is the whole file surface — rendered
+                        // face, source, and the editor inside it — so it wins where
+                        // there is one. Without it, the file is its text.
+                        (props.preview ?? (
+                            <CodeEditor
+                                className="happy-changed-file-diff__editor"
+                                documentKey={props.documentKey}
+                                name={props.path}
+                                // The shortcut every editor has. Without it the only way
+                                // to save is to stop typing and reach for a button,
+                                // which is not how anyone edits a file.
+                                onSave={() => {
+                                    if (!props.saveDisabled) props.onSave?.();
+                                }}
+                                onValueChange={(content) => props.onContentChange?.(content)}
+                                readOnly={props.saving === true}
+                                value={props.newContent}
+                                wrap={props.wrap}
+                            />
+                        ))
+                    ) : diff === undefined ? null : (
+                        <FileDiff<ChangedFileDiffAnnotation>
+                            className="happy-changed-file-diff__renderer happy-diff-surface"
+                            fileDiff={diff}
+                            options={diffOptions}
+                            selectedLines={selection}
+                            // The whole header name, ours, through the slot the
+                            // renderer leaves ahead of its own. The renderer's mark
+                            // and title stand down in `PIERRE_DIFF_HEADER_CSS`.
+                            renderHeaderPrefix={() =>
+                                props.pathShown === false ? null : (
+                                    <DiffFileTitle
+                                        path={props.path}
+                                        {...(props.oldPath === undefined ||
+                                        props.oldPath === props.path
+                                            ? {}
+                                            : { previousPath: props.oldPath })}
+                                    />
+                                )
+                            }
+                            {...(lineAnnotations === undefined ? {} : { lineAnnotations })}
+                            {...(commenting
+                                ? {
+                                      renderAnnotation: (annotation) => {
+                                          const held = annotation.metadata;
+                                          const author = {
+                                              // One letter, because that is what
+                                              // fits an avatar and what an
+                                              // initial is; the whole word is
+                                              // for the line beside it.
+                                              authorInitials: props.commentAuthorInitials ?? "Y",
+                                              authorName: props.commentAuthorName ?? "You",
+                                          };
+                                          // The draft's characters are read here
+                                          // rather than carried through the
+                                          // annotation, so typing one redraws
+                                          // this note and nothing else.
+                                          if (held.type === "draft")
+                                              return props.commentDraft === undefined ? null : (
+                                                  <ReviewComment
+                                                      {...author}
+                                                      draft={props.commentDraft.text}
+                                                      lineNumber={props.commentDraft.lineNumber}
+                                                      onCancel={() => {
+                                                          selectionRelease();
+                                                          props.onCommentDraftCancel?.();
+                                                      }}
+                                                      onDraftChange={(text) =>
+                                                          props.onCommentDraftUpdate?.(text)
+                                                      }
+                                                      onSubmit={() => {
+                                                          selectionRelease();
+                                                          props.onCommentDraftSubmit?.();
+                                                      }}
+                                                      side={props.commentDraft.side}
+                                                  />
+                                              );
+                                          return (
                                               <ReviewComment
                                                   {...author}
-                                                  draft={props.commentDraft.text}
-                                                  lineNumber={props.commentDraft.lineNumber}
-                                                  onCancel={() => {
-                                                      selectionRelease();
-                                                      props.onCommentDraftCancel?.();
-                                                  }}
-                                                  onDraftChange={(text) =>
-                                                      props.onCommentDraftUpdate?.(text)
+                                                  lineNumber={held.comment.lineNumber}
+                                                  onRemove={() =>
+                                                      props.onCommentRemove?.(held.comment.id)
                                                   }
-                                                  onSubmit={() => {
-                                                      selectionRelease();
-                                                      props.onCommentDraftSubmit?.();
-                                                  }}
-                                                  side={props.commentDraft.side}
+                                                  side={held.comment.side}
+                                                  stale={held.comment.stale}
+                                                  text={held.comment.text}
                                               />
                                           );
-                                      return (
-                                          <ReviewComment
-                                              {...author}
-                                              lineNumber={held.comment.lineNumber}
-                                              onRemove={() =>
-                                                  props.onCommentRemove?.(held.comment.id)
-                                              }
-                                              side={held.comment.side}
-                                              stale={held.comment.stale}
-                                              text={held.comment.text}
-                                          />
-                                      );
-                                  },
-                              }
-                            : {})}
-                    />
-                )}
-            </ScrollArea>
+                                      },
+                                  }
+                                : {})}
+                        />
+                    )}
+                </ScrollArea>
+            </FileWorkspaceBody>
         </section>
     );
 }

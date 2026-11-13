@@ -1,5 +1,5 @@
 /*
- * The work floaty: a fixed 280px card of sidebar rows. It never takes its
+ * The work summary: a fixed 320px card of compact rows. It never takes its
  * content's width, so nothing in it moves when a row arrives or a count grows,
  * and it grows downward with its rows up to its cap before scrolling inside.
  */
@@ -9,20 +9,21 @@
     flex: none;
     flex-direction: column;
     align-self: flex-start;
-    width: 280px;
+    width: 320px;
+    max-width: calc(100% - 24px);
     max-height: 60%;
     overflow: hidden;
     border: 1px solid var(--divider);
-    border-radius: var(--happy-radius-md);
-    background: var(--surface);
+    border-radius: 16px;
+    background: var(--surface-highest);
 }
 
 .happy-work-floaty[data-placement="overlay"] {
+    /* The summary overlays the transcript without resizing it or its composer. */
     position: absolute;
     z-index: 3;
     top: 8px;
     right: 12px;
-    box-shadow: 0 4px 16px var(--shadow-activity-card);
 }
 
 /* The scrollport takes the card's whole width, however short its rows are. */
@@ -32,18 +33,42 @@
     min-height: 0;
 }
 
-/* Outputs, then work, a half row apart. */
+/* Equal insets around the project heading and its grouped action rows. */
 .happy-work-floaty__content {
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    padding: 4px;
+    gap: 12px;
+    padding: 12px;
 }
 
 .happy-work-floaty__group {
     display: flex;
     flex-direction: column;
     gap: var(--happy-work-floaty-row-gap);
+}
+
+.happy-work-floaty__group + .happy-work-floaty__group {
+    padding-top: 12px;
+    border-top: 1px solid var(--divider);
+}
+
+.happy-work-floaty__heading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 28px;
+    padding-inline: var(--happy-panel-row-padding);
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 20px;
+}
+
+.happy-work-floaty__title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* The sidebar row: its height, inset, lane, type, and fills. */
@@ -59,7 +84,7 @@
     border: none;
     border-radius: var(--happy-hover-radius);
     background: transparent;
-    color: var(--text-secondary);
+    color: var(--text);
     font-family: var(--happy-font-ui);
     font-synthesis: none;
     text-align: left;

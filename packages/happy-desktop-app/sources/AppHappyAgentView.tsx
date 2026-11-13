@@ -8,6 +8,7 @@ import {
     type ReactNode,
 } from "react";
 import type { ConversationSummary, HappyAgentSystemMonitorStore } from "happy-desktop-state";
+import { AppProjectCommandShortcuts } from "./components/AppProjectCommandShortcuts";
 import {
     HappyAgentSystemMonitorSurfacePage,
     FileRevealContext,
@@ -273,6 +274,10 @@ import {
     DeferredPane,
     EmptyState,
     FileBrowser,
+    FileWorkspace,
+    FileWorkspaceBody,
+    FileWorkspaceNotices,
+    type FileWorkspaceControls,
     FileEditor,
     FilePreview,
     FormRow,
@@ -1908,12 +1913,13 @@ const tabsOrdered = happyAgentTabsOrdered;
 
 /** The tab action ids the strip's context menu dispatches back to this surface. */
 const TAB_MENU_CLOSE = "close";
-const FILE_TAB_REVEAL_ITEM = {
+const FILE_TAB_REVEAL = "reveal";
+const fileTabRevealItem = (label = "Show in folder"): MenuItem => ({
     kind: "item",
-    id: "reveal",
-    label: "Show in Finder",
+    id: FILE_TAB_REVEAL,
+    label,
     icon: "folder-open",
-} as const satisfies MenuItem;
+});
 const TAB_MENU_CLOSE_OTHERS = "close-others";
 const TAB_MENU_CLOSE_LEFT = "close-left";
 const TAB_MENU_CLOSE_RIGHT = "close-right";
@@ -7259,20 +7265,31 @@ function HappyAgentWorkspaceSurface(props: HappyAgentWorkspaceSurfaceProps) {
         props.groupId,
         props.chatId,
     );
-    // Finder is offered where the host can hand a path to it: a remote Happy
-    // Agent's host lists no applications, because its files are not on this Mac.
+    // The host supplies capabilities and labels for its operating system.
+    const fileActions = workspace.fileActions;
     const fileReveal: FileReveal | undefined =
-        openGroup && workspace.openInTargets.some((target) => target.id === "finder")
+        openGroup && fileActions
             ? {
+                  label: fileActions.revealLabel,
                   path: (path) => props.workspace.fileReveal(openGroup.id, path),
                   link: (link) => props.workspace.fileLinkReveal(link),
+                  openWith: {
+                      targets: fileActions.targets,
+                      open: (path, target) => props.workspace.openIn(openGroup.id, target, path),
+                  },
               }
             : undefined;
     /** Reveals into the workspace a file tab reads, which a linked file names itself. */
     const fileTabReveal = (file: HappyAgentFileTabSnapshot): FileReveal | undefined =>
-        fileReveal && {
+        fileReveal &&
+        fileActions && {
+            label: fileActions.revealLabel,
             path: (path) => props.workspace.fileReveal(file.groupId, path),
             link: fileReveal.link,
+            openWith: {
+                targets: fileActions.targets,
+                open: (path, target) => props.workspace.openIn(file.groupId, target, path),
+            },
         };
     // Where this machine's artifacts can have been made, as the list names it.
     const artifactPlaces: HappyAgentArtifactPlaces = {
@@ -7544,16 +7561,18 @@ function HappyAgentWorkspaceSurface(props: HappyAgentWorkspaceSurfaceProps) {
         floatyArtifactStore.get,
     );
     const floatyOutputs = workFloatyOutputs(floatyCatalog.artifacts, props.chatId);
-    // The floaty opens on its own wherever there is work to show, and stays
-    // folded where the reader folded it by hand until they open it again.
-    const floatyKey = conversation.type === "ready" ? conversation.value.conversationId : undefined;
-    const floatyShown =
-        floatyKey !== undefined &&
-        panel.floatyOpened.has(floatyKey) &&
-        (floatyPlaces.length > 0 ||
-            floatyOutputs.length > 0 ||
-            floatyAgents.current.length > 0 ||
-            floatyAgents.history.length > 0);
+    // Keep the chat's visibility choice even when there are no changes yet:
+    // its project shortcuts still belong in the summary.
+    const floatyKey =
+        conversation.type === "ready"
+            ? conversation.value.conversationId
+            : (props.chatId ?? openGroup?.id);
+    const summaryProject = rows.find(
+        (project) =>
+            project.id === openGroup?.id ||
+            project.worktrees.some((worktree) => worktree.id === openGroup?.id),
+    );
+    const floatyShown = floatyKey !== undefined && panel.floatyOpened.has(floatyKey);
     // The row whose tab the pane beside the chat is showing.
     const floatyActiveTab = panel.open
         ? panel.tabs.find((tab) => tab.id === panel.activeViewId)
@@ -7878,13 +7897,17 @@ function HappyAgentWorkspaceSurface(props: HappyAgentWorkspaceSurfaceProps) {
               }
             : {}),
     });
-    const mainFileBody = (file: HappyAgentFileTabSnapshot): ReactNode => (
+    const mainFileBody = (
+        file: HappyAgentFileTabSnapshot,
+        files?: FileWorkspaceControls,
+    ): ReactNode => (
         <FileRevealContext.Provider key={`${file.id}:${file.kind}`} value={fileTabReveal(file)}>
             <HappyAgentFileBody
                 appearance={appearance.appearance}
                 entities={documentEntities}
                 file={file}
-                tabNamed
+                tabNamed={file.placement !== "panel"}
+                {...(files === undefined ? {} : { files })}
                 {...(props.htmlPreview ? { htmlPreview: props.htmlPreview } : {})}
                 {...(props.mediaWindow ? { mediaWindow: props.mediaWindow } : {})}
                 mode={workspace.fileViewMode}
@@ -8337,14 +8360,33 @@ function HappyAgentWorkspaceSurface(props: HappyAgentWorkspaceSurfaceProps) {
                                     props.workspace.panel.changeViewOpen(path);
                                 else if (openGroup && happyAgentOnline()) {
                                     const kind = fileTabKind(path);
-                                    // A double click pins the preview; the address
-                                    // is unchanged when the first click already
-                                    // selected this file.
+                                    // A double click opens and pins the file in the
+                                    // main content from either file listing.
                                     props.workspace.fileOpen(openGroup.id, path, kind);
                                     props.onFileSelect(openGroup.id, props.chatId, path, kind);
                                 }
                             }}
-                            {...(fileReveal === undefined ? {} : { onFileReveal: fileReveal.path })}
+                            onFilePreview={(path) => {
+                                if (!floatyFromGit && workspace.fileScope === "changed")
+                                    props.workspace.panel.changeViewOpen(path);
+                                else if (openGroup && happyAgentOnline())
+                                    props.workspace.filePanelOpen(
+                                        openGroup.id,
+                                        path,
+                                        fileTabKind(path),
+                                    );
+                            }}
+                            onFileChangesOpen={(path) => {
+                                if (!floatyFromGit) props.workspace.panel.changeViewOpen(path);
+                                else if (openGroup && happyAgentOnline())
+                                    props.workspace.filePanelOpen(openGroup.id, path, "diff");
+                            }}
+                            {...(fileReveal === undefined
+                                ? {}
+                                : {
+                                      onFileReveal: fileReveal.path,
+                                      fileRevealLabel: fileReveal.label,
+                                  })}
                             {...(workspace.panelFile && fileReveal !== undefined
                                 ? {
                                       onPanelFileReveal: () => {
@@ -8723,7 +8765,10 @@ function HappyAgentWorkspaceSurface(props: HappyAgentWorkspaceSurfaceProps) {
                                     const revealed: MenuItem[] =
                                         fileReveal !== undefined &&
                                         groupFileTabs.some((entry) => entry.id === tab.id)
-                                            ? [FILE_TAB_REVEAL_ITEM, { kind: "separator" }]
+                                            ? [
+                                                  fileTabRevealItem(fileReveal.label),
+                                                  { kind: "separator" },
+                                              ]
                                             : [];
                                     const index = sweepableTabs.findIndex(
                                         (entry) => entry.id === tab.id,
@@ -8756,7 +8801,7 @@ function HappyAgentWorkspaceSurface(props: HappyAgentWorkspaceSurfaceProps) {
                                             void navigator.clipboard?.writeText(link);
                                         return;
                                     }
-                                    if (actionId === FILE_TAB_REVEAL_ITEM.id) {
+                                    if (actionId === FILE_TAB_REVEAL) {
                                         const file = groupFileTabs.find(
                                             (entry) => entry.id === tab.id,
                                         );
@@ -8784,9 +8829,53 @@ function HappyAgentWorkspaceSurface(props: HappyAgentWorkspaceSurfaceProps) {
                                 tabs={groupTabs}
                             >
                                 <WorkFloaty
+                                    title={summaryProject?.name ?? openGroup.name}
+                                    onClose={() => {
+                                        if (floatyKey !== undefined)
+                                            props.workspace.panel.floatyOpenedUpdate(
+                                                floatyKey,
+                                                false,
+                                            );
+                                    }}
+                                    shortcuts={
+                                        summaryProject ? (
+                                            <AppProjectCommandShortcuts
+                                                key={summaryProject.id}
+                                                store={props.workspace.commandShortcuts(
+                                                    summaryProject.id,
+                                                )}
+                                                unavailable={
+                                                    !happyAgentOnline()
+                                                        ? "Reconnect to run shortcuts."
+                                                        : (panel.terminalRefusal ??
+                                                          (props.chatId === undefined
+                                                              ? "Open a chat to run shortcuts."
+                                                              : undefined))
+                                                }
+                                                onRun={(shortcut) => {
+                                                    if (happyAgentOnline())
+                                                        props.workspace.panel.terminalCommandRun(
+                                                            shortcut.name,
+                                                            shortcut.command,
+                                                        );
+                                                }}
+                                            />
+                                        ) : undefined
+                                    }
                                     agents={floatyAgents.current}
                                     artifacts={floatyOutputs.slice(0, FLOATY_ARTIFACTS)}
-                                    changes={floatyPlaces.map((place) => place.row)}
+                                    changes={floatyPlaces.map((place) =>
+                                        place.workspaceId === undefined
+                                            ? {
+                                                  ...place.row,
+                                                  label: "Changes",
+                                                  mark: {
+                                                      type: "icon" as const,
+                                                      icon: "files" as const,
+                                                  },
+                                              }
+                                            : place.row,
+                                    )}
                                     history={[
                                         ...floatyAgents.history,
                                         ...floatyOutputs.slice(FLOATY_ARTIFACTS),
@@ -9066,6 +9155,7 @@ function HappyAgentFileBody(props: {
     entities: MessageReferences;
     /** The file's tab names it, so its content does not name it again. */
     tabNamed?: boolean;
+    files?: FileWorkspaceControls;
     htmlPreview?: HtmlPreviewRenderer;
     mediaWindow?: MediaWindowOpener;
     mode: HappyAgentFileViewMode;
@@ -9130,13 +9220,24 @@ function HappyAgentFileBody(props: {
     if (file.kind === "media")
         return (
             <>
-                {happyAgentFileRevalidationBanner(file.revalidationError)}
+                <FileWorkspaceNotices>
+                    {happyAgentFileRevalidationBanner(file.revalidationError)}
+                </FileWorkspaceNotices>
                 <HappyAgentFilePreview
                     document={file.document}
                     {...(props.mediaWindow ? { mediaWindow: props.mediaWindow } : {})}
                     key={file.id}
                     path={file.path}
                     revalidating={file.revalidating}
+                    {...(props.files === undefined ? {} : { files: props.files })}
+                    {...(file.placement === "panel" && !file.linked
+                        ? {
+                              onOpenInTab: () => {
+                                  if (props.happyAgentOnline())
+                                      props.onMainFileOpen(file.path, file.kind);
+                              },
+                          }
+                        : {})}
                 />
             </>
         );
@@ -9207,11 +9308,26 @@ function HappyAgentFileBody(props: {
                     : {})}
                 // The file as saved, not an unsaved edit: downloading names a
                 // file, and the file is what is on disk.
-                onDownload={() =>
-                    void fileDownload(file.path, { type: "text", text: content }).catch(
-                        () => undefined,
-                    )
-                }
+                onDownload={() => fileDownload(file.path, { type: "text", text: content })}
+                {...(props.files === undefined ? {} : { files: props.files })}
+                {...(file.placement === "panel" && !file.linked
+                    ? {
+                          onOpenInTab: () => {
+                              if (props.happyAgentOnline())
+                                  props.onMainFileOpen(file.path, file.kind);
+                          },
+                      }
+                    : {})}
+                {...(props.change === undefined
+                    ? {}
+                    : {
+                          onShowChanges: () => {
+                              if (!props.happyAgentOnline()) return;
+                              if (file.placement === "panel")
+                                  workspace.filePanelOpen(file.groupId, file.path, "diff");
+                              else props.onMainFileOpen(file.path, "diff");
+                          },
+                      })}
                 onRevert={() => workspace.fileDraftRevert(file.id)}
                 onSave={() => {
                     if (!saveDisabled && props.happyAgentOnline())
@@ -9259,8 +9375,20 @@ function HappyAgentFileBody(props: {
                 : undefined;
         return (
             <>
-                {happyAgentFileNotices(file)}
+                <FileWorkspaceNotices>{happyAgentFileNotices(file)}</FileWorkspaceNotices>
                 <ChangedFileDiff
+                    {...(props.files === undefined ? {} : { files: props.files })}
+                    {...(file.placement === "panel" && !file.linked
+                        ? {
+                              onOpenInTab: () => {
+                                  if (props.happyAgentOnline())
+                                      props.onMainFileOpen(file.path, file.kind);
+                              },
+                          }
+                        : {})}
+                    onDownload={() =>
+                        fileDownload(file.path, { type: "text", text: change.newContent })
+                    }
                     appearance={props.appearance}
                     documentKey={fileDocumentKey(file.id, file.document.value)}
                     key={`${file.id}:${file.kind}`}
@@ -9407,45 +9535,51 @@ function HappyAgentFileBody(props: {
     }
     if (file.document.type === "error")
         return (
-            <EmptyState
-                {...(props.saveRefusal === undefined
-                    ? {
-                          action: {
-                              label: "Retry",
-                              icon: "arrow-right" as const,
-                              onClick: () => {
-                                  if (props.happyAgentOnline()) workspace.fileRetry(file.id);
+            <FileWorkspaceBody>
+                <EmptyState
+                    {...(props.saveRefusal === undefined
+                        ? {
+                              action: {
+                                  label: "Retry",
+                                  icon: "arrow-right" as const,
+                                  onClick: () => {
+                                      if (props.happyAgentOnline()) workspace.fileRetry(file.id);
+                                  },
                               },
-                          },
-                      }
-                    : {})}
-                description={file.document.error.message}
-                icon="doc"
-                size="panel"
-                title="File unavailable"
-            />
+                          }
+                        : {})}
+                    description={file.document.error.message}
+                    icon="doc"
+                    size="panel"
+                    title="File unavailable"
+                />
+            </FileWorkspaceBody>
         );
     if (props.saveRefusal)
         return (
-            <EmptyState
-                description={props.saveRefusal}
-                icon="link"
-                size="panel"
-                title="File unavailable while Happy Agent is offline"
-            />
+            <FileWorkspaceBody>
+                <EmptyState
+                    description={props.saveRefusal}
+                    icon="link"
+                    size="panel"
+                    title="File unavailable while Happy Agent is offline"
+                />
+            </FileWorkspaceBody>
         );
     return (
-        <EmptyState
-            animation="snail"
-            description={
-                file.kind === "file"
-                    ? "Reading the file from its workspace."
-                    : "Reading the changed file from its workspace."
-            }
-            icon="doc"
-            size="panel"
-            title="Loading file…"
-        />
+        <FileWorkspaceBody>
+            <EmptyState
+                animation="snail"
+                description={
+                    file.kind === "file"
+                        ? "Reading the file from its workspace."
+                        : "Reading the changed file from its workspace."
+                }
+                icon="doc"
+                size="panel"
+                title="Loading file…"
+            />
+        </FileWorkspaceBody>
     );
 }
 
@@ -9551,6 +9685,8 @@ function HappyAgentFilePreview(props: {
     mediaWindow?: MediaWindowOpener;
     path: string;
     revalidating: boolean;
+    files?: FileWorkspaceControls;
+    onOpenInTab?: () => void;
 }) {
     const document = props.document;
     if (document.type === "error")
@@ -9558,16 +9694,29 @@ function HappyAgentFilePreview(props: {
             <FilePreview
                 content={{ type: "error", message: document.error.message }}
                 path={props.path}
+                {...(props.files === undefined ? {} : { files: props.files })}
             />
         );
     // A background revalidation must not replace usable media with a loading
     // face. The request may still fail into the warning banner owned by the
     // surrounding file surface; only a true first load has no content to show.
     if (document.type !== "ready")
-        return <FilePreview content={{ type: "loading" }} path={props.path} />;
+        return (
+            <FilePreview
+                content={{ type: "loading" }}
+                path={props.path}
+                {...(props.files === undefined ? {} : { files: props.files })}
+            />
+        );
     const value = document.value;
     if (!("contentType" in value))
-        return <FilePreview content={{ type: "unavailable" }} path={props.path} />;
+        return (
+            <FilePreview
+                content={{ type: "unavailable" }}
+                path={props.path}
+                {...(props.files === undefined ? {} : { files: props.files })}
+            />
+        );
     // A format with no viewer is stated as such rather than rendered as an
     // <img> that will only ever show a broken-image glyph.
     const kind = filePreviewKind(props.path);
@@ -9587,6 +9736,8 @@ function HappyAgentFilePreview(props: {
             path={props.path}
             size={fileSizeFormat(value.size)}
             updating={props.revalidating}
+            {...(props.files === undefined ? {} : { files: props.files })}
+            {...(props.onOpenInTab === undefined ? {} : { onOpenInTab: props.onOpenInTab })}
         />
     );
 }
@@ -10045,17 +10196,15 @@ function workFloatyProjectPlace(
 }
 
 /**
- * Where the open group itself changed files: its checkout, as its project and
- * name, when Git keeps a diff of it, and otherwise the folder the
- * conversation's edits went to.
+ * The open group's Changes destination, including a clean checkout. The
+ * summary keeps this entry so it never loses its way into the file panel.
  */
 function workFloatyOwnPlace(
     group: OpenGroup,
     projects: readonly HappyAgentProjectGroup[],
     changes: readonly HappyAgentPanelChange[],
     fromGit: boolean,
-): WorkFloatyPlace | undefined {
-    if (changes.length === 0) return undefined;
+): WorkFloatyPlace {
     const added = changes.reduce((sum, change) => sum + (change.addedLines ?? 0), 0);
     const deleted = changes.reduce((sum, change) => sum + (change.deletedLines ?? 0), 0);
     const project = fromGit
@@ -11684,13 +11833,16 @@ function HappyAgentPanelBody(props: {
     onActivityProcessStop?: (processId: number) => void;
     /** Opens one delegated child session from the Activity tab. */
     onSubagentSelect?: (sessionId: string) => void;
-    onFileOpen: (path: string) => void;
-    onFilePreprocess: (path: string) => void;
-    /** Shows a listed file or directory in Finder, where the host can. */
-    onFileReveal?: (path: string) => void;
-    /** Shows the panel viewer's file in Finder, where the host can. */
-    onPanelFileReveal?: () => void;
     onFileSelect: (path: string) => void;
+    onFileOpen: (path: string) => void;
+    onFilePreview: (path: string) => void;
+    onFileChangesOpen: (path: string) => void;
+    onFilePreprocess: (path: string) => void;
+    fileRevealLabel?: string;
+    /** Shows a listed file or directory in the host file manager. */
+    onFileReveal?: (path: string) => void;
+    /** Shows the panel viewer's file in the host file manager. */
+    onPanelFileReveal?: () => void;
     onLayoutChange: (layout: HappyAgentFileLayout) => void;
     /** Opens every change in this checkout as one stream. */
     onReviewOpen: () => void;
@@ -11702,7 +11854,7 @@ function HappyAgentPanelBody(props: {
      * main-content tab — same header, same Rendered / Source, same editor,
      * same Command-S.
      */
-    fileBody: (file: HappyAgentFileTabSnapshot) => ReactNode;
+    fileBody: (file: HappyAgentFileTabSnapshot, files?: FileWorkspaceControls) => ReactNode;
     onPanelFileClose: () => void;
     onScopeChange: (scope: HappyAgentFileScope) => void;
     onToggle: (path: string, expanded: boolean) => void;
@@ -11912,6 +12064,83 @@ function HappyAgentPanelBody(props: {
             tab.id !== "usage" &&
             tab.id !== "devices",
     );
+    const fileBrowser = (inPanel: boolean): ReactNode => (
+        <FileBrowser
+            // Only Changes has a complete total and line delta;
+            // All Files stays visually focused on its lazy tree.
+            {...(all || changesUnavailable || loading ? {} : { addedLines, deletedLines })}
+            count={count}
+            emptyLabel={
+                query !== ""
+                    ? `Nothing matches “${query}”.`
+                    : all
+                      ? // A root that failed to read is not an
+                        // empty folder; it is retried on the
+                        // next change in the checkout. A
+                        // checkout with nowhere to list from is
+                        // neither, and says why.
+                        props.workspaceFiles?.unavailable === "noCompute"
+                          ? "No computer joined."
+                          : props.workspaceFiles?.unavailable === "computeOffline"
+                            ? "The computer is offline."
+                            : props.workspaceFiles?.unavailable === "unsupported"
+                              ? "Files aren't available on this server."
+                              : props.workspaceFiles?.directories.get("")?.error
+                                ? "Files could not be loaded."
+                                : "No files."
+                      : changesUnavailable
+                        ? "Git changes are temporarily unavailable."
+                        : "No changed files."
+            }
+            onSearchQueryChange={props.onSearchQueryChange}
+            searchQuery={query}
+            searching={props.search.searching}
+            layout={props.layout}
+            loading={loading}
+            nodes={nodes}
+            {...(changesStale
+                ? {
+                      note: "Showing the last successful Git scan. Retrying automatically…",
+                  }
+                : {})}
+            {...(props.happyAgentAvailability !== undefined && all
+                ? {
+                      fileActionsUnavailable:
+                          props.happyAgentAvailabilityReason ??
+                          "Happy Agent must reconnect before opening files.",
+                  }
+                : {})}
+            onLayoutChange={(layout: HappyAgentFileLayout) => props.onLayoutChange(layout)}
+            onReviewOpen={props.onReviewOpen}
+            onDirectoryPrefetch={props.onDirectoryPrefetch}
+            onFilePrefetch={props.onFilePreprocess}
+            onReveal={props.onFileReveal}
+            onOpenBeside={props.onFilePreview}
+            onShowChanges={props.onFileChangesOpen}
+            onLoadMore={props.onLoadMore}
+            {...(props.happyAgentAvailability === undefined ? { onOpen: props.onFileOpen } : {})}
+            onScopeChange={(scope: HappyAgentFileScope) => props.onScopeChange(scope)}
+            {...(allFilesUnavailable === undefined
+                ? {}
+                : {
+                      scopeUnavailable: {
+                          all: allFilesUnavailable,
+                      },
+                  })}
+            onSelect={inPanel ? props.onFilePreview : props.onFileSelect}
+            onToggle={(id, expanded) => {
+                // A tier's heading folds the tier, which is
+                // remembered with the tier rather than with the
+                // directories of this checkout.
+                const tierId = all ? undefined : changeListing.sections.get(id);
+                if (tierId !== undefined && changeTiersStore !== undefined)
+                    changeTiersStore.tierCollapsedUpdate(tierId, !expanded);
+                else props.onToggle(id, expanded);
+            }}
+            scope={props.scope}
+            selectedId={inPanel ? panelFile?.path : props.selectedPath}
+        />
+    );
     return (
         <>
             {/* The whole panel accepts a tab dragged out of the main strip,
@@ -11923,6 +12152,7 @@ function HappyAgentPanelBody(props: {
                 label="Open in the side panel"
             >
                 <TabbedPane
+                    className="happy-file-workspace-tabs"
                     actions={
                         props.canStartBrowser ? (
                             <Button
@@ -11966,13 +12196,13 @@ function HappyAgentPanelBody(props: {
                     tabMenuItems={(tab) =>
                         tab.id === HAPPY_AGENT_PANEL_FILE_VIEW_ID &&
                         props.onPanelFileReveal !== undefined
-                            ? [FILE_TAB_REVEAL_ITEM]
+                            ? [fileTabRevealItem(props.fileRevealLabel)]
                             : []
                     }
                     onTabMenuSelect={(tab, actionId) => {
                         if (
                             tab.id === HAPPY_AGENT_PANEL_FILE_VIEW_ID &&
-                            actionId === FILE_TAB_REVEAL_ITEM.id
+                            actionId === FILE_TAB_REVEAL
                         )
                             props.onPanelFileReveal?.();
                     }}
@@ -12004,6 +12234,12 @@ function HappyAgentPanelBody(props: {
                         activeId={props.panel.activeViewId}
                         browserStart={(tabId) => ({
                             tools: [
+                                {
+                                    id: "files",
+                                    icon: "files",
+                                    label: "Files",
+                                    onSelect: () => props.store.filesSelect(),
+                                },
                                 ...(props.canStartBrowser &&
                                 props.panel.terminalRefusal === undefined
                                     ? [
@@ -12045,87 +12281,7 @@ function HappyAgentPanelBody(props: {
                               })}
                     />
                     {props.panel.activeViewId === "files" ? (
-                        <FileBrowser
-                            // Only Changes has a complete total and line delta;
-                            // All Files stays visually focused on its lazy tree.
-                            {...(all || changesUnavailable || loading
-                                ? {}
-                                : { addedLines, deletedLines })}
-                            count={count}
-                            emptyLabel={
-                                query !== ""
-                                    ? `Nothing matches “${query}”.`
-                                    : all
-                                      ? // A root that failed to read is not an
-                                        // empty folder; it is retried on the
-                                        // next change in the checkout. A
-                                        // checkout with nowhere to list from is
-                                        // neither, and says why.
-                                        props.workspaceFiles?.unavailable === "noCompute"
-                                          ? "No computer joined."
-                                          : props.workspaceFiles?.unavailable === "computeOffline"
-                                            ? "The computer is offline."
-                                            : props.workspaceFiles?.unavailable === "unsupported"
-                                              ? "Files aren't available on this server."
-                                              : props.workspaceFiles?.directories.get("")?.error
-                                                ? "Files could not be loaded."
-                                                : "No files."
-                                      : changesUnavailable
-                                        ? "Git changes are temporarily unavailable."
-                                        : "No changed files."
-                            }
-                            onSearchQueryChange={props.onSearchQueryChange}
-                            searchQuery={query}
-                            searching={props.search.searching}
-                            layout={props.layout}
-                            loading={loading}
-                            nodes={nodes}
-                            {...(changesStale
-                                ? {
-                                      note: "Showing the last successful Git scan. Retrying automatically…",
-                                  }
-                                : {})}
-                            {...(props.happyAgentAvailability !== undefined && all
-                                ? {
-                                      fileActionsUnavailable:
-                                          props.happyAgentAvailabilityReason ??
-                                          "Happy Agent must reconnect before opening files.",
-                                  }
-                                : {})}
-                            onLayoutChange={(layout: HappyAgentFileLayout) =>
-                                props.onLayoutChange(layout)
-                            }
-                            onReviewOpen={props.onReviewOpen}
-                            onDirectoryPrefetch={props.onDirectoryPrefetch}
-                            onFilePrefetch={props.onFilePreprocess}
-                            onReveal={props.onFileReveal}
-                            onLoadMore={props.onLoadMore}
-                            {...(props.happyAgentAvailability === undefined
-                                ? { onOpen: props.onFileOpen }
-                                : {})}
-                            onScopeChange={(scope: HappyAgentFileScope) =>
-                                props.onScopeChange(scope)
-                            }
-                            {...(allFilesUnavailable === undefined
-                                ? {}
-                                : {
-                                      scopeUnavailable: {
-                                          all: allFilesUnavailable,
-                                      },
-                                  })}
-                            onSelect={(path: string) => props.onFileSelect(path)}
-                            onToggle={(id, expanded) => {
-                                // A tier's heading folds the tier, which is
-                                // remembered with the tier rather than with the
-                                // directories of this checkout.
-                                const tierId = all ? undefined : changeListing.sections.get(id);
-                                if (tierId !== undefined && changeTiersStore !== undefined)
-                                    changeTiersStore.tierCollapsedUpdate(tierId, !expanded);
-                                else props.onToggle(id, expanded);
-                            }}
-                            scope={props.scope}
-                            selectedId={props.selectedPath}
-                        />
+                        fileBrowser(false)
                     ) : props.panel.activeViewId === "artifacts" ? (
                         props.artifacts ? (
                             <HappyAgentArtifactsPanelSurface
@@ -12260,7 +12416,13 @@ function HappyAgentPanelBody(props: {
                         )
                     ) : props.panel.activeViewId === HAPPY_AGENT_PANEL_FILE_VIEW_ID ? (
                         panelFile ? (
-                            props.fileBody(panelFile)
+                            panelFile.linked ? (
+                                props.fileBody(panelFile)
+                            ) : (
+                                <FileWorkspace browser={fileBrowser(true)}>
+                                    {(controls) => props.fileBody(panelFile, controls)}
+                                </FileWorkspace>
+                            )
                         ) : (
                             <EmptyState
                                 description="The file this conversation pointed at is no longer open."

@@ -47,7 +47,7 @@ export function WorkTabControls(props: WorkTabControlsProps) {
                 />
             ) : null}
             <Button
-                aria-label={props.floatyOpen ? "Hide task activity" : "Show task activity"}
+                aria-label={props.floatyOpen ? "Hide summary" : "Show summary"}
                 aria-pressed={props.floatyOpen}
                 className="happy-work-tab-controls__toggle"
                 icon="list"

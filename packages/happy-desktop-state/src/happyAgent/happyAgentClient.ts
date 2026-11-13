@@ -516,7 +516,12 @@ export interface HappyAgentWorkspaceClient {
      * Opens one project or worktree root in one of those applications, and makes
      * it the one this machine opened most recently.
      */
-    openIn(groupId: HappyAgentGroupId, target: HappyAgentOpenInTarget): Promise<void>;
+    openIn(
+        groupId: HappyAgentGroupId,
+        target: HappyAgentOpenInTarget,
+        /** An individual file or folder; omitted when opening the project root. */
+        path?: string,
+    ): Promise<void>;
     /** Selects one file, relative to the group's root or absolute, in the machine's file manager. */
     fileReveal(groupId: HappyAgentGroupId, path: string): Promise<void>;
     /** Reads one changed text file from a project/worktree checkout. */
@@ -548,7 +553,7 @@ export interface HappyAgentWorkspaceClient {
      * same session are two separate shells, which is the whole point of being able
      * to open more than one. Disposing the handle stops the remote terminal.
      */
-    terminalOpen(sessionId: HappyAgentSessionId): HappyAgentTerminalHandle;
+    terminalOpen(sessionId: HappyAgentSessionId, command?: string): HappyAgentTerminalHandle;
     [Symbol.dispose](): void;
 }
 
@@ -1009,7 +1014,7 @@ export function happyAgentWorkspaceClientCreate(
             }
         },
         openInTargetsRead: () => deps.hostServices.openInTargetsRead(),
-        openIn: (groupId, target) => deps.hostServices.openIn(groupId, target),
+        openIn: (groupId, target, path) => deps.hostServices.openIn(groupId, target, path),
         fileReveal: (groupId, path) => deps.hostServices.fileReveal(groupId, path),
         sessionList() {
             if (disposed) throw new Error("The Happy Agent client is disposed.");
@@ -1497,13 +1502,14 @@ export function happyAgentWorkspaceClientCreate(
             binding.restoring = true;
             chatActivate(binding);
         },
-        terminalOpen(sessionId) {
+        terminalOpen(sessionId, command) {
             if (disposed) throw new Error("The Happy Agent client is disposed.");
             return happyAgentTerminalOpen(
                 {
                     client: deps.client,
                     hostServices: deps.hostServices,
                     colorScheme: deps.terminalColorScheme(),
+                    ...(command === undefined ? {} : { command }),
                     ...(deps.terminalDriverCreate
                         ? { driverCreate: deps.terminalDriverCreate }
                         : {}),

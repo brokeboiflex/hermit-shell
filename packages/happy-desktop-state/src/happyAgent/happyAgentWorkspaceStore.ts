@@ -89,6 +89,10 @@ import {
     type HappyAgentChangeTiersStore,
 } from "./happyAgentChangeTiersStore.js";
 import {
+    happyAgentCommandShortcutsStoreCreate,
+    type HappyAgentCommandShortcutsStore,
+} from "./happyAgentCommandShortcutsStore.js";
+import {
     happyAgentPanelStoreCreate,
     type HappyAgentPanelStore,
     type HappyAgentViewPlacement,
@@ -149,6 +153,7 @@ import type {
     HappyAgentRepositoryBinding,
     HappyAgentContextGauge,
     HappyAgentOpenInTarget,
+    HappyAgentFileActions,
     HappyAgentWorkspaceFiles,
     HappyAgentWorkspaceFilesUnavailable,
     HappyAgentWorkspaceFileTreeDirectory,
@@ -783,6 +788,7 @@ export interface HappyAgentWorkspaceSnapshot {
      * empty one.
      */
     readonly openInTargets: readonly HappyAgentOpenInTarget[];
+    readonly fileActions?: HappyAgentFileActions;
     /**
      * The application this machine opened a project in most recently, so the
      * control can offer it directly instead of making the reader find it in the
@@ -1526,6 +1532,8 @@ export interface HappyAgentWorkspaceStore {
      * window reads the host's: every node's Changes is split by those.
      */
     readonly changeTiers: HappyAgentChangeTiersStore;
+    /** Materializes the user's command shortcuts for one project. */
+    commandShortcuts(projectId: HappyAgentProjectId): HappyAgentCommandShortcutsStore;
     /**
      * The document a presented-file preview shows, read for the host's viewer.
      * Materialized on first access; the preview leases which document it holds.
@@ -2030,7 +2038,12 @@ export interface HappyAgentWorkspaceStore {
      * the host remembers across a reload and a control draws before detection
      * has answered.
      */
-    openIn(groupId: HappyAgentGroupId, target: HappyAgentOpenInTarget): Promise<void>;
+    openIn(
+        groupId: HappyAgentGroupId,
+        target: HappyAgentOpenInTarget,
+        /** An individual file or folder; omitted when opening the project root. */
+        path?: string,
+    ): Promise<void>;
     /**
      * Materializes the surface for a new bot. A draft from a previous visit is
      * offered back: leaving the surface is how a draft is put down, not how it
@@ -2431,7 +2444,7 @@ export function happyAgentWorkspaceStoreCreate(
         return draftUpdatedAt;
     };
     const panel: HappyAgentPanelStore = happyAgentPanelStoreCreate({
-        terminalOpen: (sessionId) => client.terminalOpen(sessionId),
+        terminalOpen: (sessionId, command) => client.terminalOpen(sessionId, command),
         chatOpen: (agentId) => happyAgentPanelChatOpen(() => client.chat(agentId)),
         memoryRead: (groupId) => client.memory.groupRead(groupId)?.panel,
         memoryWrite: (groupId, memory) => client.memory.groupPanelWrite(groupId, memory),
@@ -2490,6 +2503,7 @@ export function happyAgentWorkspaceStoreCreate(
        and nothing announces that, so it is re-read on a slow cadence rather
        than remembered for the life of the window. */
     let openInTargets: readonly HappyAgentOpenInTarget[] = [];
+    let fileActions: HappyAgentFileActions | undefined;
     let openInRecent: HappyAgentOpenInTarget | undefined;
     let openInTargetsReading = false;
     let openInTargetsTimer: ReturnType<typeof setInterval> | undefined;
@@ -2641,6 +2655,31 @@ export function happyAgentWorkspaceStoreCreate(
             }
         },
     });
+    const commandShortcutsByProject = new Map<
+        HappyAgentProjectId,
+        HappyAgentCommandShortcutsStore
+    >();
+    const commandShortcuts = (projectId: HappyAgentProjectId): HappyAgentCommandShortcutsStore => {
+        let store = commandShortcutsByProject.get(projectId);
+        if (!store) {
+            store = happyAgentCommandShortcutsStoreCreate({
+                initial: viewPreferences.projectShortcuts?.[projectId],
+                output(event) {
+                    const projectShortcuts = { ...viewPreferences.projectShortcuts };
+                    if (event.shortcuts.length === 0) delete projectShortcuts[projectId];
+                    else projectShortcuts[projectId] = event.shortcuts;
+                    viewPreferences = { ...viewPreferences, projectShortcuts };
+                    try {
+                        deps.viewPreferences?.write(viewPreferences);
+                    } catch {
+                        // The commands remain available for this window's lifetime.
+                    }
+                },
+            });
+            commandShortcutsByProject.set(projectId, store);
+        }
+        return store;
+    };
     let fileTreeExpanded: ReadonlySet<string> = new Set();
     let fileTreeCollapsed: ReadonlySet<string> = new Set();
     /** Counts the asks to show a region, so each one is its own event. */
@@ -2960,6 +2999,7 @@ export function happyAgentWorkspaceStoreCreate(
         tabOrder,
         groupResume,
         openInTargets,
+        ...(fileActions === undefined ? {} : { fileActions }),
         fileViewMode,
         fileViewWrap,
         fileScope: "changed",
@@ -3321,6 +3361,7 @@ export function happyAgentWorkspaceStoreCreate(
                 snapshot.panelFile === panelFile &&
                 snapshot.groupResume === groupResume &&
                 snapshot.openInTargets === openInTargets &&
+                snapshot.fileActions === fileActions &&
                 snapshot.openInRecent === openInRecent &&
                 snapshot.rename === rename &&
                 snapshot.projectArchive === projectArchive &&
@@ -3357,6 +3398,7 @@ export function happyAgentWorkspaceStoreCreate(
                           tabOrder,
                           groupResume,
                           openInTargets,
+                          ...(fileActions === undefined ? {} : { fileActions }),
                           fileViewMode,
                           fileViewWrap,
                           fileScope: nextFileScope,
@@ -6399,6 +6441,7 @@ export function happyAgentWorkspaceStoreCreate(
                 openInTargetsReading = false;
                 if (disposed) return;
                 openInTargets = result.targets;
+                fileActions = result.fileActions;
                 // What was opened last is the host's memory of this reader's
                 // choice, so it stands even when detection did not list it;
                 // anything already chosen in this run is newer and stands over
@@ -7088,6 +7131,7 @@ export function happyAgentWorkspaceStoreCreate(
                     tabOrder,
                     groupResume,
                     openInTargets,
+                    ...(fileActions === undefined ? {} : { fileActions }),
                     fileViewMode,
                     fileViewWrap,
                     // Nothing is addressed here, so there is no checkout whose
@@ -7388,6 +7432,7 @@ export function happyAgentWorkspaceStoreCreate(
         previews: () => client.previews(),
         panel,
         changeTiers,
+        commandShortcuts,
         toolMediaDocument: () => client.toolMediaDocument(),
         deviceBridges: (groupId) => client.deviceBridges(groupId),
         deviceBridgeSupport: () => client.deviceBridgeSupport(),
@@ -8682,14 +8727,21 @@ export function happyAgentWorkspaceStoreCreate(
         imageNext: () => chatStore?.imageNext(),
         imagePrevious: () => chatStore?.imagePrevious(),
         imageClose: () => chatStore?.imageClose(),
-        openIn: (groupId, target) => {
+        openIn: (groupId, target, path) => {
             // The choice is the reader's, so the control wears it immediately;
             // the host records the same thing durably for the next launch.
-            if (openInRecent?.id !== target.id) {
+            if (path === undefined && openInRecent?.id !== target.id) {
                 openInRecent = target;
                 recompute();
             }
-            return client.openIn(groupId, target);
+            return client.openIn(groupId, target, path).catch((error: unknown) => {
+                const failure = happyAgentUserError(error);
+                if (path !== undefined && !disposed) {
+                    fileOpenFailure = { path, message: failure.message };
+                    recompute();
+                }
+                throw failure;
+            });
         },
         botCreateOpen() {
             createDraftOpen("bot");

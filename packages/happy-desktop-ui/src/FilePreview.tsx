@@ -1,11 +1,13 @@
 import { partitionComponentProps } from "./componentProps";
 import type { FileLinkOpenHandler, FileOpenHandler } from "./fileReference";
 import type { MessageReferences } from "./messageReferences";
-import { useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import { Button } from "./Button";
 import { CodeBlock } from "./CodeBlock";
 import { FileTreeFamilyIcon, fileTreeFamily, type FileTreeNode } from "./FileTree";
 import { FilePathLabel } from "./FilePathLabel";
+import { FileActionsMenu } from "./FileActionsMenu";
+import { FileWorkspaceBody, type FileWorkspaceControls } from "./FileWorkspace";
 import { useFileRevealMenu } from "./FileRevealMenu";
 import { Icon, type IconName } from "./Icon";
 import { ImageViewer } from "./ImageViewer";
@@ -75,6 +77,8 @@ export type FilePreviewProps = {
     dimensions?: string;
     /** Trailing header controls, e.g. Download or Open in editor. */
     actions?: ReactNode;
+    onOpenInTab?: () => void;
+    files?: FileWorkspaceControls;
     /**
      * Shows this picture or recording in a window of the host's own. Present
      * only where such a window exists, so the control is absent rather than
@@ -257,6 +261,8 @@ export function FilePreview(props: FilePreviewProps) {
         "updating",
         "dimensions",
         "actions",
+        "onOpenInTab",
+        "files",
         "onDownload",
         "onFileOpen",
         "onFileLinkOpen",
@@ -279,49 +285,6 @@ export function FilePreview(props: FilePreviewProps) {
     const name = local.path.slice(local.path.lastIndexOf("/") + 1);
     const family = local.type?.family ?? fileTreeFamily({ kind: "file", name });
     const source = local.content.type === "url" ? local.content.url : local.path;
-    // This is the outcome of pressing this control, like the Lightbox's copy
-    // and download controls, rather than the file's authoritative state.
-    const [download, setDownload] = useState<{
-        readonly source: string;
-        readonly status: "pending" | "started" | "failed";
-        readonly message?: string;
-    }>();
-    const pendingDownload = useRef<{ readonly source: string } | undefined>(undefined);
-    const downloadStatus = download?.source === source ? download.status : undefined;
-    const downloadLabel =
-        downloadStatus === "pending"
-            ? "Downloading…"
-            : downloadStatus === "started"
-              ? "Download started"
-              : downloadStatus === "failed"
-                ? `Download failed: ${download?.message ?? "Please try again."}`
-                : "Download";
-    const downloadStart = (): void => {
-        if (!local.onDownload || pendingDownload.current?.source === source) return;
-        const attempt = { source, status: "pending" as const };
-        pendingDownload.current = attempt;
-        setDownload(attempt);
-        const settle = (status: "started" | "failed", error?: unknown): void => {
-            if (pendingDownload.current !== attempt) return;
-            pendingDownload.current = undefined;
-            setDownload({
-                source,
-                status,
-                ...(status === "failed"
-                    ? { message: error instanceof Error ? error.message : "Please try again." }
-                    : {}),
-            });
-        };
-        try {
-            // Invoke inside the press: a text file can start its save at once.
-            Promise.resolve(local.onDownload()).then(
-                () => settle("started"),
-                (error: unknown) => settle("failed", error),
-            );
-        } catch (error) {
-            settle("failed", error);
-        }
-    };
     const dimensions =
         local.dimensions ?? (measured?.source === source ? measured.dimensions : undefined);
     const meta = [dimensions, local.size].filter(Boolean).join(" · ");
@@ -387,34 +350,25 @@ export function FilePreview(props: FilePreviewProps) {
                         />
                     ) : null}
                     {local.actions}
-                    {local.onDownload ? (
+                    <FileActionsMenu
+                        path={local.path}
+                        text={local.content.type === "text" ? local.content.text : undefined}
+                        onDownload={local.onDownload}
+                        onOpenInTab={local.onOpenInTab}
+                    />
+                    {local.files ? (
                         <Button
-                            aria-label={downloadLabel}
-                            data-testid="file-preview-download"
-                            icon={
-                                downloadStatus === "started"
-                                    ? "check"
-                                    : downloadStatus === "failed"
-                                      ? "alert"
-                                      : undefined
+                            aria-label={
+                                local.files.filesVisible ? "Hide file tree" : "Show file tree"
                             }
+                            aria-pressed={local.files.filesVisible}
+                            icon="files"
                             iconOnly
-                            loading={downloadStatus === "pending"}
-                            onClick={downloadStart}
+                            onClick={local.files.onFilesToggle}
                             size="small"
-                            title={
-                                downloadStatus === "failed"
-                                    ? `${downloadLabel} Click to try again.`
-                                    : downloadLabel
-                            }
                             variant="ghost"
-                        >
-                            <Ionicon name="download-outline" size={14} />
-                        </Button>
+                        />
                     ) : null}
-                    <span aria-live="polite" className="happy-visually-hidden">
-                        {downloadStatus === undefined ? "" : downloadLabel}
-                    </span>
                     {local.onClose ? (
                         <Button
                             aria-label={local.closeLabel ?? "Close preview"}
@@ -427,27 +381,29 @@ export function FilePreview(props: FilePreviewProps) {
                     ) : null}
                 </span>
             </header>
-            <div className="happy-file-preview__body" data-happy-desktop-ui="file-preview-body">
-                <FilePreviewBody
-                    content={local.content}
-                    cacheKey={local.cacheKey}
-                    face={face}
-                    kind={kind}
-                    name={name}
-                    onFileOpen={local.onFileOpen}
-                    onFileLinkOpen={local.onFileLinkOpen}
-                    entities={local.entities}
-                    onMediaMeasure={(size) =>
-                        setMeasured({
-                            source,
-                            dimensions: `${String(size.width)} × ${String(size.height)}`,
-                        })
-                    }
-                    onMediaWindowOpen={local.onMediaWindowOpen}
-                    rendered={local.rendered}
-                    editor={local.editor}
-                />
-            </div>
+            <FileWorkspaceBody>
+                <div className="happy-file-preview__body" data-happy-desktop-ui="file-preview-body">
+                    <FilePreviewBody
+                        content={local.content}
+                        cacheKey={local.cacheKey}
+                        face={face}
+                        kind={kind}
+                        name={name}
+                        onFileOpen={local.onFileOpen}
+                        onFileLinkOpen={local.onFileLinkOpen}
+                        entities={local.entities}
+                        onMediaMeasure={(size) =>
+                            setMeasured({
+                                source,
+                                dimensions: `${String(size.width)} × ${String(size.height)}`,
+                            })
+                        }
+                        onMediaWindowOpen={local.onMediaWindowOpen}
+                        rendered={local.rendered}
+                        editor={local.editor}
+                    />
+                </div>
+            </FileWorkspaceBody>
         </section>
     );
 }
