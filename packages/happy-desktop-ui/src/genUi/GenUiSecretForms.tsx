@@ -4,43 +4,13 @@ import { Button } from "../Button";
 import { Modal } from "../Modal";
 import { ModalOverlay } from "../ModalOverlay";
 import {
-    HappyAgentClusterSecretCreateDialog,
-    HappyAgentClusterSecretEditDialog,
-} from "../pages/settings/HappyAgentClusterSecretDialogs";
-import {
-    happyAgentClusterSecretDraftFromPrefill,
-    type HappyAgentClusterSecretCreateInput,
-    type HappyAgentClusterSecretOwner,
-    type HappyAgentClusterSecretUpdateInput,
-} from "../pages/settings/happyAgentClusterSecretDraft";
-import type { HappyAgentClusterSecretRow } from "../pages/settings/HappyAgentClusterSecretSettings";
-import {
     HappyAgentSecretCreateDialog,
     happyAgentSecretCreateDraftValid,
     happyAgentSecretNameError,
     type HappyAgentSecretCreateDraft,
     type HappyAgentSecretVariableDraft,
 } from "../pages/settings/HappyAgentSecretCreateDialog";
-import type { GenUiClusterSecretPrefill, GenUiSecretPrefill } from "./genUiRender";
-
-/** Where a `cluster_secret` form is opened and saved, as the application reads it. */
-export interface GenUiClusterSecretHost {
-    /** Rejects with the reason to show, such as a named secret the reader cannot see. */
-    formOpen(
-        source: HappyAgentGenUiSource,
-        element: string,
-        secretId: string | undefined,
-    ): Promise<GenUiClusterSecretForm>;
-}
-
-/** One opening of a cluster secret form; every save from it is one click. */
-export interface GenUiClusterSecretForm {
-    readonly owners: readonly HappyAgentClusterSecretOwner[];
-    /** The secret a change-mode action names; nothing when the action creates one. */
-    readonly secret: HappyAgentClusterSecretRow | undefined;
-    create(input: HappyAgentClusterSecretCreateInput): Promise<void>;
-    update(version: string, input: HappyAgentClusterSecretUpdateInput): Promise<void>;
-}
+import type { GenUiSecretPrefill } from "./genUiRender";
 
 /** Where a Happy Agent `secret` form is opened and saved, as the application reads it. */
 export interface GenUiSecretHost {
@@ -74,33 +44,18 @@ export interface GenUiSecretForm {
 }
 
 /** A secret form being shown: what the agent suggested and how opening it went. */
-export type GenUiSecretFormOpen =
-    | {
-          readonly type: "cluster_secret";
-          readonly prefill: GenUiClusterSecretPrefill;
-          readonly opened: { readonly form: GenUiClusterSecretForm } | { readonly error: string };
-          readonly finish: (saved: boolean) => void;
-      }
-    | {
-          readonly type: "secret";
-          readonly prefill: GenUiSecretPrefill;
-          readonly opened: { readonly form: GenUiSecretForm } | { readonly error: string };
-          readonly finish: (saved: boolean) => void;
-      };
+export type GenUiSecretFormOpen = {
+    readonly type: "secret";
+    readonly prefill: GenUiSecretPrefill;
+    readonly opened: { readonly form: GenUiSecretForm } | { readonly error: string };
+    readonly finish: (saved: boolean) => void;
+};
 
 /** The form a secret action opened, or why it could not open. */
 export function GenUiSecretFormView(props: { readonly open: GenUiSecretFormOpen }) {
     const open = props.open;
     const { finish } = open;
-    const error =
-        "error" in open.opened
-            ? open.opened.error
-            : open.type === "cluster_secret" &&
-                "form" in open.opened &&
-                open.opened.form.secret === undefined &&
-                open.opened.form.owners.length === 0
-              ? "Your role can’t add secrets to this cluster."
-              : undefined;
+    const error = "error" in open.opened ? open.opened.error : undefined;
     if (error !== undefined)
         return (
             <ModalOverlay onDismiss={() => finish(false)}>
@@ -115,52 +70,9 @@ export function GenUiSecretFormView(props: { readonly open: GenUiSecretFormOpen 
                 </Modal>
             </ModalOverlay>
         );
-    if (open.type === "secret" && "form" in open.opened)
+    if ("form" in open.opened)
         return <SecretForm finish={finish} form={open.opened.form} prefill={open.prefill} />;
-    if (open.type === "cluster_secret" && "form" in open.opened)
-        return <ClusterSecretForm finish={finish} form={open.opened.form} prefill={open.prefill} />;
     return null;
-}
-
-function ClusterSecretForm(props: {
-    readonly prefill: GenUiClusterSecretPrefill;
-    readonly form: GenUiClusterSecretForm;
-    readonly finish: (saved: boolean) => void;
-}) {
-    const { prefill, form, finish } = props;
-    const secret = form.secret;
-    if (secret)
-        return (
-            <HappyAgentClusterSecretEditDialog
-                {...(prefill.description === undefined
-                    ? {}
-                    : { initialDescription: prefill.description })}
-                initialName={prefill.name}
-                /* An agent asks to change a secret most often because its value
-                   went stale, so the form opens on a new value; keeping the
-                   current one is a click away. */
-                initialReplacing
-                onClose={() => finish(false)}
-                onSave={async (version, input) => {
-                    await form.update(version, input);
-                    finish(true);
-                }}
-                secret={secret}
-            />
-        );
-    const draft = happyAgentClusterSecretDraftFromPrefill(prefill);
-    const owner = form.owners.includes(draft.owner) ? draft.owner : (form.owners[0] ?? draft.owner);
-    return (
-        <HappyAgentClusterSecretCreateDialog
-            initialDraft={{ ...draft, owner }}
-            onClose={() => finish(false)}
-            onSubmit={async (input) => {
-                await form.create(input);
-                finish(true);
-            }}
-            owners={form.owners}
-        />
-    );
 }
 
 /*

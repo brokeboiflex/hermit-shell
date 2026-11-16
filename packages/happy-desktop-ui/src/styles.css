@@ -120,7 +120,6 @@
 @import "./styles/splash-screen.css";
 @import "./styles/splash-cover.css";
 @import "./styles/onboarding-sky.css";
-@import "./styles/liquid-metal-mark.css";
 @import "./styles/welcome-deck.css";
 @import "./styles/welcome-screen.css";
 @import "./styles/split-column.css";
@@ -153,8 +152,6 @@
 @import "./styles/tool-call-preview.css";
 @import "./styles/context-meter.css";
 @import "./styles/context-breakdown.css";
-@import "./styles/compute-chip.css";
-@import "./styles/repository-chip.css";
 @import "./styles/conversation.css";
 @import "./styles/chat-conversation.css";
 @import "./styles/chat-wallpaper.css";
@@ -166,13 +163,11 @@
 @import "./styles/mobile-pairing.css";
 @import "./styles/happy-agent-mobile-link.css";
 @import "./styles/happy-agent-secret-settings.css";
-@import "./styles/happy-agent-cluster-secret-settings.css";
 @import "./styles/secret-value-field.css";
 @import "./styles/happy-agent-file-tier-settings.css";
 @import "./styles/happy-agent-usage-settings.css";
 @import "./styles/usage-activity-grid.css";
 @import "./styles/happy-agent-inbox.css";
-@import "./styles/happy-agent-user-profile.css";
 @import "./styles/happy-agent-artifacts.css";
 @import "./styles/happy-agent-plugins.css";
 @import "./styles/happy-agent-feed.css";
@@ -183,11 +178,7 @@
 @import "./styles/happy-agent-task-browse-dialog.css";
 @import "./styles/cloud-sign-in-notice.css";
 @import "./styles/happy-link-notice.css";
-@import "./styles/cloud-connect.css";
 @import "./styles/profile-setup.css";
-@import "./styles/cloud-onboarding.css";
-@import "./styles/happy-agent-payments.css";
-@import "./styles/cloud-web-sign-in.css";
 @import "./styles/reordering-list.css";
 @import "./styles/happy-agent-surfaces.css";
 @import "./styles/happy-agent-calendar.css";

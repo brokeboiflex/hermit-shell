@@ -40,7 +40,7 @@ type Measure = {
     readonly theme?: "light" | "dark";
     readonly pressed?: string;
     readonly chosen?: string;
-    readonly host?: "happy_agent" | "happy_agent_without_origin" | "cluster";
+    readonly host?: "happy_agent" | "happy_agent_without_origin";
     readonly animation?: number;
     readonly scrolled?: "start" | "end";
     readonly switch?: Readonly<Record<string, "compact" | "regular">>;
@@ -62,13 +62,8 @@ type RawDocument = {
 /* Every conformance host reports both capabilities. */
 const REPORTED = { secretActions: true, plugins: true } as const;
 const hosts = {
-    happy_agent: genUiActionsServed({ backend: "happyAgent", origin: true, ...REPORTED }),
-    happy_agent_without_origin: genUiActionsServed({
-        backend: "happyAgent",
-        origin: false,
-        ...REPORTED,
-    }),
-    cluster: genUiActionsServed({ backend: "cluster", origin: true, ...REPORTED }),
+    happy_agent: genUiActionsServed({ origin: true, ...REPORTED }),
+    happy_agent_without_origin: genUiActionsServed({ origin: false, ...REPORTED }),
 } as const;
 
 /* An address that is never answered, so a picture stays loading while it is measured. */

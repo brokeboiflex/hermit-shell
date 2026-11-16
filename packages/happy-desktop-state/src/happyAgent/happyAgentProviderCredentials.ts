@@ -2,13 +2,13 @@ import type { DaemonConfig } from "@slopus/happy-agent-client";
 import { UserError } from "../types.js";
 
 /**
- * Where one team credential stands, as Happy Cloud reports it. `cooling` is set
+ * Where one team credential stands, as the server reports it. `cooling` is set
  * aside until `coolingUntil` after a usage or rate limit; `invalid` was
  * rejected by the vendor and needs a new key.
  */
 export type HappyAgentProviderCredentialState = "ready" | "cooling" | "invalid" | "disabled";
 
-/** One of the keys a Happy Cloud team keeps for a provider. Never the key itself. */
+/** One of the keys a team keeps for a provider on its server. Never the key itself. */
 export interface HappyAgentProviderCredential {
     readonly id: string;
     readonly label: string;
@@ -21,11 +21,11 @@ export interface HappyAgentProviderCredential {
 }
 
 /**
- * The team keys of one Happy Cloud provider. Present only on a server that
+ * The team keys of one provider. Present only on a server that
  * keeps them; a Happy Agent signs its providers in on its own machine.
  */
 export interface HappyAgentProviderCredentials {
-    /** Whose key answers now: the team's, Happy Cloud's own, or nobody's. */
+    /** Whose key answers now: the team's, the server operator's, or nobody's. */
     readonly source: "tenant" | "operator" | null;
     readonly list: readonly HappyAgentProviderCredential[];
     /** Whether this provider takes a team API key at all. */
@@ -75,7 +75,7 @@ export interface HappyAgentCustomProviderDefinition {
 export type HappyAgentCustomProviderInput = Omit<HappyAgentCustomProviderDefinition, "providerId">;
 
 /**
- * The Happy Cloud routes for a provider's team keys. The transport is the
+ * The server routes for a provider's team keys. The transport is the
  * connection's own, already authenticated; nothing here holds a token.
  */
 export interface HappyAgentProviderCredentialsApi {
@@ -99,7 +99,7 @@ export interface HappyAgentProviderCredentialsApi {
 }
 
 /**
- * The provider types Happy Cloud keeps a team API key for. ChatGPT and Claude
+ * The provider types a server keeps a team API key for. ChatGPT and Claude
  * subscriptions sign in instead and are never offered a key.
  */
 const KEYED_TYPES: ReadonlySet<string> = new Set([
@@ -137,7 +137,7 @@ function credentialRead(value: unknown): HappyAgentProviderCredential | undefine
 }
 
 /**
- * Reads the team keys Happy Cloud adds to each provider in `/v0/config`, by
+ * Reads the team keys a server adds to each provider in `/v0/config`, by
  * provider. A provider without `credentialList` belongs to a Happy Agent and
  * has none.
  */
@@ -181,7 +181,7 @@ function protocolOf(value: unknown): HappyAgentCustomProviderProtocol | undefine
 }
 
 /**
- * The team's own providers in a Happy Cloud configuration, by the protocol each
+ * The team's own providers in a server's configuration, by the protocol each
  * speaks. Built-ins and an operator's endpoints carry no protocol and are not
  * the team's to edit.
  */
@@ -231,19 +231,19 @@ function customProviderRead(value: unknown): HappyAgentCustomProviderDefinition 
 }
 
 /**
- * One request to a Happy Cloud route over a connection's own HTTP transport:
+ * One request to a server route over a connection's own HTTP transport:
  * the endpoint its client uses, with the same bearer. Answers the parsed body,
  * or rejects with a `UserError` carrying the server's own words and `code`.
  */
-export type HappyCloudRequest = (
+export type HappyAgentServerRequest = (
     method: string,
     path: string,
     body?: unknown,
     headers?: Readonly<Record<string, string>>,
 ) => Promise<unknown>;
 
-/** A Happy Cloud route that answered and refused, with its status and parsed body. */
-export class HappyCloudRequestRefusal extends UserError {
+/** A server route that answered and refused, with its status and parsed body. */
+export class HappyAgentServerRequestRefusal extends UserError {
     constructor(
         message: string,
         code: string | undefined,
@@ -251,15 +251,15 @@ export class HappyCloudRequestRefusal extends UserError {
         readonly body: unknown,
     ) {
         super(message, code);
-        this.name = "HappyCloudRequestRefusal";
+        this.name = "HappyAgentServerRequestRefusal";
     }
 }
 
-export function happyCloudRequestCreate(options: {
+export function happyAgentServerRequestCreate(options: {
     readonly endpoint: string;
     readonly token: string;
     readonly fetch?: typeof fetch;
-}): HappyCloudRequest {
+}): HappyAgentServerRequest {
     const base = options.endpoint.replace(/\/$/u, "");
     return async (
         method: string,
@@ -295,7 +295,7 @@ export function happyCloudRequestCreate(options: {
         const answer = (await response.json().catch(() => undefined)) as
             | { readonly error?: unknown; readonly code?: unknown }
             | undefined;
-        // Happy Cloud answers `{ error: { code, message } }`; older routes
+        // A server answers `{ error: { code, message } }`; older routes
         // answer `{ error: message, code }`.
         const envelope =
             typeof answer?.error === "object" && answer.error !== null
@@ -303,7 +303,7 @@ export function happyCloudRequestCreate(options: {
                 : undefined;
         const message = envelope ? envelope.message : answer?.error;
         const code = envelope ? envelope.code : answer?.code;
-        throw new HappyCloudRequestRefusal(
+        throw new HappyAgentServerRequestRefusal(
             typeof message === "string" && message.length > 0
                 ? message
                 : `The server answered ${String(response.status)}.`,
@@ -324,7 +324,7 @@ export function happyAgentProviderCredentialsApiCreate(options: {
     readonly token: string;
     readonly fetch?: typeof fetch;
 }): HappyAgentProviderCredentialsApi {
-    const send = happyCloudRequestCreate(options);
+    const send = happyAgentServerRequestCreate(options);
     const provider = (providerId: string): string =>
         `v0/providers/${encodeURIComponent(providerId)}`;
     const credentials = (providerId: string): string => `${provider(providerId)}/credentials`;

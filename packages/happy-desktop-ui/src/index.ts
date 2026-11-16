@@ -439,12 +439,6 @@ export {
 } from "./LinkContextMenu";
 export { ContextBreakdown, type ContextBreakdownProps } from "./ContextBreakdown";
 export { ContextMeter, type ContextMeterProps } from "./ContextMeter";
-export { ComputeChip, type ComputeChipCompute, type ComputeChipProps } from "./ComputeChip";
-export {
-    RepositoryChip,
-    type RepositoryChipProps,
-    type RepositoryChipRepository,
-} from "./RepositoryChip";
 export {
     fileTreeBuild,
     fileTreeExpanded,
@@ -657,29 +651,6 @@ export {
     type CloudSignInNoticeView,
 } from "./CloudSignInNoticeDialog";
 export {
-    CloudOnboardingPluginDialog,
-    type CloudOnboardingPluginDialogProps,
-} from "./CloudOnboardingPluginDialog";
-export {
-    CloudOnboardingScreen,
-    type CloudOnboardingAmount,
-    type CloudOnboardingInferenceOption,
-    type CloudOnboardingInvite,
-    type CloudOnboardingPlugin,
-    type CloudOnboardingScreenProps,
-    type CloudOnboardingStep,
-    type CloudOnboardingView,
-} from "./CloudOnboardingScreen";
-export {
-    CloudConnectScreen,
-    type CloudConnectAvailability,
-    type CloudConnectJoin,
-    type CloudConnectScreenProps,
-    type CloudConnectAgentAudience,
-    type CloudConnectServer,
-    type CloudConnectView,
-} from "./CloudConnectScreen";
-export {
     HappyLinkNoticeDialog,
     type HappyLinkNoticeDialogProps,
     type HappyLinkNoticeView,
@@ -797,7 +768,6 @@ export {
     type WelcomeScreenBackdrop,
     type WelcomeScreenProps,
 } from "./WelcomeScreen";
-export { LiquidMetalMark, type LiquidMetalMarkProps } from "./LiquidMetalMark";
 export {
     WelcomeDeck,
     type WelcomeDeckProps,
@@ -887,12 +857,6 @@ export {
     type HappyAgentInboxAnswerMap,
     type HappyAgentInboxPageProps,
 } from "./pages/inbox/HappyAgentInboxPage";
-export {
-    HappyAgentUserProfilePage,
-    type HappyAgentUserProfilePageProps,
-    type HappyAgentUserProfileTaskRow,
-    type HappyAgentUserProfileView,
-} from "./pages/people/HappyAgentUserProfilePage";
 export {
     type HappyAgentArtifactLabels,
     type HappyAgentArtifactSourceChoice,
@@ -1152,79 +1116,6 @@ export {
     type HappyAgentCustomProviderValues,
 } from "./pages/settings/HappyAgentCustomProviderDialog";
 export {
-    HappyAgentMembersSettings,
-    type HappyAgentInviteNoticeView,
-    type HappyAgentInviteRow,
-    type HappyAgentInviteStatus,
-    type HappyAgentMemberRow,
-    type HappyAgentMembersSettingsProps,
-} from "./pages/settings/HappyAgentMembersSettings";
-export {
-    HAPPY_AGENT_REPOSITORY_CREDENTIAL_AUTOMATIC,
-    HappyAgentRepositoriesSettings,
-    HappyAgentRepositoryAddDialog,
-    HappyAgentRepositoryDeleteDialog,
-    HappyAgentRepositoryDialog,
-    type HappyAgentRepositoriesSettingsProps,
-    type HappyAgentRepositoryAddDialogProps,
-    type HappyAgentRepositoryCheck,
-    type HappyAgentRepositoryCredentialOption,
-    type HappyAgentRepositoryDeleteDialogProps,
-    type HappyAgentRepositoryDialogProps,
-    type HappyAgentRepositoryRow,
-} from "./pages/settings/HappyAgentRepositoriesSettings";
-export {
-    HappyAgentOnboardingSettings,
-    type HappyAgentOnboardingPluginRow,
-    type HappyAgentOnboardingRequirementChoice,
-    type HappyAgentOnboardingSettingsProps,
-    type HappyAgentOnboardingStepRow,
-} from "./pages/settings/HappyAgentOnboardingSettings";
-export {
-    HappyAgentPaymentsSettings,
-    type HappyAgentPaymentsLedgerRow,
-    type HappyAgentPaymentsSettingsProps,
-} from "./pages/settings/HappyAgentPaymentsSettings";
-export {
-    HappyAgentComputeMachineAddDialog,
-    HappyAgentComputeSettings,
-    type HappyAgentComputeAddAccess,
-    type HappyAgentComputeInstallView,
-    type HappyAgentComputeJoinRequestRow,
-    type HappyAgentComputeMachineAddDialogProps,
-    type HappyAgentComputeMachineAddDraft,
-    type HappyAgentComputeMachineAddStage,
-    type HappyAgentComputeMachineRow,
-    type HappyAgentComputeMachineRowStatus,
-    type HappyAgentComputeModeName,
-    type HappyAgentComputeSettingsProps,
-} from "./pages/settings/HappyAgentComputeSettings";
-export {
-    HappyAgentCredentialImport,
-    type HappyAgentCredentialImportProps,
-    type HappyAgentCredentialImportRow,
-    type HappyAgentCredentialImportScope,
-} from "./pages/settings/HappyAgentCredentialImport";
-export {
-    HappyAgentAiProviders,
-    type HappyAgentAiProviderConnectionRow,
-    type HappyAgentAiProviderCredentialRow,
-    type HappyAgentAiProviderCredentialState,
-    type HappyAgentAiProvidersProps,
-} from "./pages/settings/HappyAgentAiProviders";
-export {
-    HappyAgentProviderAddDialog,
-    type HappyAgentProviderAddDialogProps,
-    type HappyAgentProviderAddFlow,
-    type HappyAgentProviderKeyVendor,
-} from "./pages/settings/HappyAgentProviderAddDialog";
-export {
-    HappyAgentProviderEditDialog,
-    type HappyAgentProviderEditChanges,
-    type HappyAgentProviderEditCredential,
-    type HappyAgentProviderEditDialogProps,
-} from "./pages/settings/HappyAgentProviderEditDialog";
-export {
     HappyAgentFileTierSettings,
     type HappyAgentFileTierMoveDirection,
     type HappyAgentFileTierRow,
@@ -1237,34 +1128,6 @@ export {
     type HappyAgentSecretSettingsProps,
 } from "./pages/settings/HappyAgentSecretSettings";
 export { SecretValueField, type SecretValueFieldProps } from "./SecretValueField";
-export {
-    HappyAgentClusterSecretSettings,
-    type HappyAgentClusterSecretDialog,
-    type HappyAgentClusterSecretRow,
-    type HappyAgentClusterSecretSettingsProps,
-} from "./pages/settings/HappyAgentClusterSecretSettings";
-export {
-    HappyAgentClusterSecretCreateDialog,
-    HappyAgentClusterSecretDeleteDialog,
-    HappyAgentClusterSecretEditDialog,
-    type HappyAgentClusterSecretCreateDialogProps,
-    type HappyAgentClusterSecretDeleteDialogProps,
-    type HappyAgentClusterSecretEditDialogProps,
-} from "./pages/settings/HappyAgentClusterSecretDialogs";
-export {
-    happyAgentClusterSecretDraftCreate,
-    type HappyAgentClusterSecretCreateDraft,
-    type HappyAgentClusterSecretCreateInput,
-    type HappyAgentClusterSecretDetails,
-    type HappyAgentClusterSecretOwner,
-    type HappyAgentClusterSecretType,
-    type HappyAgentClusterSecretUpdateInput,
-    type HappyAgentClusterSecretValueDraft,
-} from "./pages/settings/happyAgentClusterSecretDraft";
-export {
-    HappyCloudWebSettings,
-    type HappyCloudWebSettingsProps,
-} from "./pages/settings/HappyCloudWebSettings";
 export {
     HappyAgentSecretCreateDialog,
     type HappyAgentSecretCreateDialogProps,
@@ -1316,14 +1179,7 @@ export {
 } from "./pages/surfaces/HappyAgentSystemMonitorSurfacePage";
 export { localAgoTime, localAgoTimeChangedAt, localListTime } from "./localTime";
 
-export { CloudWebSignInScreen, type CloudWebSignInScreenProps } from "./CloudWebSignInScreen";
-export {
-    GenUiArtifact,
-    type GenUiClusterSecretForm,
-    type GenUiClusterSecretHost,
-    type GenUiSecretForm,
-    type GenUiSecretHost,
-} from "./genUi/GenUiArtifact";
+export { GenUiArtifact, type GenUiSecretForm, type GenUiSecretHost } from "./genUi/GenUiArtifact";
 export type { GenUiInlineHost } from "./pages/artifacts/ArtifactInlineContent";
 export {
     GenUiRenderView,
@@ -1336,7 +1192,6 @@ export {
     genUiRenderParseText,
     type GenUiAction,
     type GenUiActionType,
-    type GenUiClusterSecretPrefill,
     type GenUiRenderDocument,
     type GenUiSecretPrefill,
 } from "./genUi/genUiRender";

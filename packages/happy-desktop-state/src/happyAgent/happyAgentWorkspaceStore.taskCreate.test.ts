@@ -1,7 +1,6 @@
 import type { DaemonConfig } from "@slopus/happy-agent-client";
 import { expect, it, vi } from "vitest";
 import { fakeHappyAgentDaemonCreate } from "../testing/fakeHappyAgentDaemon.js";
-import { UserError } from "../types.js";
 import type { HappyAgentWorkspaceClient } from "./happyAgentClient.js";
 import {
     happyAgentModelStoreCreate,
@@ -151,128 +150,6 @@ it("opens a task draft of its own, and Create turns the window to the new task",
     });
     // Put down once made, so the next arrival starts a fresh draft.
     expect(workspace.get().taskCreate).toBeUndefined();
-    unsubscribe();
-});
-
-it("uploads a Happy Cloud task's first file once the task exists, then sends it", async () => {
-    const order: string[] = [];
-    const taskCreate = vi.fn(() => {
-        order.push("taskCreate");
-        return Promise.resolve({
-            taskId: "task_new" as HappyAgentTaskId,
-            location: {
-                groupId: "ws_new" as HappyAgentGroupId,
-                sessionId: "ses_new" as HappyAgentSessionId,
-            },
-        });
-    });
-    const attachmentUpload = vi.fn((agentId: string, attachment: { readonly name: string }) => {
-        order.push(`upload:${agentId}`);
-        return Promise.resolve({
-            type: "file" as const,
-            attachment: "att_1",
-            name: attachment.name,
-        });
-    });
-    let sent!: (args: unknown[]) => void;
-    const delivered = new Promise<unknown[]>((resolve) => (sent = resolve));
-    const messageSend = vi.fn((...args: unknown[]) => {
-        order.push("messageSend");
-        sent(args);
-        return Promise.resolve();
-    });
-    const { workspace, unsubscribe } = store(taskCreate, undefined, undefined, {
-        attachmentUpload,
-        attachmentSourcePath: () => undefined,
-        chat: () =>
-            Promise.resolve({
-                store: new Proxy({ messageSend } as Record<PropertyKey, unknown>, {
-                    get: (target, property) => (property in target ? target[property] : inert()),
-                }),
-                [Symbol.dispose]: () => undefined,
-            }),
-    });
-
-    workspace.taskCreateOpen();
-    workspace.taskCreateMessageUpdate("Read this");
-    workspace.taskCreateAttachmentsAdd([new File(["hello"], "notes.txt", { type: "text/plain" })]);
-    workspace.taskCreateMessageSend();
-
-    const [text, images, , files] = await delivered;
-    // Made first, so the upload has an agent to go to; sent last, naming it.
-    expect(order).toEqual(["taskCreate", "upload:ses_new", "messageSend"]);
-    expect(attachmentUpload).toHaveBeenCalledWith(
-        "ses_new",
-        expect.objectContaining({ name: "notes.txt", mediaType: "text/plain", size: 5 }),
-    );
-    expect(text).toBe("Read this");
-    expect(images).toEqual([]);
-    expect(files).toEqual([{ type: "file", attachment: "att_1", name: "notes.txt" }]);
-    unsubscribe();
-});
-
-it("puts up a Happy Cloud file that could not be downloaded, under its name and the reason", async () => {
-    const attachmentDownload = vi.fn(() =>
-        Promise.reject(new UserError("No such attachment.", "not_found")),
-    );
-    const { workspace, unsubscribe } = store(
-        () => new Promise(() => undefined),
-        undefined,
-        undefined,
-        {
-            attachmentDownload,
-        },
-    );
-    workspace.conversationOpen(TASK.conversation.id as HappyAgentSessionId, TASK.workspaceId);
-
-    await expect(workspace.attachmentDownload("digest", "notes ü.txt")).rejects.toThrow(
-        "No such attachment.",
-    );
-
-    expect(attachmentDownload).toHaveBeenCalledWith(TASK.conversation.id, "digest");
-    expect(workspace.get().fileOpenFailure).toEqual({
-        path: "notes ü.txt",
-        message: "No such attachment.",
-    });
-    unsubscribe();
-});
-
-it("takes down a Happy Cloud file's failure once that file arrives, and on dismiss", async () => {
-    const blob = new Blob(["notes"]);
-    const attachmentDownload = vi
-        .fn<(agent: string, attachment: string) => Promise<Blob>>()
-        .mockRejectedValueOnce(new UserError("You're offline.", "network"))
-        .mockResolvedValueOnce(blob)
-        .mockRejectedValueOnce(new UserError("No such attachment.", "not_found"))
-        .mockResolvedValueOnce(blob);
-    const { workspace, unsubscribe } = store(
-        () => new Promise(() => undefined),
-        undefined,
-        undefined,
-        {
-            attachmentDownload,
-        },
-    );
-    workspace.conversationOpen(TASK.conversation.id as HappyAgentSessionId, TASK.workspaceId);
-
-    await expect(workspace.attachmentDownload("digest", "notes ü.txt")).rejects.toThrow(
-        "You're offline.",
-    );
-    expect(workspace.get().fileOpenFailure?.path).toBe("notes ü.txt");
-    await expect(workspace.attachmentDownload("digest", "notes ü.txt")).resolves.toBe(blob);
-    expect(workspace.get().fileOpenFailure).toBeUndefined();
-
-    // Another file arriving leaves this one's failure up until it is dismissed.
-    await expect(workspace.attachmentDownload("other", "missing.txt")).rejects.toThrow(
-        "No such attachment.",
-    );
-    await expect(workspace.attachmentDownload("digest", "notes ü.txt")).resolves.toBe(blob);
-    expect(workspace.get().fileOpenFailure).toEqual({
-        path: "missing.txt",
-        message: "No such attachment.",
-    });
-    workspace.fileOpenFailureDismiss();
-    expect(workspace.get().fileOpenFailure).toBeUndefined();
     unsubscribe();
 });
 

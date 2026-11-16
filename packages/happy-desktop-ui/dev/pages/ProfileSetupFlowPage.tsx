@@ -72,7 +72,7 @@ export function ProfileSetupFlowPage() {
         <ComponentPage
             contract="Props only"
             number={componentNumber}
-            summary="A new team member's first step on a Happy Cloud server: their photo and the name the team and agents will see, before they land in the server."
+            summary="A new team member's first step on a team server: their photo and the name the team and agents will see, before they land in the server."
             title="Create your profile"
         >
             {modes.flatMap((mode) =>

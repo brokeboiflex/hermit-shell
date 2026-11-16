@@ -187,7 +187,10 @@ const SPECIMENS: readonly {
         view: {
             email: EMAIL,
             kind: "signedIn",
-            teams: { message: "Happy Agent could not reach Happy Cloud.", status: "error" },
+            teams: {
+                message: "Happy Agent could not reach the accounts service.",
+                status: "error",
+            },
         },
     },
     {

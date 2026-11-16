@@ -1,4 +1,3 @@
-import type { HappyCloudServer } from "./happyCloud";
 import type {
     DesktopProfilerRequest,
     DesktopProfilerSnapshot,
@@ -23,166 +22,6 @@ export type DesktopKeepAwakeMode = "on" | "agent" | "off";
 export type DesktopServerSignInResult<T> =
     | { readonly ok: true; readonly value: T }
     | { readonly ok: false; readonly message: string; readonly code: string };
-
-/**
- * One step of Happy Cloud email-code sign-in. A refusal for too many tries
- * (`rate_limited`) says how long until the next one is taken.
- */
-export type DesktopHappyCloudEmailCodeResult =
-    | { readonly ok: true }
-    | {
-          readonly ok: false;
-          readonly message: string;
-          readonly code: string;
-          /** Seconds until another try is taken; only with `rate_limited`. */
-          readonly retryAfter?: number;
-      };
-
-/** Whether a Happy Cloud server name can be taken, as the accounts API answered. */
-export type DesktopHappyCloudAvailability =
-    | { readonly available: true }
-    | { readonly available: false; readonly reason: "taken" | "reserved" | "invalid" };
-
-/** The vendor a credential found on this computer is for, as Happy Cloud names it. */
-export type DesktopCredentialVendor =
-    | "openai"
-    | "anthropic"
-    | "grok"
-    | "bedrock"
-    | "codex"
-    | "claude-code"
-    | "openrouter"
-    | "deepseek"
-    | "mistral"
-    | "groq"
-    | "together"
-    | "fireworks"
-    | "moonshot";
-
-/**
- * How a credential that can be copied signs in: a key, an AWS key pair,
- * Claude Code's long-lived setup token, or a subscription's own sign-in
- * (ChatGPT's or Claude's tokens, as their tools keep them).
- */
-export type DesktopCredentialKind = "api_key" | "aws_keys" | "oauth_token" | "oauth";
-
-/**
- * What can be done with a found credential.
- *
- * - `import`: copied to Happy Cloud as it is. A sign-in (`oauth`) is taken
- *   over by the server, so the copy on this computer may stop working.
- * - `unsupported`: Happy Cloud can't use it; `reason` says why.
- */
-export type DesktopCredentialUse =
-    | { readonly kind: "import"; readonly credential: DesktopCredentialKind }
-    | { readonly kind: "unsupported"; readonly reason: string };
-
-/**
- * A model provider credential the shell found on this computer. Never the
- * secret: only enough for a person to recognize and pick it.
- */
-export interface DesktopCredentialFound {
-    /** Names this entry of the last scan; not stable across scans. */
-    readonly id: string;
-    readonly vendor: DesktopCredentialVendor;
-    /** The vendor's display name, such as "OpenAI". */
-    readonly vendorName: string;
-    readonly use: DesktopCredentialUse;
-    /** Where it was found, such as `~/.codex/auth.json` or `$OPENAI_API_KEY`. */
-    readonly source: string;
-    /** A suggested name for it. */
-    readonly label: string;
-    /** The account it signs in as, when its vendor's own files say: an email or a plan. */
-    readonly account?: string;
-    /** The last four characters behind dots; absent for a sign-in, whose secret is never read. */
-    readonly masked?: string;
-}
-
-/** Where one imported credential goes on the server. */
-export type DesktopCredentialImportScope = "team" | "private";
-
-export interface DesktopCredentialImportItem {
-    /** The found entry, by its ID in the last scan. */
-    readonly id: string;
-    readonly scope: DesktopCredentialImportScope;
-}
-
-/** How one credential's import ended. */
-export type DesktopCredentialImportResult =
-    | {
-          readonly id: string;
-          readonly ok: true;
-          /** It was already there; nothing was stored. */
-          readonly duplicate: boolean;
-          readonly account?: string;
-      }
-    | {
-          readonly id: string;
-          readonly ok: false;
-          /** The server's fixed reason, such as `unauthorized` or `forbidden_scope`. */
-          readonly code: string;
-          readonly message: string;
-      };
-
-/** The accounts API, asked by the shell with the account's token. */
-export interface DesktopHappyCloud {
-    serversList(): Promise<DesktopServerSignInResult<readonly HappyCloudServer[]>>;
-    availability(name: string): Promise<DesktopServerSignInResult<DesktopHappyCloudAvailability>>;
-    serverCreate(name: string): Promise<DesktopServerSignInResult<HappyCloudServer>>;
-    serverJoin(name: string, code: string): Promise<DesktopServerSignInResult<HappyCloudServer>>;
-    /**
-     * Signs in to a server the account was seen to belong to, by its ID, with
-     * tokens the accounts service issues; lists it as a connection of this
-     * app and answers its connection ID.
-     */
-    serverConnect(serverId: string): Promise<DesktopServerSignInResult<string>>;
-    /** A listed server's picture as a `data:` URL, or `undefined` when it can't be read. */
-    imageRead(serverId: string): Promise<string | undefined>;
-    /** Revokes the server's sign-in at Happy Cloud and takes it off this app's list. */
-    serverRemove(name: string): Promise<void>;
-    /** Revokes the server's sign-in and forgets the kept copy; the server stays listed. */
-    serverSignOut(name: string): Promise<void>;
-    /**
-     * Whether Happy Cloud sign-ins outlive a restart: only where the
-     * operating system can encrypt them.
-     */
-    signInsKept(): Promise<boolean>;
-    /** Forgets the account's pass; added servers stay signed in. */
-    accountSignOut(): Promise<void>;
-    /** Signs in to a test account; the shell sends the password to accounts and keeps none of it. */
-    passwordSignIn(login: string, password: string): Promise<DesktopServerSignInResult<void>>;
-    /**
-     * Has Happy Cloud email a one-time sign-in code. Absent on a shell from
-     * before email sign-in, where the window offers no such way in.
-     */
-    emailCodeStart?(email: string): Promise<DesktopHappyCloudEmailCodeResult>;
-    /**
-     * Signs in to the account with the emailed code; the shell holds the pass
-     * like password sign-in's. Absent with `emailCodeStart`.
-     */
-    emailCodeVerify?(email: string, code: string): Promise<DesktopHappyCloudEmailCodeResult>;
-    /**
-     * Looks for model provider credentials on this computer, where the
-     * vendors' own tools keep them. The shell holds what it found for a few
-     * minutes and answers with masked entries only.
-     */
-    credentialScan(options?: {
-        /**
-         * Also reads the environment the person's login shell sets up, which
-         * an app opened from the Dock or Start menu never sees. Only when asked.
-         */
-        readonly shell?: boolean;
-    }): Promise<readonly DesktopCredentialFound[]>;
-    /**
-     * Copies credentials from the last scan to a Happy Cloud server the
-     * window is signed in to. The shell sends the secrets; the server checks
-     * each before it keeps it.
-     */
-    credentialImport(
-        connectionId: string,
-        items: readonly DesktopCredentialImportItem[],
-    ): Promise<DesktopServerSignInResult<readonly DesktopCredentialImportResult[]>>;
-}
 
 export interface DesktopCloudAuthConfiguration {
     readonly environment: "production" | "staging";
@@ -530,18 +369,11 @@ export type DesktopRuntimeSnapshot =
           update: DesktopUpdateSnapshot;
       }
     /**
-     * Nobody has asked this computer to run a Happy Agent, so none is started:
-     * someone who uses only Happy Cloud never has one. Setting one up is the
-     * person's explicit `runtimeStart`.
+     * Nobody has asked this computer to run a Happy Agent, so none is started.
+     * Setting one up is the person's explicit `runtimeStart`.
      */
     | {
           phase: "off";
-          /**
-           * Where the window reaches the connections this app makes itself,
-           * Happy Cloud's servers, with no Happy Agent behind it. Absent when
-           * this shell has no such route.
-           */
-          directHttpUrl?: string;
           targets: readonly DesktopTopologyTarget[];
           update: DesktopUpdateSnapshot;
       }
@@ -645,9 +477,6 @@ export interface DesktopBuildIdentity {
 
 /** Launch argument prefix carrying `DesktopBuildIdentity` JSON into the preload. */
 export const buildIdentityArgument = "--happy-build-identity=";
-
-/** Launch argument saying this shell signs in to and talks to Happy Cloud itself. */
-export const happyCloudArgument = "--happy-cloud";
 
 /** Main chooses this identity before the application document exists. */
 export const liveWindowArgument = "--happy-live-window=";
@@ -1015,13 +844,6 @@ export interface HappyDesktopBridge {
      * whole life: the shell has it before the first frame and it never changes.
      */
     readonly buildIdentity?: DesktopBuildIdentity;
-    /**
-     * Happy Cloud, which this shell signs in to and talks to itself, without
-     * the host Happy Agent. The account signs in through `serverSignInBegin`
-     * with `HAPPY_CLOUD_ACCOUNT_ID`; its token never reaches the window.
-     * Absent from production builds and from shells older than this field.
-     */
-    readonly happyCloud?: DesktopHappyCloud;
     /** The machine the shell runs on. Absent from shells older than this field. */
     readonly system?: DesktopSystem;
     /**
@@ -1315,21 +1137,6 @@ export const desktopIpc = {
     serverSignInFinish: "happy:server-sign-in:finish",
     serverSignInCancel: "happy:server-sign-in:cancel",
     serverSessionsGet: "happy:server-sessions:get",
-    happyCloudServersList: "happy:happy-cloud:servers-list",
-    happyCloudAvailability: "happy:happy-cloud:availability",
-    happyCloudServerCreate: "happy:happy-cloud:server-create",
-    happyCloudServerJoin: "happy:happy-cloud:server-join",
-    happyCloudServerConnect: "happy:happy-cloud:server-connect",
-    happyCloudImageRead: "happy:happy-cloud:image-read",
-    happyCloudServerRemove: "happy:happy-cloud:server-remove",
-    happyCloudServerSignOut: "happy:happy-cloud:server-sign-out",
-    happyCloudSignInsKept: "happy:happy-cloud:sign-ins-kept",
-    happyCloudAccountSignOut: "happy:happy-cloud:account-sign-out",
-    happyCloudPasswordSignIn: "happy:happy-cloud:password-sign-in",
-    happyCloudEmailCodeStart: "happy:happy-cloud:email-code-start",
-    happyCloudEmailCodeVerify: "happy:happy-cloud:email-code-verify",
-    happyCloudCredentialScan: "happy:happy-cloud:credential-scan",
-    happyCloudCredentialImport: "happy:happy-cloud:credential-import",
     serverSessionsChanged: "happy:server-sessions:changed",
     happyLinkExternalReceived: "happy:happy-link:external-received",
     happyLinkExternalTake: "happy:happy-link:external-take",

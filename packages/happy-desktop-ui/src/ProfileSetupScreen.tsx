@@ -82,8 +82,8 @@ export function ProfileSetupScreen(props: ProfileSetupScreenProps) {
             }
             data-testid="profile-setup-screen"
             help={<OnboardingHelp onExternalOpen={props.onExternalOpen} />}
-            // Centred like the Happy Cloud pages that lead here, so the form
-            // sits in the middle of the window rather than under its centre line.
+            // Centred, so the form sits in the middle of the window rather than
+            // under its centre line.
             placement="centered"
             title="Create your profile"
             transitionKey="profile-setup"

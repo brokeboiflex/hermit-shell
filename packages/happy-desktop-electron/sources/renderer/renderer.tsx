@@ -1,13 +1,3 @@
-// First, so the cloud web app's session handling is in place before any
-// module captures `fetch`.
-import {
-    CLOUD_WEB_PICKER_URL,
-    cloudWeb,
-    cloudWebPaymentsReturn,
-    cloudWebSessionEndSubscribe,
-    cloudWebSignIn,
-    cloudWebSignOut,
-} from "./cloudWeb";
 import { useSyncExternalStore, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { RouterProvider } from "@tanstack/react-router";
@@ -20,7 +10,6 @@ import {
     happyAgentWelcomeSlides,
     happyAgentRouterConversationOpen,
     happyAgentRouterGroupOpen,
-    happyAgentRouterConnectionForget,
     happyAgentRouterGroupForget,
     happyAgentRouterHappyLinkOpen,
     happyAgentRouterSubtasksForget,
@@ -59,15 +48,12 @@ import {
     happyAgentAttentionConnection,
     happyAgentAttentionStoreOwnedCreate,
     happyAgentClockStoreCreate,
-    happyExternalLinkParse,
     happyLinkInboxStoreCreate,
     parseHappyUrl,
     serverSessionsStoreCreate,
     serverSourceHostCreate,
-    UserError,
     happyAgentMobileConnectorStoreUnfollowed,
     type AppearanceStore,
-    type HappyAgentChiefOfStaffRequest,
     type HappyAgentClockStore,
     type HappyLinkInboxStore,
     type HappyAgentAttentionStore,
@@ -97,11 +83,9 @@ import {
     SetupHandoff,
     SetupPage,
     ThemeScope,
-    CloudWebSignInScreen,
     WelcomeScreen,
     ZoomIndicator,
     ConnectionShell,
-    CloudConnectScreen,
     CloudSignInNoticeDialog,
     HappyLinkNoticeDialog,
     ConnectionSurface,
@@ -122,7 +106,6 @@ import {
     type DesktopUpdateSnapshot,
     type HappyDesktopBridge,
 } from "../shared/desktopContract";
-import { happyCloudServerNameOf } from "../shared/happyCloud";
 import { desktopStartRequestFromValues, desktopStartupValues } from "./desktopStartupModel";
 import { dockUnreadPublish, happyAgentEntryUnreadCount } from "./dockUnread";
 import { happyAgentListedConversations } from "./happyAgentListed";
@@ -146,9 +129,6 @@ import { happyAgentDirectoryLinkTarget } from "./happyAgentDirectoryLinkTarget";
 import { happyShareLinkClicksRoute } from "./happyShareLinkClicks";
 import { startupValuesStoreCreate, type StartupValuesStore } from "./startupValuesStore";
 import { browserDevBridgeCreate } from "./browserDevBridge";
-import { cloudWebBridgeCreate } from "./cloudWebBridge";
-import { cloudWebTabFollow } from "./cloudWebTab";
-import { cloudWebSignInStoreCreate, type CloudWebSignInStore } from "./cloudWebSignInStore";
 import { localWebBuild } from "./localWebBuild";
 import {
     localWebUpdateStoreCreate,
@@ -161,14 +141,9 @@ import { DesktopHtmlPreviewView } from "./desktopHtmlPreviewView";
 import { desktopPreferencesCreate } from "./desktopPreferences";
 import { desktopHistoryPersistence } from "./desktopHistory";
 import { desktopConnectionUiCreate, type DesktopConnectionUi } from "./desktopConnectionUi";
-import { desktopConnectionDataErase } from "./desktopConnectionDataErase";
 import { desktopConnectionPreferencesCreate } from "./desktopConnectionPreferences";
 import { desktopModelPreferencesCreate } from "./desktopModelPreferences";
 import { desktopCloudAuthRouterCreate, type DesktopCloudAuthEvent } from "./desktopCloudAuthRouter";
-import {
-    desktopCloudConnectStoreCreate,
-    type DesktopCloudConnectStore,
-} from "./desktopCloudConnectStore";
 import {
     desktopCloudSignInNoticeStoreCreate,
     type DesktopCloudSignInNoticeStore,
@@ -308,28 +283,6 @@ function completionSoundMenuItems(current: HappyAgentCompletionSound): MenuItem[
             }),
         ),
     ];
-}
-
-const CLOUD_SIGN_OUT_ACTION = "happy-cloud-sign-out";
-const CLOUD_SERVER_SIGN_OUT_ACTION = "happy-cloud-server-sign-out";
-const CLOUD_REMOVE_ACTION = "happy-cloud-remove";
-const CLOUD_SERVER_MENU_ITEMS: readonly MenuItem[] = [
-    { kind: "separator" },
-    { kind: "item", id: CLOUD_SERVER_SIGN_OUT_ACTION, label: "Sign out of this server" },
-    { kind: "item", id: CLOUD_SIGN_OUT_ACTION, label: "Sign out of Happy Cloud" },
-    { kind: "item", id: CLOUD_REMOVE_ACTION, label: "Remove from Happy", danger: true },
-];
-
-/** The Happy Cloud connection a rail entry stands for, by its entry ID. */
-function cloudServerConnectionOf(id: string): string | undefined {
-    const connectionId = id.startsWith("connection:") ? id.slice("connection:".length) : id;
-    return happyCloudServerNameOf(connectionId) === undefined ? undefined : connectionId;
-}
-
-/** A Happy Cloud server's handle, which picks the placeholder it wears without a picture. */
-function cloudServerNameOf(id: string): string | undefined {
-    const connectionId = cloudServerConnectionOf(id);
-    return connectionId === undefined ? undefined : happyCloudServerNameOf(connectionId);
 }
 
 function completionSoundOf(actionId: string): HappyAgentCompletionSound | undefined {
@@ -502,7 +455,6 @@ function HappyAgentBoundary(props: {
         <RouterProvider
             context={{
                 appearance: props.appearance,
-                ...(cloudWebSession ? { cloudWebSession } : {}),
                 browserContent: props.browserContent,
                 // A development window says which checkout it came from; the
                 // packaged product supplies nothing and shows nothing.
@@ -772,8 +724,6 @@ interface DesktopRendererProps {
     statusBar: StatusBarStore;
     gptLive: GptLiveStore;
     usageAnalytics: UsageAnalyticsStore;
-    /** The sidebar's "+" to Happy Cloud; absent on a shell that cannot sign in to servers. */
-    cloudConnect?: DesktopCloudConnectStore;
     keepAwake: KeepAwakeStore;
     navigationOrder: HappyAgentNavigationOrderStore;
     sidebarCollapse: HappyAgentSidebarCollapseStore;
@@ -834,18 +784,6 @@ function DesktopRenderer(props: DesktopRendererProps) {
                     props.welcome.welcomeAcknowledge();
                 }}
                 onAppearanceChange={(mode) => props.appearance.appearanceSelect(mode)}
-                // Someone who only uses Happy Cloud goes straight there and
-                // this computer is never set up to run a Happy Agent. The start
-                // page stays behind the sheet until a team is connected, so
-                // Back lands on it again.
-                {...(props.cloudConnect
-                    ? {
-                          secondaryAction: {
-                              label: "Connect to Happy Cloud",
-                              onAction: () => props.cloudConnect?.welcomeConnectOpen(),
-                          },
-                      }
-                    : {})}
                 slides={happyAgentWelcomeSlides}
             />
         );
@@ -905,21 +843,7 @@ function DesktopScreens(props: DesktopRendererProps) {
         sidebarVisibility.hidden ||
         (localSetupShown &&
             directory.happyAgents.every((entry) => entry.id === LOCAL_HAPPY_AGENT_ID));
-    // Someone who only uses Happy Cloud never set this computer up to run a
-    // Happy Agent; while a Cloud server is there, this computer has no place in
-    // the rail and the first server stands in for it.
-    const localOff = useSyncExternalStore(
-        props.store.subscribe,
-        () => props.store.get()?.phase === "off",
-        () => props.store.get()?.phase === "off",
-    );
-    const firstRemote = directory.happyAgents.find((entry) => entry.id !== LOCAL_HAPPY_AGENT_ID);
-    const localHidden = localOff && firstRemote !== undefined;
-    const activeId =
-        localHidden &&
-        (directory.activeHappyAgentId ?? LOCAL_HAPPY_AGENT_ID) === LOCAL_HAPPY_AGENT_ID
-            ? firstRemote.id
-            : (directory.activeHappyAgentId ?? LOCAL_HAPPY_AGENT_ID);
+    const activeId = directory.activeHappyAgentId ?? LOCAL_HAPPY_AGENT_ID;
     const main = props.connectionUis.get(LOCAL_HAPPY_AGENT_ID);
     const surfaceWindowState = props.surfaceWindowState;
     // An update of the local daemon does not take the window: the shell stays
@@ -929,20 +853,15 @@ function DesktopScreens(props: DesktopRendererProps) {
     return (
         <DesktopAgentBrokenGate store={props.agentBroken}>
             <ConnectionShell
-                items={(localHidden
-                    ? directory.happyAgents.filter((entry) => entry.id !== LOCAL_HAPPY_AGENT_ID)
-                    : directory.happyAgents
-                ).map((entry) => {
+                items={directory.happyAgents.map((entry) => {
                     // Muted bots remain listed and working; hidden bots leave this set.
                     const listed = happyAgentListedConversations(
                         entry,
                         projectsVisibility,
                         attention,
                     );
-                    const cloudName = cloudServerNameOf(entry.id);
                     return {
                         id: entry.id,
-                        ...(cloudName === undefined ? {} : { placeholderSeed: cloudName }),
                         // The rail names a machine the way its own daemon does. The
                         // host's roster name stands in until that daemon has answered.
                         label: entry.node?.name ?? entry.label,
@@ -961,32 +880,14 @@ function DesktopScreens(props: DesktopRendererProps) {
                 })}
                 selectedId={activeId}
                 onSelect={props.happyAgents.happyAgentActivate}
-                itemMenuItems={(item) => [
-                    ...completionSoundMenuItems(
+                itemMenuItems={(item) =>
+                    completionSoundMenuItems(
                         happyAgentAttentionConnection(attention, item.id).completionSound,
-                    ),
-                    ...(props.cloudConnect && cloudServerConnectionOf(item.id) !== undefined
-                        ? CLOUD_SERVER_MENU_ITEMS
-                        : []),
-                ]}
+                    )
+                }
                 onItemMenuSelect={(id, actionId) => {
                     const sound = completionSoundOf(actionId);
                     if (sound) props.attention.completionSoundUpdate(id, sound);
-                    const cloud = props.bridge.happyCloud;
-                    const connectionId = cloudServerConnectionOf(id);
-                    if (!cloud || connectionId === undefined) return;
-                    if (actionId === CLOUD_SIGN_OUT_ACTION) void cloud.accountSignOut();
-                    if (actionId === CLOUD_SERVER_SIGN_OUT_ACTION) {
-                        const name = happyCloudServerNameOf(connectionId);
-                        if (name !== undefined) void cloud.serverSignOut(name);
-                    }
-                    if (actionId === CLOUD_REMOVE_ACTION) {
-                        const name = happyCloudServerNameOf(connectionId);
-                        if (name === undefined) return;
-                        void cloud.serverRemove(name).then(() => {
-                            props.happyAgents.happyAgentCloudForget?.(connectionId);
-                        });
-                    }
                 }}
                 onReorder={
                     directory.happyAgents.some(
@@ -1001,14 +902,6 @@ function DesktopScreens(props: DesktopRendererProps) {
                 windowControls={props.platform === "desktop"}
                 collapsed={railHidden}
                 error={directory.error}
-                {...(props.cloudConnect
-                    ? {
-                          add: {
-                              label: "Connect to Happy Cloud",
-                              onAdd: props.cloudConnect.connectOpen,
-                          },
-                      }
-                    : {})}
             >
                 <ConnectionSurface
                     key={LOCAL_HAPPY_AGENT_ID}
@@ -1190,12 +1083,9 @@ const unavailableDaemonStore: AppHappyAgentDaemonStore = {
 
 /**
  * This computer's place in the rail while it runs no Happy Agent. Nothing is
- * started until the person asks for it here; Happy Cloud works without it.
+ * started until the person asks for it here.
  */
-function DesktopLocalOffScreen(props: {
-    cloudConnect?: DesktopCloudConnectStore;
-    onboarding: LocalOnboardingStore;
-}) {
+function DesktopLocalOffScreen(props: { onboarding: LocalOnboardingStore }) {
     const setup = useSyncExternalStore(
         props.onboarding.subscribe,
         props.onboarding.get,
@@ -1208,18 +1098,10 @@ function DesktopLocalOffScreen(props: {
                 label: "Set up this computer",
                 onSelect: () => props.onboarding.agentSetupBegin(),
             }}
-            copy="Set up Happy Agent to run agents on this computer's files and tools. Happy Cloud works without it."
+            copy="Set up Happy Agent to run agents on this computer's files and tools."
             data-testid="desktop-local-off-screen"
             scene="cloud-variation"
             {...(setup.failure ? { status: { label: setup.failure.message } } : {})}
-            {...(props.cloudConnect
-                ? {
-                      secondary: {
-                          label: "Connect to Happy Cloud",
-                          onSelect: props.cloudConnect.connectOpen,
-                      },
-                  }
-                : {})}
             title="Happy Agent isn't running here"
         />
     );
@@ -1238,13 +1120,7 @@ function DesktopRuntimeContent(
         props.happyAgents.get,
     );
     const materialized = directory.happyAgents.some((entry) => entry.session !== undefined);
-    if (snapshot?.phase === "off")
-        return (
-            <DesktopLocalOffScreen
-                {...(props.cloudConnect ? { cloudConnect: props.cloudConnect } : {})}
-                onboarding={props.onboarding}
-            />
-        );
+    if (snapshot?.phase === "off") return <DesktopLocalOffScreen onboarding={props.onboarding} />;
     if (!snapshot && !materialized)
         return (
             <DesktopStartupScreen
@@ -1298,9 +1174,6 @@ function DesktopRuntimeContent(
             appearance={props.appearance}
             bridge={props.bridge}
             commandPalette={props.commandPalette}
-            // The web app's one connection is a Happy Cloud server, which
-            // admits a member only once their profile is saved.
-            connectionOnboarding={cloudWeb}
             {...(props.daemon
                 ? {
                       agentReleaseNotes: props.agentReleaseNotes,
@@ -1339,38 +1212,11 @@ function DesktopRuntimeContent(
 
 // Browser-local dev mode is signalled by a CSP-safe meta tag the dev server
 // injects (an inline script would be blocked by the page's script-src policy).
-// The cloud web app is a browser tab too, with its own server as the bridge's
-// Happy Agent.
 const browserLocal =
-    cloudWeb ||
     document.querySelector('meta[name="happy-browser-local"]')?.getAttribute("content") === "1";
-/** The cloud web app's own server, switching and signing out, for Settings. */
-const cloudWebSession = cloudWeb
-    ? {
-          serverName: window.location.hostname.split(".")[0] ?? window.location.hostname,
-          onServerSwitch: () => window.location.assign(CLOUD_WEB_PICKER_URL),
-          onSignOut: () => void cloudWebSignOut(),
-      }
-    : undefined;
-const bridge =
-    window.happyDesktop ??
-    (cloudWeb ? cloudWebBridgeCreate() : browserLocal ? browserDevBridgeCreate() : undefined);
+const bridge = window.happyDesktop ?? (browserLocal ? browserDevBridgeCreate() : undefined);
 desktopRowHeightCheckInstall();
 const root = createRoot(document.getElementById("root")!);
-// The cloud web app has no session, on a first visit or after one ended (its
-// data is then already being erased): the whole page becomes the way to sign in,
-// with nothing else on it.
-if (cloudWeb) {
-    cloudWebPaymentsReturn();
-    const signIn = cloudWebSignInStoreCreate();
-    cloudWebSessionEndSubscribe(() =>
-        root.render(
-            <DesktopAppearance appearance={appearanceStoreCreate()}>
-                <CloudWebSignedOut store={signIn} />
-            </DesktopAppearance>,
-        ),
-    );
-}
 // A todo list is laid over a picture; fetching and decoding both of them now
 // means opening a list paints its background with it instead of a frame later.
 happyAgentSurfaceBackdropsPreload();
@@ -1407,46 +1253,6 @@ function DesktopCloudSignInNotice(props: { store: DesktopCloudSignInNoticeStore 
             onTeamConnect={props.store.teamConnect}
             onTeamsCheck={props.store.teamsCheck}
             view={notice.view}
-        />
-    );
-}
-/** The sidebar "+" to Happy Cloud, full window over everything else. */
-function DesktopCloudConnect(props: {
-    store: DesktopCloudConnectStore;
-    appearance: AppearanceStore;
-}): ReactNode {
-    const view = useSyncExternalStore(props.store.subscribe, props.store.get, props.store.get);
-    const appearance = useSyncExternalStore(
-        props.appearance.subscribe,
-        props.appearance.get,
-        props.appearance.get,
-    );
-    if (!view) return null;
-    return (
-        <CloudConnectScreen
-            appearance={appearance.mode}
-            onAgentAdd={props.store.agentAdd}
-            onBack={props.store.back}
-            onClose={props.store.connectCancel}
-            onCloudOpen={props.store.cloudOpen}
-            onContinue={props.store.connectConfirm}
-            onCreate={props.store.serverCreate}
-            onCreateNameChange={props.store.createNameUpdate}
-            onCreateOpen={props.store.createOpen}
-            onLogoPress={props.store.logoPress}
-            onTestLoginChange={props.store.testLoginUpdate}
-            onTestPasswordChange={props.store.testPasswordUpdate}
-            onTestSignIn={props.store.testSignIn}
-            onEmailOpen={props.store.emailOpen}
-            onEmailChange={props.store.emailUpdate}
-            onEmailCodeSend={props.store.emailCodeSend}
-            onEmailCodeChange={props.store.emailCodeUpdate}
-            onEmailCodeVerify={props.store.emailCodeVerify}
-            onEmailCodeResend={props.store.emailCodeResend}
-            onEmailChangeOpen={props.store.emailChangeOpen}
-            onServerPick={props.store.serverPick}
-            onServersContinue={props.store.serversContinue}
-            view={view}
         />
     );
 }
@@ -1562,9 +1368,6 @@ if (mediaPreviewBridge) {
         // here and the session store navigates through it when a conversation it
         // created should be opened.
         const happyAgentHistory = happyAgentHistoryCreate({
-            // A browser tab's address is a place people paste and share, so the
-            // cloud web app follows it; the desktop window has no address bar.
-            browser: cloudWeb,
             persistence: desktopHistoryPersistence(),
         });
         const happyAgentRouter = happyAgentRouterCreate(happyAgentHistory);
@@ -1674,11 +1477,8 @@ if (mediaPreviewBridge) {
         // settings, followed below as every connection opens; the window keeps
         // the last of them it knew, and its unsent changes, so a machine going
         // offline and coming back finds every choice where it was left.
-        const {
-            store: attention,
-            connectionFollow: attentionFollow,
-            connectionForget: attentionForget,
-        } = happyAgentAttentionStoreOwnedCreate({ persistence: desktopAttentionPersistence() });
+        const { store: attention, connectionFollow: attentionFollow } =
+            happyAgentAttentionStoreOwnedCreate({ persistence: desktopAttentionPersistence() });
         // Whether this window offers the features that are not finished yet. It
         // is kept beside the arrangement above and for the same reason: it says
         // what this installation shows, so no machine has a say in it.
@@ -1771,21 +1571,10 @@ if (mediaPreviewBridge) {
         if (serverHost) appDisposers.push(() => serverHost.sessions[Symbol.dispose]());
         const happyAgents = happyAgentDirectoryStoreCreate(desktopBridge, runtimeStore, {
             cloudHostFor: auth.hostFor,
-            ...(cloudWebSession
-                ? { localHappyCloud: true, localLabel: cloudWebSession.serverName }
-                : {}),
             // Asked for only after the window is up, by when the inbox is.
             happyLinkReceive: (url) => happyLinkInbox.linkReceive(url),
             ...(serverHost
                 ? { servers: serverHost.source, serverSessions: serverHost.sessions }
-                : {}),
-            // Happy Cloud is offered only by builds that are not production, the
-            // hosted Nightly renderer and development windows, and only on a
-            // shell that reaches it itself.
-            ...(serverHost &&
-            desktopBridge.happyCloud &&
-            (localWebBuild !== undefined || desktopBridge.buildIdentity !== undefined)
-                ? { cloud: true }
                 : {}),
             attentionFollow(id, source) {
                 preferencesFor(id);
@@ -1828,20 +1617,6 @@ if (mediaPreviewBridge) {
                     open,
                 ),
             modelPreferencePersistence: preferencesFor,
-            connectionDataErase: (happyAgentId) =>
-                desktopConnectionDataErase({
-                    happyAgentId,
-                    storage: localStorage,
-                    forget: [
-                        (id) => {
-                            const router = connectionUis.get(id)?.router;
-                            if (router) happyAgentRouterConnectionForget(router, id);
-                            happyAgentRouterConnectionForget(happyAgentRouter, id);
-                        },
-                        attentionForget,
-                        (id) => modelPreferences.get(id)?.erase(),
-                    ],
-                }),
             // Remote connections ride through the local daemon, so a local
             // restart must degrade the local surface alone rather than pruning
             // the remotes off the rail the instant the daemon reports an empty
@@ -1866,49 +1641,10 @@ if (mediaPreviewBridge) {
                 );
             },
         });
-        // Written into This Mac's Chief of Staff draft, whose conversation
-        // then opens; nothing is sent for the reader.
-        const chiefOfStaffAsk = async (request: HappyAgentChiefOfStaffRequest) => {
-            const workspace = happyAgents
-                .get()
-                .happyAgents.find((entry) => entry.id === LOCAL_HAPPY_AGENT_ID)?.session?.workspace;
-            if (!workspace)
-                throw new UserError(
-                    "The Happy Agent on this computer isn't connected. Try again once it is.",
-                );
-            await workspace.chiefOfStaffDraftAppend(request);
-            happyAgents.happyAgentActivate(LOCAL_HAPPY_AGENT_ID);
-        };
-        const cloudConnectAction = happyAgents.happyAgentCloudConnect;
-        const cloudConnect =
-            cloudConnectAction && desktopBridge.happyCloud
-                ? desktopCloudConnectStoreCreate({
-                      cloud: desktopBridge.happyCloud,
-                      bridge: desktopBridge,
-                      chiefOfStaffAsk,
-                      // A start page left for Happy Cloud is acknowledged only
-                      // once a team is connected; until then Back returns to it.
-                      connect: async (connectionId) => {
-                          const connected = await cloudConnectAction(connectionId);
-                          if (connected.ok && !welcome.get().welcomeAcknowledged) {
-                              desktopBootSkip();
-                              welcome.welcomeAcknowledge();
-                          }
-                          return connected;
-                      },
-                  })
-                : undefined;
-        if (cloudConnect) {
-            // An invite is accepted in the browser; coming back to the window
-            // brings its server into the list on show.
-            const serversRefresh = () => cloudConnect.serversRefresh();
-            window.addEventListener("focus", serversRefresh);
-            appDisposers.push(() => window.removeEventListener("focus", serversRefresh));
-        }
         // What this window reports about how it is used, read from the same
         // directory the sidebar reads. Development windows send nothing.
         const analytics = desktopAnalyticsCreate({
-            development: (browserLocal && !cloudWeb) || desktopBridge.buildIdentity !== undefined,
+            development: browserLocal || desktopBridge.buildIdentity !== undefined,
             happyAgents,
             ...(desktopBridge.system ? { system: desktopBridge.system } : {}),
             doNotTrack: desktopBridge.doNotTrack === true,
@@ -1940,7 +1676,6 @@ if (mediaPreviewBridge) {
             windowState,
             sidebarVisibility,
             happyAgents,
-            railAdd: cloudConnect !== undefined,
         });
         const notices = desktopCloudSignInNoticeStoreCreate({
             happyAgents,
@@ -2088,8 +1823,6 @@ if (mediaPreviewBridge) {
         });
         appDisposers.push(() => happyLinkInbox[Symbol.dispose]());
         appDisposers.push(happyAgents.subscribe(happyLinkInbox.targetsChange));
-        // The cloud web app's tab wears its server's picture.
-        if (cloudWeb) appDisposers.push(cloudWebTabFollow(happyAgents));
         // A Happy link the reader followed in an artifact or HTML preview page
         // opens on the Happy Agent on screen, as the same link in a message
         // does. One that names an instance is a page's word about where it
@@ -2105,13 +1838,8 @@ if (mediaPreviewBridge) {
         const happyLinksTake = async (): Promise<void> => {
             const take = desktopBridge.happyLinkExternalTake;
             if (!take) return;
-            for (let url = await take(); url !== undefined; url = await take()) {
-                // The browser's hand-back after an invite: the Cloud's servers,
-                // read afresh. The shell has already raised the window.
-                if (cloudConnect && happyExternalLinkParse(url).kind === "cloudServers")
-                    cloudConnect.serversShow();
-                else happyLinkInbox.linkReceive(url);
-            }
+            for (let url = await take(); url !== undefined; url = await take())
+                happyLinkInbox.linkReceive(url);
         };
         const happyLinksReceived = desktopBridge.happyLinkExternalSubscribe?.(() => {
             void happyLinksTake().catch(() => undefined);
@@ -2199,7 +1927,6 @@ if (mediaPreviewBridge) {
                         statusBar={statusBar}
                         gptLive={gptLive}
                         usageAnalytics={analytics.preference}
-                        {...(cloudConnect ? { cloudConnect } : {})}
                         keepAwake={keepAwake}
                         navigationOrder={navigationOrder}
                         sidebarCollapse={sidebarCollapse}
@@ -2223,12 +1950,6 @@ if (mediaPreviewBridge) {
                         agentBroken={agentBroken}
                     />
                 </CodeHighlightWorkers>
-                {/* After the app, not before it: the window folds drag regions in
-                    tree order and later ones win, so the app's title-bar band would
-                    otherwise re-cover the sheet's close button and leave it dead. */}
-                {cloudConnect ? (
-                    <DesktopCloudConnect appearance={appearance} store={cloudConnect} />
-                ) : null}
             </DesktopAppearance>,
         );
     };
@@ -2243,28 +1964,4 @@ if (mediaPreviewBridge) {
             version: 1,
         });
     });
-}
-
-/** The cloud web app's page while it has no sign-in. */
-function CloudWebSignedOut(props: { readonly store: CloudWebSignInStore }) {
-    const { test } = useSyncExternalStore(props.store.subscribe, props.store.get, props.store.get);
-    return (
-        <CloudWebSignInScreen
-            onScreenPress={props.store.screenPress}
-            onSignIn={cloudWebSignIn}
-            onTestLoginChange={props.store.testLoginUpdate}
-            onTestPasswordChange={props.store.testPasswordUpdate}
-            onTestSignIn={props.store.testSignInSubmit}
-            {...(test
-                ? {
-                      testSignIn: {
-                          login: test.login,
-                          password: test.password,
-                          busy: test.busy,
-                          ...(test.error === undefined ? {} : { error: test.error }),
-                      },
-                  }
-                : {})}
-        />
-    );
 }

@@ -14,7 +14,6 @@ import {
     type ServerSessionSnapshot,
 } from "../shared/serverRemoteAuthorization";
 import type { HappyAgentRemoteAuthorization } from "./happyAgentDaemonClient";
-import type { HappyCloudStoredSession, HappyCloudVault } from "./happyCloudVault";
 
 /** A sign-in the person has not finished in the browser within this long is abandoned. */
 const ATTEMPT_LIFETIME_MS = 10 * 60_000;
@@ -53,32 +52,6 @@ export interface ServerSessionsDeps {
      * which is how its roster learns the server's instance.
      */
     healthRead(connectionId: string): Promise<void>;
-    /**
-     * Happy Cloud, which this app reaches itself rather than through the host
-     * Happy Agent, so none of it is in the host's roster.
-     */
-    readonly direct?: {
-        /**
-         * The servers the person added, by connection ID, with their addresses.
-         * Each is listed, and wants a sign-in until it has one.
-         */
-        servers(): ReadonlyMap<string, string>;
-        /**
-         * The account sign-in: its ID, its address, and its method, which is
-         * known rather than discovered. It is never listed, and its token is
-         * never handed to the transport.
-         */
-        readonly account: {
-            readonly connectionId: string;
-            readonly serverUrl: string;
-            readonly method: OAuthAuthenticationMethod;
-        };
-        /**
-         * Where the servers' sign-ins are kept across restarts, encrypted by
-         * the operating system. The account's pass is never kept.
-         */
-        readonly vault?: HappyCloudVault;
-    };
     now?(): number;
 }
 
@@ -95,9 +68,7 @@ export class ServerSessionError extends Error {
 
 /**
  * Team-server sign-ins, held in this process's memory and never the renderer.
- * Quitting the app ends them; a reloaded window finds them still here. Only a
- * Happy Cloud server's refresh token outlives a restart, encrypted by the
- * operating system's secret store, and only where it has one.
+ * Quitting the app ends them; a reloaded window finds them still here.
  */
 export interface ServerSessions extends HappyAgentRemoteAuthorization {
     /** Reads the server's discovery, opens its sign-in page, and names the attempt. */
@@ -112,27 +83,6 @@ export interface ServerSessions extends HappyAgentRemoteAuthorization {
      * `state` it carries; returns whether there was one.
      */
     callbackReceive(url: string): boolean;
-    /** Happy Cloud's added servers changed: they are listed again. */
-    directChanged(): void;
-    /**
-     * Holds tokens the accounts service issued without a browser: a Happy
-     * Cloud server's, or the account's own pass. A server must already be
-     * listed at the credential's address.
-     */
-    directSignIn(connectionId: string, credential: OAuthCredential): void;
-    /**
-     * Drops a Happy Cloud sign-in quietly and hands back its refresh token,
-     * for the caller to revoke, or `null` when it had none.
-     */
-    directSignOut(connectionId: string): string | null;
-    /**
-     * Takes back the Happy Cloud sign-ins kept from an earlier run, each
-     * refreshed before it is used, and keeps every later one. Call it once
-     * the app is ready, when the operating system's secret store answers.
-     */
-    directRestore(): void;
-    /** Whether Happy Cloud sign-ins outlive a restart on this computer. */
-    directKept(): boolean;
     /** Every current access token and its bound address, by connection, for the isolated transport. */
     tokens(): Readonly<Record<string, ServerRemoteCredential>>;
     get(): readonly ServerSessionSnapshot[];
@@ -186,143 +136,27 @@ export function serverSessionsCreate(deps: ServerSessionsDeps): ServerSessions {
     let tokens: Readonly<Record<string, ServerRemoteCredential>> = {};
     let closed = false;
     let rosterTimer: ReturnType<typeof setTimeout> | undefined;
-    const direct = deps.direct;
-    /** Kept sign-ins being refreshed, by connection, until they are held or dropped. */
-    const restoring = new Map<string, { timer?: ReturnType<typeof setTimeout> }>();
-    /** Whether the kept sign-ins were read: until then nothing may overwrite them. */
-    let restored = false;
 
-    /** Happy Cloud's own addresses: every added server, and the account. */
-    const directServers = (): Map<string, string> => {
-        const servers = new Map(direct?.servers());
-        if (direct) servers.set(direct.account.connectionId, direct.account.serverUrl);
-        return servers;
-    };
-    const directIs = (connectionId: string): boolean => directServers().has(connectionId);
-
-    /**
-     * The addresses sign-ins are bound to: the host's roster and Happy
-     * Cloud's own. A Happy Cloud sign-in never waits on the host.
-     */
-    const rosterRead = async (connectionId?: string): Promise<ReadonlyMap<string, string>> => {
-        const own = directServers();
-        if (connectionId !== undefined && own.has(connectionId)) return own;
-        return new Map([...(await deps.roster()), ...own]);
-    };
+    /** The addresses sign-ins are bound to: the host's roster. */
+    const rosterRead = (): Promise<ReadonlyMap<string, string>> => deps.roster();
 
     const publish = (): void => {
-        const ids = new Set([
-            ...sessions.keys(),
-            ...endings.keys(),
-            ...(direct?.servers().keys() ?? []),
-        ]);
-        if (direct) ids.delete(direct.account.connectionId);
-        // A Happy Cloud server never signed in to in this run is signed out
-        // with nothing to say about why.
+        const ids = new Set([...sessions.keys(), ...endings.keys()]);
         snapshot = [...ids].sort().map((connectionId) => {
             if (sessions.has(connectionId)) return { connectionId, state: "signedIn" as const };
-            if (restoring.has(connectionId)) return { connectionId, state: "restoring" as const };
             const message = endings.get(connectionId);
             return message === undefined
                 ? { connectionId, state: "signedOut" as const }
                 : { connectionId, state: "signedOut" as const, message };
         });
         tokens = Object.fromEntries(
-            [...sessions]
-                .filter(([connectionId]) => connectionId !== direct?.account.connectionId)
-                .map(([connectionId, session]) => [
-                    connectionId,
-                    { accessToken: session.credential.accessToken, serverUrl: session.serverUrl },
-                ]),
+            [...sessions].map(([connectionId, session]) => [
+                connectionId,
+                { accessToken: session.credential.accessToken, serverUrl: session.serverUrl },
+            ]),
         );
         rosterWatch();
-        vaultWrite();
         for (const listener of listeners) listener();
-    };
-
-    /** Keeps every Happy Cloud server's refresh token, and only those. */
-    const vaultWrite = (): void => {
-        if (!direct?.vault || !restored || closed) return;
-        const servers = direct.servers();
-        const kept: HappyCloudStoredSession[] = [];
-        for (const [connectionId, session] of [...sessions].sort(([a], [b]) =>
-            a.localeCompare(b),
-        )) {
-            const { refreshToken, refreshUrl, clientId } = session.credential;
-            if (servers.get(connectionId) !== session.serverUrl || !refreshToken || !refreshUrl)
-                continue;
-            kept.push({
-                connectionId,
-                serverUrl: session.serverUrl,
-                refreshToken,
-                refreshUrl,
-                clientId,
-                resource: session.resource,
-            });
-        }
-        // One still being refreshed is kept as it was.
-        for (const stored of restoreKept.values())
-            if (restoring.has(stored.connectionId)) kept.push(stored);
-        direct.vault.write(kept);
-    };
-    /** The kept sign-ins still being refreshed, as they were read. */
-    const restoreKept = new Map<string, HappyCloudStoredSession>();
-
-    /**
-     * Refreshes one kept sign-in. A refusal drops it; an unreachable server
-     * is asked again later, and the sign-in stays kept meanwhile.
-     */
-    const restoreRun = (stored: HappyCloudStoredSession, delay: number): void => {
-        const credential: OAuthCredential = {
-            accessToken: "",
-            expiresAt: 0,
-            refreshToken: stored.refreshToken,
-            refreshUrl: stored.refreshUrl,
-            clientId: stored.clientId,
-            resource: stored.resource,
-            serverUrl: stored.serverUrl,
-        };
-        void refreshOAuthCredential(credential, { fetch: deps.fetch }).then(
-            (fresh) => {
-                if (closed || !restoring.has(stored.connectionId)) return;
-                restoring.delete(stored.connectionId);
-                restoreKept.delete(stored.connectionId);
-                if (
-                    directServers().get(stored.connectionId) !== stored.serverUrl ||
-                    serverUrlNormalize(fresh.serverUrl) !== stored.serverUrl
-                ) {
-                    publish();
-                    return;
-                }
-                sessionStore(stored.connectionId, stored.serverUrl, fresh);
-            },
-            (error: unknown) => {
-                if (closed || !restoring.has(stored.connectionId)) return;
-                if (error instanceof HappyAgentOAuthError && error.code === "network_error") {
-                    const entry = restoring.get(stored.connectionId)!;
-                    entry.timer = setTimeout(
-                        () => restoreRun(stored, Math.min(delay * 2, REFRESH_RETRY_MAX_MS)),
-                        delay,
-                    );
-                    entry.timer.unref?.();
-                    return;
-                }
-                restoring.delete(stored.connectionId);
-                restoreKept.delete(stored.connectionId);
-                endings.set(
-                    stored.connectionId,
-                    "Your sign-in to this server ended. Sign in again.",
-                );
-                publish();
-            },
-        );
-    };
-
-    const restoreDrop = (connectionId: string): void => {
-        const entry = restoring.get(connectionId);
-        if (entry?.timer) clearTimeout(entry.timer);
-        restoring.delete(connectionId);
-        restoreKept.delete(connectionId);
     };
 
     const credentialOf = (session: Session): ServerRemoteCredential => ({
@@ -335,9 +169,8 @@ export function serverSessionsCreate(deps: ServerSessionsDeps): ServerSessions {
      * no longer lists loses its sign-in quietly, and one it now lists at
      * another address loses it with a word saying so.
      */
-    const rosterReconcile = (roster: ReadonlyMap<string, string>): void => {
+    const rosterReconcile = (servers: ReadonlyMap<string, string>): void => {
         if (closed) return;
-        const servers = new Map([...roster, ...directServers()]);
         for (const attempt of attempts.values())
             if (servers.get(attempt.connectionId) !== attempt.serverUrl)
                 attempt.fail(new ServerSessionError(SERVER_MOVED, "server_moved"));
@@ -347,8 +180,6 @@ export function serverSessionsCreate(deps: ServerSessionsDeps): ServerSessions {
             sessionEnd(connectionId, current === undefined ? undefined : SERVER_MOVED);
         }
         for (const connectionId of endings.keys())
-            if (!servers.has(connectionId)) sessionEnd(connectionId, undefined);
-        for (const connectionId of [...restoring.keys()])
             if (!servers.has(connectionId)) sessionEnd(connectionId, undefined);
     };
 
@@ -374,7 +205,6 @@ export function serverSessionsCreate(deps: ServerSessionsDeps): ServerSessions {
         const session = sessions.get(connectionId);
         if (session?.timer) clearTimeout(session.timer);
         sessions.delete(connectionId);
-        restoreDrop(connectionId);
         if (message === undefined) endings.delete(connectionId);
         else endings.set(connectionId, message);
         publish();
@@ -384,19 +214,6 @@ export function serverSessionsCreate(deps: ServerSessionsDeps): ServerSessions {
         if (session.timer) clearTimeout(session.timer);
         delete session.timer;
         const expiresAt = session.credential.expiresAt;
-        // The account's token is a short pass that is never refreshed: it
-        // simply ends when it expires, and the next use signs in again.
-        if (connectionId === direct?.account.connectionId) {
-            if (expiresAt === null || closed) return;
-            session.timer = setTimeout(
-                () => {
-                    if (sessions.get(connectionId) === session) sessionEnd(connectionId, undefined);
-                },
-                Math.max(0, expiresAt - now()),
-            );
-            session.timer.unref?.();
-            return;
-        }
         const wait =
             delay ??
             (expiresAt === null
@@ -426,7 +243,6 @@ export function serverSessionsCreate(deps: ServerSessionsDeps): ServerSessions {
         };
         sessions.set(connectionId, session);
         endings.delete(connectionId);
-        restoreDrop(connectionId);
         refreshSchedule(connectionId, session);
         publish();
         return session;
@@ -442,12 +258,6 @@ export function serverSessionsCreate(deps: ServerSessionsDeps): ServerSessions {
     ): Promise<ServerRemoteCredential | undefined> => {
         const session = sessions.get(connectionId);
         if (!session) return Promise.resolve(undefined);
-        // Nothing refreshes the account; a refused account token ends it.
-        if (connectionId === direct?.account.connectionId) {
-            if (rejected === undefined || session.credential.accessToken === rejected)
-                sessionEnd(connectionId, undefined);
-            return Promise.resolve(undefined);
-        }
         if (session.refreshing) return session.refreshing;
         if (rejected !== undefined && session.credential.accessToken !== rejected)
             return Promise.resolve(credentialOf(session));
@@ -457,7 +267,7 @@ export function serverSessionsCreate(deps: ServerSessionsDeps): ServerSessions {
                 // only while the roster still names it there.
                 let servers: ReadonlyMap<string, string>;
                 try {
-                    servers = await rosterRead(connectionId);
+                    servers = await rosterRead();
                 } catch {
                     throw new HappyAgentOAuthError(
                         "network_error",
@@ -465,7 +275,7 @@ export function serverSessionsCreate(deps: ServerSessionsDeps): ServerSessions {
                     );
                 }
                 if (sessions.get(connectionId) !== session) return undefined;
-                if (!directIs(connectionId)) rosterReconcile(servers);
+                rosterReconcile(servers);
                 if (sessions.get(connectionId) !== session) return undefined;
                 const credential = await refreshOAuthCredential(session.credential, {
                     fetch: deps.fetch,
@@ -567,28 +377,13 @@ export function serverSessionsCreate(deps: ServerSessionsDeps): ServerSessions {
         rosterWatch();
     };
 
-    // Happy Cloud's servers the person added before are listed from the start.
-    if (direct) publish();
-
     return {
         credential(connectionId) {
             const session = sessions.get(connectionId);
-            if (!session) return undefined;
-            // An expired account pass is gone even before its timer says so.
-            const expiresAt = session.credential.expiresAt;
-            if (
-                connectionId === direct?.account.connectionId &&
-                expiresAt !== null &&
-                expiresAt <= now()
-            )
-                return undefined;
-            return credentialOf(session);
+            return session ? credentialOf(session) : undefined;
         },
         refresh: refreshRun,
         serverMoved(connectionId, serverUrl) {
-            // Happy Cloud is never in the host's roster, so a miss there says
-            // nothing about it; only its own list of servers ends its sign-ins.
-            if (directIs(connectionId)) return;
             for (const attempt of attempts.values())
                 if (attempt.connectionId === connectionId && attempt.serverUrl === serverUrl)
                     attempt.fail(new ServerSessionError(SERVER_MOVED, "server_moved"));
@@ -602,16 +397,13 @@ export function serverSessionsCreate(deps: ServerSessionsDeps): ServerSessions {
         },
         async signInBegin(connectionId) {
             if (closed) throw new ServerSessionError("Happy is closing.", "closed");
-            const url = (await rosterRead(connectionId)).get(connectionId);
+            const url = (await rosterRead()).get(connectionId);
             if (url === undefined)
                 throw new ServerSessionError(
                     "This server isn't one you sign in to from Happy.",
                     "not_found",
                 );
-            const method =
-                direct?.account.connectionId === connectionId
-                    ? direct.account.method
-                    : await discoveryRead(url);
+            const method = await discoveryRead(url);
             let signIn: OAuthSignIn;
             try {
                 // The token must name this address in its audience, so a server
@@ -646,9 +438,7 @@ export function serverSessionsCreate(deps: ServerSessionsDeps): ServerSessions {
                 // The code is redeemed, and its tokens kept, only for the
                 // address the attempt began for.
                 const bound = async (): Promise<void> => {
-                    const current = (await rosterRead(connectionId).catch(() => undefined))?.get(
-                        connectionId,
-                    );
+                    const current = (await rosterRead().catch(() => undefined))?.get(connectionId);
                     if (current !== url)
                         throw new ServerSessionError(
                             "This server's address changed while you were signing in. Sign in again.",
@@ -691,7 +481,6 @@ export function serverSessionsCreate(deps: ServerSessionsDeps): ServerSessions {
                     throw new ServerSessionError("Signing in was cancelled.", "cancelled");
                 attemptEnd(attempt);
                 sessionStore(connectionId, url, credential);
-                if (directIs(connectionId)) return;
                 // The roster learns the server's instance from a health it relays.
                 await deps.healthRead(connectionId).catch(() => undefined);
             });
@@ -772,46 +561,6 @@ export function serverSessionsCreate(deps: ServerSessionsDeps): ServerSessions {
             return true;
         },
         tokens: () => tokens,
-        directChanged() {
-            if (!closed) publish();
-        },
-        directSignIn(connectionId, credential) {
-            if (closed) throw new ServerSessionError("Happy is closing.", "closed");
-            const url = directServers().get(connectionId);
-            if (url === undefined || serverUrlNormalize(credential.serverUrl) !== url)
-                throw new ServerSessionError(
-                    "This sign-in is for a different server.",
-                    "audience_mismatch",
-                );
-            sessionStore(connectionId, url, credential);
-        },
-        directSignOut(connectionId) {
-            const refreshToken =
-                sessions.get(connectionId)?.credential.refreshToken ??
-                restoreKept.get(connectionId)?.refreshToken ??
-                null;
-            sessionEnd(connectionId, undefined);
-            return refreshToken;
-        },
-        directRestore() {
-            if (restored || closed || !direct?.vault) return;
-            const kept = direct.vault.available() ? direct.vault.read() : [];
-            restored = true;
-            const servers = directServers();
-            for (const stored of kept) {
-                if (
-                    stored.connectionId === direct.account.connectionId ||
-                    servers.get(stored.connectionId) !== stored.serverUrl ||
-                    sessions.has(stored.connectionId)
-                )
-                    continue;
-                restoring.set(stored.connectionId, {});
-                restoreKept.set(stored.connectionId, stored);
-                restoreRun(stored, REFRESH_RETRY_MIN_MS);
-            }
-            publish();
-        },
-        directKept: () => direct?.vault?.available() === true,
         get: () => snapshot,
         subscribe(listener) {
             listeners.add(listener);
@@ -824,7 +573,6 @@ export function serverSessionsCreate(deps: ServerSessionsDeps): ServerSessions {
             for (const attempt of attempts.values())
                 attempt.fail(new ServerSessionError("Happy is closing.", "closed"));
             for (const session of sessions.values()) if (session.timer) clearTimeout(session.timer);
-            for (const connectionId of [...restoring.keys()]) restoreDrop(connectionId);
             for (const id of settled.keys()) settledTake(id);
             sessions.clear();
             endings.clear();

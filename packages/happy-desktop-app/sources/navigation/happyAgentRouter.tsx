@@ -17,7 +17,6 @@ import { HappyAgentOnboardingBoundary } from "../components/HappyAgentOnboarding
 import {
     happyAgentBotAttention,
     happyAgentFileLinkParse,
-    happyAgentProviderAddPageOf,
     parseHappyUrl,
 } from "happy-desktop-state";
 import type {
@@ -68,10 +67,8 @@ import {
 import type { AppBugReportHost } from "../bugReport";
 import {
     AppHappyAgentSettingsView,
-    type AppCloudWebSession,
     HAPPY_AGENT_SETTINGS_DEFAULT_CATEGORY,
     happyAgentSettingsCategoryExists,
-    happyAgentSettingsPageOpen,
     happyAgentSettingsSectionOf,
     HAPPY_AGENT_SETTINGS_MOVED_CATEGORIES,
     type AppHappyAgentDaemonStore,
@@ -89,8 +86,6 @@ import type { AppHappyAgentReleaseNotesStore, AppHappyAgentUpdateStore } from ".
  * can be constructed before any Happy Agent connects.
  */
 export interface HappyAgentRouterContext {
-    /** The cloud web app's session at the edge, present only in that build. */
-    readonly cloudWebSession?: AppCloudWebSession;
     /** A remote daemon uses its own setup inside this connection's router. */
     readonly connectionOnboarding?: boolean;
     /** Native Chromium guest renderer, present only in packaged Electron. */
@@ -268,10 +263,6 @@ function HappyAgentRootContent({ context }: { readonly context: HappyAgentRouter
             // their placeholder, and it holds still while they type.
             placeholderSeed={entry?.remoteId ?? entry?.id ?? "happy-agent"}
             onRetry={setup.retry}
-            {...(setup.cloudProviders ? { cloudProviders: setup.cloudProviders } : {})}
-            {...(setup.plugins ? { plugins: setup.plugins } : {})}
-            {...(setup.payments ? { payments: setup.payments } : {})}
-            {...(setup.providers ? { providers: setup.providers } : {})}
             mobilePairingMethod={context.mobilePairingMethod}
             {...(context.experiments ? { experiments: context.experiments } : {})}
             {...(context.externalLinkOpen ? { onExternalOpen: context.externalLinkOpen } : {})}
@@ -502,15 +493,6 @@ const feedRoute = createRoute({
     path: "/feed/$happyAgentId",
 });
 
-/**
- * One person's profile on a Happy Cloud server. The server is in the address
- * because the person is one of its members.
- */
-const userProfileRoute = createRoute({
-    getParentRoute: () => workspaceRoute,
-    path: "/people/$happyAgentId/$userId",
-});
-
 /** The plugins one machine offers, and the team's installations of them. */
 const pluginsRoute = createRoute({
     getParentRoute: () => workspaceRoute,
@@ -646,7 +628,6 @@ const routeTree = rootRoute.addChildren([
         pluginsRoute,
         pluginRoute,
         feedRoute,
-        userProfileRoute,
         surfaceRoute.addChildren([surfaceChatRoute]),
         botCreateRoute,
         taskCreateRoute,
@@ -680,7 +661,6 @@ function HappyAgentWorkspaceLayout() {
         surface: matched.has(surfaceRoute.id),
         taskCreate: matched.has(taskCreateRoute.id),
         bugReportCreate: matched.has(bugReportCreateRoute.id),
-        userProfile: matched.has(userProfileRoute.id),
     };
     // The router is constructed before RouterProvider supplies the real context,
     // so the very first render of a deep-linked URL can arrive with an empty
@@ -738,15 +718,6 @@ function HappyAgentWorkspaceLayout() {
             {...(shows.artifacts && params.artifactId !== undefined
                 ? { artifactId: params.artifactId }
                 : {})}
-            {...(shows.userProfile && params.userId !== undefined
-                ? { userProfileId: params.userId }
-                : {})}
-            onUserProfileOpen={(happyAgentId, userId) =>
-                void navigate({
-                    params: { happyAgentId, userId },
-                    to: "/people/$happyAgentId/$userId",
-                })
-            }
             {...(shows.surface && params.surfaceId !== undefined
                 ? { surfaceId: params.surfaceId }
                 : {})}
@@ -902,7 +873,6 @@ function HappyAgentSettingsRoute() {
         <AppHappyAgentSettingsView
             appearance={context.appearance}
             {...(context.externalLinkOpen ? { externalLinkOpen: context.externalLinkOpen } : {})}
-            {...(context.cloudWebSession ? { cloudWebSession: context.cloudWebSession } : {})}
             update={context.update}
             onUpdateApply={context.onUpdateApply}
             {...(context.daemon ? { daemon: context.daemon } : {})}
@@ -922,12 +892,6 @@ function HappyAgentSettingsRoute() {
                 void navigate({ params: { section }, to: "/settings/$section" })
             }
             onClose={() => happyAgentRouterSettingsClose(router)}
-            onUserProfileOpen={(happyAgentId, userId) =>
-                void navigate({
-                    params: { happyAgentId, userId },
-                    to: "/people/$happyAgentId/$userId",
-                })
-            }
             happyAgents={context.happyAgents}
             platform={context.platform}
             section={params.section ?? HAPPY_AGENT_SETTINGS_DEFAULT_CATEGORY}
@@ -1092,12 +1056,7 @@ export function happyAgentRouterHappyLinkOpen(
     const target = directory?.happyAgents.find((entry) => entry.id === happyAgentId);
     const session = target?.session;
     if (context === undefined || happyAgentId === undefined || session === undefined) return;
-    // A provider add link is a settings page happy-agent-client doesn't read yet.
-    const providerAddPage = happyAgentProviderAddPageOf(url);
-    const link =
-        providerAddPage === undefined
-            ? parseHappyUrl(url)
-            : { type: "settings" as const, page: providerAddPage, instanceId: undefined };
+    const link = parseHappyUrl(url);
     if (link === undefined) return;
     if (link.instanceId !== undefined && link.instanceId !== target?.instanceId) return;
     if (link.type === "file") {
@@ -1109,7 +1068,6 @@ export function happyAgentRouterHappyLinkOpen(
         const section = happyAgentSettingsSectionOf(link.page);
         if (section === undefined) return;
         void router.navigate({ params: { section }, to: "/settings/$section" });
-        happyAgentSettingsPageOpen(session, link.page);
         return;
     }
     const reference = link.reference;

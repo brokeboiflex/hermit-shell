@@ -24,21 +24,15 @@ import type {
     HappyAgentSubtaskActivity,
 } from "../happyAgent/happyAgentTypes.js";
 import type { HappyAgentServiceTier } from "../happyAgentServiceTier.js";
-import type {
-    HappyAgentCompute,
-    HappyAgentRepositoryBinding,
-} from "../happyAgent/happyAgentTypes.js";
 import type { HappyAgentSync } from "./happyAgentSync.js";
 import type { UserEnvironmentReport } from "./userEnvironment.js";
 import type { UserProfile } from "./userProfiles.js";
-import type { HappyAgentPreview } from "../happyAgent/happyAgentPreviewsStore.js";
 
 export type { MutationId };
 
 export type ConnectionState = "connecting" | "live" | "reconnecting" | "closed";
 
 export type ToolPresentation =
-    | ({ readonly kind: "preview" } & HappyAgentPreview)
     | {
           kind: "agent_spawn";
           model?: { modelId: string; providerId: string; name: string };
@@ -147,14 +141,6 @@ interface BaseChatElement {
     createdAt: number;
 }
 
-/** A Happy Cloud `file` block: the server fills in the type and size once it has the bytes. */
-export interface UserMessageFile {
-    readonly attachment: string;
-    readonly name: string;
-    readonly mimeType?: string;
-    readonly size?: number;
-}
-
 export interface UserMessageElement extends BaseChatElement {
     kind: "user_message";
     messageId: string;
@@ -167,8 +153,6 @@ export interface UserMessageElement extends BaseChatElement {
     delivery: "pending_steering" | "sent";
     text: string;
     attachments?: readonly { data: string; mediaType: string }[];
-    /** Files uploaded to Happy Cloud and named by this message, by attachment ID. */
-    files?: readonly UserMessageFile[];
     source?: "notification";
     /**
      * The agent that put this message in the user slot, when one did, and where
@@ -505,10 +489,6 @@ export interface SessionState {
     title?: string;
     recap?: string;
     titleStatus: "error" | "generating" | "idle" | "ready";
-    /** Where its tools run, on a Happy Cloud server; absent on a Happy Agent. */
-    compute?: HappyAgentCompute;
-    /** The repository its agent attached, on a Happy Cloud server. */
-    repository?: HappyAgentRepositoryBinding;
     effort?: string;
     serviceTier?: HappyAgentServiceTier;
     permissionMode: string;
@@ -953,19 +933,8 @@ export interface SendMessageInput {
         | { type: "text"; text: string }
         | { type: "image"; mediaType: string; data: string }
         | SendMessageToolCallRequest
-        | SendMessageFileBlock
     )[];
     text: string;
-}
-
-/**
- * A file already uploaded to a Happy Cloud conversation, named by its
- * attachment ID. Only a Happy Cloud server takes it.
- */
-export interface SendMessageFileBlock {
-    type: "file";
-    attachment: string;
-    name: string;
 }
 
 /**

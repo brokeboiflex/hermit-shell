@@ -37,11 +37,6 @@ import {
 import { AppGptLivePhone } from "./gptLive/AppGptLivePhone";
 import { artifactBesideOpen } from "./artifactOpen";
 import {
-    conversationPreviewOpen,
-    useConversationPreviews,
-    type ConversationPreviewContext,
-} from "./conversationPreviews";
-import {
     artifactLiveRendererCreate,
     conversationInlinePagesCreate,
     genUiInlineHostCreate,
@@ -67,9 +62,6 @@ import type {
     HappyAgentArtifactLive,
     HappyAgentArtifactPlaces,
     HappyAgentArtifacts,
-    HappyAgentCheckout,
-    HappyAgentCheckoutsSnapshot,
-    HappyAgentCheckoutsStore,
     HappyAgentArtifactTitlesSnapshot,
     HappyAgentArtifactTitlesStore,
     HappyAgentArtifactViewerStore,
@@ -129,7 +121,6 @@ import type {
     HappyAgentInstructionsStore,
     HappyAgentSecurityPolicyStore,
     HappyAgentSecretsStore,
-    HappyAgentClusterSecretsStore,
     HappyAgentAvailabilitySnapshot,
     HappyAgentProviderUsageStore,
     HappyAgentProvidersStore,
@@ -170,7 +161,6 @@ import type {
     HappyAgentWorkingWait,
     HappyAgentWorktreeId,
     HappyAgentLinkOpenPlacement,
-    HappyAgentCompute,
     HappyAgentSettingsStore,
     KeepAwakeMode,
     KeepAwakeStore,
@@ -261,10 +251,6 @@ import {
     FileChangeDiff,
     CodeEditor,
     ComposerFooterBar,
-    ComputeChip,
-    RepositoryChip,
-    type RepositoryChipRepository,
-    type ComputeChipCompute,
     ComposerModelControl,
     type ComposerModelUsageWatch,
     ConversationDock,
@@ -359,7 +345,6 @@ import {
     happyAgentComposerModelControlProps,
     happyAgentComposerModelUsageWatch,
     sidebarReorderMove,
-    type GenUiClusterSecretHost,
     type GenUiSecretHost,
     type IconName,
     type MenuItem,
@@ -415,7 +400,6 @@ import {
 } from "./views/HappyAgentToolMediaPreview";
 import { BlueprintView } from "./views/BlueprintView";
 import { HappyAgentPluginsSurface } from "./views/HappyAgentPluginsSurface";
-import { HappyAgentUserProfileSurface } from "./views/HappyAgentUserProfileSurface";
 import { HappyAgentFeedSurface } from "./views/HappyAgentFeedSurface";
 import { botFace, ownerInitials, taskFace } from "./agentFaces";
 import { sidebarReadAheadRows } from "./sidebarReadAhead";
@@ -423,10 +407,7 @@ import type {
     AppHappyAgentDaemonSnapshot,
     AppHappyAgentDaemonStore,
 } from "./views/AppHappyAgentSettingsView";
-import {
-    happyAgentSettingsPageOpen,
-    happyAgentSettingsSectionOf,
-} from "./views/AppHappyAgentSettingsView";
+import { happyAgentSettingsSectionOf } from "./views/AppHappyAgentSettingsView";
 import type {
     AppHappyAgentReleaseNotesStore,
     AppHappyAgentUpdateSnapshot,
@@ -582,11 +563,6 @@ export interface AppHappyAgentEntry {
     readonly instanceId?: string;
     /** A team server added by its address: that address, as the host Happy Agent normalized it. */
     readonly serverUrl?: string;
-    /**
-     * A Happy Cloud server. It refuses to archive, delete, or demote its Chief
-     * of Staff, so nothing here offers to.
-     */
-    readonly happyCloud?: true;
     /** This Happy Agent runs no workspaces, so it has no projects to offer. */
     readonly workspacesUnavailable?: true;
     readonly projects: readonly HappyAgentProjectGroup[];
@@ -675,16 +651,6 @@ export interface AppHappyAgentSetup {
     /** Counts pairing codes down during setup, before the session's stores load. */
     readonly clock: HappyAgentClockStore;
     readonly retry: () => void;
-    /** A Happy Cloud server's AI connections, for its onboarding's AI step. */
-    readonly cloudProviders?: () =>
-        | import("happy-desktop-state").HappyAgentCloudProvidersStore
-        | undefined;
-    /** A Happy Cloud server's plugins, for its onboarding's plugins step. */
-    readonly plugins?: () => import("happy-desktop-state").HappyAgentPluginsStore | undefined;
-    /** A Happy Cloud server's payments, for its onboarding's payment steps. */
-    readonly payments?: () => import("happy-desktop-state").HappyAgentPaymentsStore | undefined;
-    /** The team's own providers, which onboarding's AI step adds a custom one to. */
-    readonly providers?: () => import("happy-desktop-state").HappyAgentProvidersStore;
 }
 
 export interface AppHappyAgentSession {
@@ -727,49 +693,12 @@ export interface AppHappyAgentSession {
      * machine's configuration, which leaves that category saying so.
      */
     readonly providers?: HappyAgentProvidersStore;
-    /** Settings › Members, on a Happy Cloud server; absent or undefined elsewhere. */
-    readonly members?: () => import("happy-desktop-state").HappyAgentMembersStore | undefined;
-    /** One member's profile, on Happy Cloud; absent or undefined elsewhere. */
-    readonly userProfile?: (
-        userId: string,
-    ) => import("happy-desktop-state").HappyAgentUserProfileStore | undefined;
-    /** Settings › Repositories, on a Happy Cloud server; absent or undefined elsewhere. */
-    readonly repositories?: () =>
-        | import("happy-desktop-state").HappyAgentRepositoriesStore
-        | undefined;
-    /** The plugins this machine offers and its team installed; absent or undefined where it offers none. */
+    /** The plugins this machine offers and installed; absent or undefined where it offers none. */
     readonly plugins?: () => import("happy-desktop-state").HappyAgentPluginsStore | undefined;
-    /** The repositories one cloud agent checked out; absent or undefined anywhere but Happy Cloud. */
-    readonly checkouts?: (
-        agentId: string,
-    ) => import("happy-desktop-state").HappyAgentCheckoutsStore | undefined;
-    /** The Gen UI actions a Happy Cloud server runs, such as secret forms; absent or undefined elsewhere. */
+    /** The Gen UI actions a Happy Agent runs, such as secret forms; absent or undefined where it runs none. */
     readonly genUiActions?: () => import("happy-desktop-state").HappyAgentGenUiActions | undefined;
-    /** Settings › Onboarding, on a Happy Cloud server; absent or undefined elsewhere. */
-    readonly onboardingSettings?: () =>
-        | import("happy-desktop-state").HappyAgentOnboardingSettingsStore
-        | undefined;
-    /** Settings › Payments, on a Happy Cloud server that takes payments; absent or undefined elsewhere. */
-    readonly payments?: () => import("happy-desktop-state").HappyAgentPaymentsStore | undefined;
-    /** Settings › Compute, on a Happy Cloud server; absent or undefined elsewhere. */
-    readonly compute?: () => import("happy-desktop-state").HappyAgentComputeStore | undefined;
     /** Settings › Usage's daily token history; absent or undefined where it cannot be read. */
     readonly dailyUsage?: () => import("happy-desktop-state").HappyAgentDailyUsageStore | undefined;
-    /**
-     * Settings › Inference, on a Happy Cloud server in the desktop or on
-     * the web; absent or undefined elsewhere.
-     */
-    readonly cloudProviders?: () =>
-        | import("happy-desktop-state").HappyAgentCloudProvidersStore
-        | undefined;
-    /**
-     * Settings › Inference › Import, which copies credentials found on this
-     * computer to the server. Absent, or answering undefined, where there is
-     * no such import: anywhere but a Happy Cloud server reached from a desktop.
-     */
-    readonly credentialImport?: () =>
-        | import("happy-desktop-state").HappyAgentCredentialImportStore
-        | undefined;
     /** The voice controller and prompt this machine's calls start with, as Voice settings edit them. */
     readonly voiceSettings?: HappyAgentVoiceSettingsStore;
     /** This connection's authenticated person's task membership preference. */
@@ -782,8 +711,6 @@ export interface AppHappyAgentSession {
     readonly securityPolicy?: HappyAgentSecurityPolicyStore;
     /** This Happy Agent's global write-only environment bundles. */
     readonly secrets?: () => HappyAgentSecretsStore;
-    /** Happy Cloud's typed secret catalog; undefined on a Happy Agent daemon. */
-    readonly clusterSecrets?: () => HappyAgentClusterSecretsStore | undefined;
     /**
      * What this Happy Agent's agents and people have published. A Happy Agent
      * that keeps none reports so through its catalog, and every surface that
@@ -1064,10 +991,6 @@ export interface AppHappyAgentViewProps {
     onPluginOpen?(happyAgentId: string, pluginId: string): void;
     /** Leaves the open artifact for wherever it was opened from. */
     onArtifactClose?(happyAgentId: string): void;
-    /** The person whose profile the URL opens, on the addressed Happy Agent. */
-    userProfileId?: string;
-    /** Addresses one person's profile on one Happy Agent. */
-    onUserProfileOpen?(happyAgentId: string, userId: string): void;
     /** Whether the URL addresses the addressed Happy Agent's feed. */
     feedOpen?: boolean;
     /** Addresses that feed. */
@@ -1581,8 +1504,6 @@ function rowMenuItems(
      * the window keeps no such record, and the row offers neither act.
      */
     botAttention: ((bot: HappyAgentBot) => HappyAgentBotAttention) | undefined,
-    /** Whether this server keeps its Chief of Staff for good, as Happy Cloud does. */
-    chiefOfStaffKept: boolean,
 ): MenuItem[] {
     // A subtask's title is the daemon's to write, so archiving is all its row
     // offers. The task stops and leaves its bot; its history and its worktree
@@ -1624,23 +1545,18 @@ function rowMenuItems(
         ];
     const bot = bots.find((candidate) => candidate.workspaceId === item.id);
     if (bot) {
-        // Happy Cloud's Chief of Staff can be renamed and given a new face,
-        // but never archived.
-        const archivable = !(chiefOfStaffKept && bot.systemKey === "chief_of_staff");
         const groups: MenuItem[][] = [
             [{ kind: "item", id: ROW_MENU_RENAME, label: "Rename bot", icon: "edit" }],
             botAttention ? botAttentionMenuItems(botAttention(bot)) : [],
-            archivable
-                ? [
-                      {
-                          kind: "item",
-                          id: ROW_MENU_ARCHIVE,
-                          label: "Archive bot",
-                          icon: "archive",
-                          danger: true,
-                      },
-                  ]
-                : [],
+            [
+                {
+                    kind: "item",
+                    id: ROW_MENU_ARCHIVE,
+                    label: "Archive bot",
+                    icon: "archive",
+                    danger: true,
+                },
+            ],
         ];
         return groups
             .filter((group) => group.length > 0)
@@ -3426,41 +3342,6 @@ function todoListActiveCount(store: HappyAgentTodoListStore | undefined): number
         : undefined;
 }
 
-const CHECKOUTS_NONE: HappyAgentCheckoutsSnapshot = { status: "loading", checkouts: [] };
-const checkoutsNoop = () => CHECKOUTS_NONE;
-const checkoutsSubscribeNoop = () => () => undefined;
-
-/** One repository chip in the composer, keyed by what it stands for. */
-interface RepositoryChipEntry {
-    readonly id: string;
-    readonly repository: RepositoryChipRepository;
-}
-
-/** One checkout as the composer's repository chip draws it. */
-function checkoutChipOf(checkout: HappyAgentCheckout): RepositoryChipEntry {
-    return { id: checkout.id, repository: checkoutChipRepository(checkout) };
-}
-
-function checkoutChipRepository(checkout: HappyAgentCheckout): RepositoryChipRepository {
-    return {
-        name: checkout.repository.name,
-        branch: checkout.branch,
-        checkout: checkout.status,
-        ...(checkout.error === null ? {} : { error: checkout.error }),
-        ...(checkout.repository.avatar ? { avatarUrl: checkout.repository.avatar.url } : {}),
-        ...(checkout.access === "readOnly" ? { readOnly: true } : {}),
-        ...(checkout.changes?.comparable
-            ? {
-                  changes: {
-                      files: checkout.changes.changedFiles,
-                      added: checkout.changes.insertions,
-                      deleted: checkout.changes.deletions,
-                  },
-              }
-            : {}),
-    };
-}
-
 const ARTIFACTS_SIDEBAR_ITEM: SidebarItem = {
     icon: "doc",
     tint: "purple",
@@ -3835,10 +3716,8 @@ export function AppHappyAgentView(props: AppHappyAgentViewProps) {
         updateStore.get,
     );
     const updateHost = hostHappyAgent(directory);
-    // Local machines share the host's tier preferences; Cloud files stay ungrouped.
-    const changeTiersStore = active?.happyCloud
-        ? undefined
-        : updateHost?.session?.workspace.changeTiers;
+    // Every machine shares the host's tier preferences.
+    const changeTiersStore = updateHost?.session?.workspace.changeTiers;
     // An update under way owns the slot: the window keeps working beside it,
     // and the offer comes back only once it has finished and been cleared.
     const sidebarUpdate = updateProgress ? (
@@ -4182,7 +4061,6 @@ export function AppHappyAgentView(props: AppHappyAgentViewProps) {
                         props.attention
                             ? (bot) => happyAgentBotAttention(attention, happyAgent.id, bot.id)
                             : undefined,
-                        happyAgent.happyCloud === true,
                     ),
                 );
             }}
@@ -4642,7 +4520,6 @@ export function AppHappyAgentView(props: AppHappyAgentViewProps) {
     // offered only once it is downloaded and there is something to apply it
     // with, which is the same test the sidebar's own update control makes.
     const paletteSubject: HappyAgentPaletteSubject = {
-        happyCloud: active?.happyCloud === true,
         bots: active?.bots ?? [],
         tasks: active?.tasks ?? NO_TASKS,
         chatId: props.chatId,
@@ -4692,7 +4569,6 @@ export function AppHappyAgentView(props: AppHappyAgentViewProps) {
         onTaskCreateOpen: props.onTaskCreateOpen,
         onSurfaceOpen: props.onSurfaceOpen,
         ...(artifactOpen ? { onArtifactOpen: artifactOpen } : {}),
-        ...(props.onUserProfileOpen ? { onUserProfileOpen: props.onUserProfileOpen } : {}),
         ...(props.onSurfaceOpen && active?.session?.surfaces
             ? {
                   onVaultItemOpen: (happyAgentId: string, surfaceId: string, itemId: string) => {
@@ -4804,25 +4680,6 @@ export function AppHappyAgentView(props: AppHappyAgentViewProps) {
                 </>
             );
         }
-
-        // A person's profile belongs to the Happy Cloud server they are on; a
-        // server without profiles shows nothing here, as it offers no way in.
-        const userProfileStore =
-            props.userProfileId !== undefined && active?.happyCloud
-                ? active.session?.userProfile?.(props.userProfileId)
-                : undefined;
-        if (userProfileStore && active?.session)
-            return (
-                <>
-                    {desktop ? <WindowDragRegion /> : null}
-                    <HappyAgentUserProfileSurface
-                        key={props.userProfileId}
-                        clock={active.session.clock}
-                        onTaskOpen={(task) => taskOpen(task.id)}
-                        store={userProfileStore}
-                    />
-                </>
-            );
 
         // The plugins belong to the addressed machine, like its artifacts. A
         // machine that offers none says so, in case its address was reached
@@ -5005,7 +4862,6 @@ export function AppHappyAgentView(props: AppHappyAgentViewProps) {
             return (
                 <HappyAgentWorkspaceSurface
                     instanceId={active.instanceId}
-                    {...(active.session.checkouts ? { checkoutsOf: active.session.checkouts } : {})}
                     {...(active.workspacesUnavailable ? { workspacesUnavailable: true } : {})}
                     {...(referenceSurfaces ? { referenceSurfaces } : {})}
                     availability={
@@ -5095,8 +4951,7 @@ export function AppHappyAgentView(props: AppHappyAgentViewProps) {
     const instanceId = active?.instanceId;
     const linkCopy = (href: string): string | undefined =>
         isHappyUrl(href) ? shareLink(instanceId, href) : href;
-    // A message's settings link opens that page here, and only navigates;
-    // the import page is Providers with its import dialog showing.
+    // A message's settings link opens that page here, and only navigates.
     const onSettingsSectionOpen = props.onSettingsSectionOpen;
     const settingsLinks: MessageSettingsLinks | undefined = onSettingsSectionOpen
         ? {
@@ -5105,7 +4960,6 @@ export function AppHappyAgentView(props: AppHappyAgentViewProps) {
                   const section = happyAgentSettingsSectionOf(page);
                   if (section === undefined) return;
                   onSettingsSectionOpen(section);
-                  happyAgentSettingsPageOpen(active?.session, page);
               },
           }
         : undefined;
@@ -5275,7 +5129,6 @@ export function AppHappyAgentView(props: AppHappyAgentViewProps) {
  * can do from there.
  */
 interface HappyAgentPaletteSubject {
-    happyCloud: boolean;
     happyAgentId: string;
     projects: readonly HappyAgentProjectGroup[];
     bots: readonly HappyAgentBot[];
@@ -5334,7 +5187,6 @@ interface HappyAgentPaletteActions {
     onArtifactOpen?(happyAgentId: string, artifactId: string): void;
     /** Opens a vault on one of its folders or files. */
     onVaultItemOpen?(happyAgentId: string, surfaceId: string, itemId: string): void;
-    onUserProfileOpen?(happyAgentId: string, userId: string): void;
 }
 
 /**
@@ -5477,7 +5329,6 @@ function paletteContext(
         chatId: subject.chatId,
         groupId: subject.groupId,
         happyAgentId: subject.happyAgentId,
-        happyCloud: subject.happyCloud,
         projects: subject.projects,
         sessionCreateAvailable: facts.sessionCreateAvailable,
         tabs: facts.tabs,
@@ -5923,9 +5774,6 @@ function paletteCommandRun(
             return;
         case "vaultItemOpen":
             props.onVaultItemOpen?.(command.happyAgentId, command.surfaceId, command.itemId);
-            return;
-        case "userProfileOpen":
-            props.onUserProfileOpen?.(command.happyAgentId, command.userId);
             return;
         case "panelToggle":
             props.workspace?.panel.panelToggle();
@@ -6556,14 +6404,6 @@ function HappyAgentSurfaceChat(props: {
             onFileOpen={() => undefined}
             onFileLinkOpen={() => undefined}
             onLinkOpen={(url) => props.onExternalLinkOpen(url)}
-            onPreviewOpen={(previewId) =>
-                conversationPreviewOpen({
-                    workspace: props.workspace,
-                    previewId,
-                    platform: props.platform,
-                    externalOpen: props.onExternalLinkOpen,
-                })
-            }
             linkOpenDefault="browser"
             canAbort
             readOnly={false}
@@ -6896,14 +6736,13 @@ function HappyAgentTodoSurface(props: {
  */
 /**
  * What a Gen UI document may reach on the addressed machine wherever it is
- * shown: one plugin's page, for a `plugin` action, and its secret forms, a
- * Happy Agent's or a cluster's. Each is absent where the machine offers none,
- * which leaves those buttons disabled.
+ * shown: one plugin's page, for a `plugin` action, and its secret forms.
+ * Each is absent where the machine offers none, which leaves those buttons
+ * disabled.
  */
 interface GenUiMachineHost {
     readonly pluginOpen?: (pluginId: string) => void;
     readonly secrets?: GenUiSecretHost;
-    readonly clusterSecrets?: GenUiClusterSecretHost;
 }
 const GenUiMachineContext = createContext<GenUiMachineHost>({});
 
@@ -7103,8 +6942,6 @@ interface HappyAgentWorkspaceSurfaceProps {
     referenceSurfaces?: MessageReferenceSurfaces;
     /** The machine's artifacts, present only once it has said it keeps them. */
     artifacts?: HappyAgentArtifacts;
-    /** The repositories a cloud agent checked out; absent anywhere but Happy Cloud. */
-    checkoutsOf?: (agentId: string) => HappyAgentCheckoutsStore | undefined;
     /** Shows an HTML artifact opened beside the conversation as a site of its own. */
     artifactPage?: HtmlPreviewRenderer;
     /** Opens one artifact in the viewer. */
@@ -7193,13 +7030,6 @@ function useComposerModelUsageWatch(
 
 function HappyAgentWorkspaceSurface(props: HappyAgentWorkspaceSurfaceProps) {
     const modelUsageWatch = useComposerModelUsageWatch(props.providerUsage);
-    const checkoutsStore =
-        props.chatId === undefined ? undefined : props.checkoutsOf?.(props.chatId);
-    const checkouts = useSyncExternalStore(
-        checkoutsStore?.subscribe ?? checkoutsSubscribeNoop,
-        checkoutsStore?.get ?? checkoutsNoop,
-        checkoutsStore?.get ?? checkoutsNoop,
-    );
     const workspaceFocusedPane = useRef<AppShellFocusedPane>("workspace");
     // AppShell's panel callback ref treats this callback's identity as the
     // panel lifetime, so ordinary store renders must keep it stable.
@@ -8126,9 +7956,6 @@ function HappyAgentWorkspaceSurface(props: HappyAgentWorkspaceSurfaceProps) {
                 composerNotice={workspaceComposerNotice}
                 modelUsageWatch={modelUsageWatch}
                 {...(props.artifacts ? { artifacts: props.artifacts } : {})}
-                {...(checkouts.status === "ready"
-                    ? { repositories: checkouts.checkouts.map(checkoutChipOf) }
-                    : {})}
                 inlineEngines={{
                     ...(props.artifactPage ? { artifactPage: props.artifactPage } : {}),
                     ...(props.browserContent ? { browserContent: props.browserContent } : {}),
@@ -8204,14 +8031,6 @@ function HappyAgentWorkspaceSurface(props: HappyAgentWorkspaceSurfaceProps) {
                     if (placement === "browser") props.onExternalLinkOpen(url);
                     else props.workspace.panel.browserAdd(url);
                 }}
-                onPreviewOpen={(previewId) =>
-                    conversationPreviewOpen({
-                        workspace: props.workspace,
-                        previewId,
-                        platform: props.platform,
-                        externalOpen: props.onExternalLinkOpen,
-                    })
-                }
                 linkOpenDefault={props.linkOpenDefault}
                 canAbort={conversationCanAbort}
                 readOnly={conversationReadOnly}
@@ -8269,11 +8088,6 @@ function HappyAgentWorkspaceSurface(props: HappyAgentWorkspaceSurfaceProps) {
                     // own — the reader's choice to have it open is untouched here.
                     panel.open && !checkoutClosed ? (
                         <HappyAgentPanelBody
-                            previewContext={{
-                                workspace: props.workspace,
-                                platform: props.platform,
-                                externalOpen: props.onExternalLinkOpen,
-                            }}
                             {...(panelCloseTarget ? { closeShortcut: APP_SHORTCUTS.tabClose } : {})}
                             {...(props.artifacts && props.onArtifactOpen
                                 ? {
@@ -9018,11 +8832,6 @@ function HappyAgentWorkspaceSurface(props: HappyAgentWorkspaceSurfaceProps) {
                                                     workspace={props.workspace}
                                                 />
                                                 <HappyAgentToolBodies
-                                                    previewContext={{
-                                                        workspace: props.workspace,
-                                                        platform: props.platform,
-                                                        externalOpen: props.onExternalLinkOpen,
-                                                    }}
                                                     activeId={workspace.displayedMainViewId}
                                                     {...(props.artifacts
                                                         ? {
@@ -9912,11 +9721,6 @@ function HappyAgentConversationBody(props: {
     instanceId: string | undefined;
     activitySelected: boolean;
     /** The machine's artifacts, which the transcript's references name. */
-    /**
-     * The repositories a cloud agent checked out, once the server listed them.
-     * Absent, the conversation's single attached repository is shown instead.
-     */
-    repositories?: readonly RepositoryChipEntry[];
     artifacts?: HappyAgentArtifacts;
     /**
      * The host's engines for pages tool calls show inline, and the connection
@@ -9960,7 +9764,6 @@ function HappyAgentConversationBody(props: {
     onFileLinkOpen: FileLinkOpenHandler;
     /** Opens a web link a message carries where its context menu asked for it. */
     onLinkOpen: LinkOpenHandler;
-    onPreviewOpen: (previewId: string) => void;
     /** Which of the two places a plain click on a link goes, marked in its menu. */
     linkOpenDefault: LinkOpenPlacement;
     readOnly: boolean;
@@ -9995,7 +9798,6 @@ function HappyAgentConversationBody(props: {
                 instanceId={props.instanceId}
                 activitySelected={props.activitySelected}
                 {...(props.artifacts ? { artifacts: props.artifacts } : {})}
-                {...(props.repositories ? { repositories: props.repositories } : {})}
                 {...(props.inlineEngines ? { inlineEngines: props.inlineEngines } : {})}
                 referenceEntities={props.referenceEntities}
                 {...(props.chiefOfStaffName === undefined
@@ -10017,7 +9819,6 @@ function HappyAgentConversationBody(props: {
                 onFileOpen={props.onFileOpen}
                 onFileLinkOpen={props.onFileLinkOpen}
                 onLinkOpen={props.onLinkOpen}
-                onPreviewOpen={props.onPreviewOpen}
                 linkOpenDefault={props.linkOpenDefault}
                 canAbort={props.canAbort}
                 readOnly={props.readOnly}
@@ -10386,8 +10187,6 @@ function HappyAgentConversationSurface(props: {
     instanceId: string | undefined;
     activitySelected: boolean;
     /** The machine's artifacts, which the transcript's references name. */
-    /** The repositories a cloud agent checked out; see `HappyAgentConversationBody`. */
-    repositories?: readonly RepositoryChipEntry[];
     artifacts?: HappyAgentArtifacts;
     /**
      * The host's engines for pages tool calls show inline, and the connection
@@ -10426,7 +10225,6 @@ function HappyAgentConversationSurface(props: {
     onFileLinkOpen: FileLinkOpenHandler;
     /** Opens a web link a message carries where its context menu asked for it. */
     onLinkOpen: LinkOpenHandler;
-    onPreviewOpen: (previewId: string) => void;
     /** Which of the two places a plain click on a link goes, marked in its menu. */
     linkOpenDefault: LinkOpenPlacement;
     readOnly: boolean;
@@ -10456,12 +10254,6 @@ function HappyAgentConversationSurface(props: {
 }) {
     const genUiMachine = use(GenUiMachineContext);
     const { conversation, workspace } = props;
-    const previewBindings = useConversationPreviews({
-        workspace,
-        entries: conversation.entries,
-        onOpen: props.onPreviewOpen,
-    });
-    const previews = previewBindings.pages;
     // The one subscription the transcript's references read through: every
     // reference row fans out from this snapshot rather than subscribing itself.
     const titlesStore = props.artifacts?.titles() ?? artifactTitlesStoreNoop;
@@ -10587,46 +10379,44 @@ function HappyAgentConversationSurface(props: {
             : {}),
     });
     const inlineEngines = props.inlineEngines;
-    const inlinePages =
-        inlineEngines || previews
-            ? conversationInlinePagesCreate({
-                  artifacts: inlineArtifacts,
-                  store: inlineStore,
-                  ...(props.artifacts && inlineEngines?.artifactPage
-                      ? { artifactPage: inlineEngines.artifactPage }
-                      : {}),
-                  ...(inlineEngines?.browserContent
-                      ? { browserContent: inlineEngines.browserContent }
-                      : {}),
-                  browserConnectionId: inlineEngines?.browserConnectionId ?? null,
-                  ...(previews ? { previews } : {}),
-                  workspaceId: props.groupId,
-                  agentId: conversation.conversationId,
-                  artifactOpen: (artifactId, version) =>
-                      props.artifacts
-                          ? artifactBesideOpen({
-                                artifacts: props.artifacts,
-                                panel: workspace.panel,
-                                artifactId,
-                                ...(version === undefined ? {} : { version }),
-                            })
-                          : workspace.panel.artifactViewOpen(artifactId, version),
-                  pageOpen: (url) => workspace.panel.browserAdd(url),
-                  entities: references,
-                  ...(props.readOnly
-                      ? {}
-                      : {
-                            genUi: genUiInlineHostCreate({
-                                ...genUiMachine,
-                                messageSend: (text) =>
-                                    props.happyAgentOnline()
-                                        ? workspace.messageSendCurrent(text)
-                                        : Promise.resolve(),
-                                linkOpen: (url) => workspace.panel.browserAdd(url),
-                            }),
+    const inlinePages = inlineEngines
+        ? conversationInlinePagesCreate({
+              artifacts: inlineArtifacts,
+              store: inlineStore,
+              ...(props.artifacts && inlineEngines?.artifactPage
+                  ? { artifactPage: inlineEngines.artifactPage }
+                  : {}),
+              ...(inlineEngines?.browserContent
+                  ? { browserContent: inlineEngines.browserContent }
+                  : {}),
+              browserConnectionId: inlineEngines?.browserConnectionId ?? null,
+              workspaceId: props.groupId,
+              agentId: conversation.conversationId,
+              artifactOpen: (artifactId, version) =>
+                  props.artifacts
+                      ? artifactBesideOpen({
+                            artifacts: props.artifacts,
+                            panel: workspace.panel,
+                            artifactId,
+                            ...(version === undefined ? {} : { version }),
+                        })
+                      : workspace.panel.artifactViewOpen(artifactId, version),
+              pageOpen: (url) => workspace.panel.browserAdd(url),
+              entities: references,
+              ...(props.readOnly
+                  ? {}
+                  : {
+                        genUi: genUiInlineHostCreate({
+                            ...genUiMachine,
+                            messageSend: (text) =>
+                                props.happyAgentOnline()
+                                    ? workspace.messageSendCurrent(text)
+                                    : Promise.resolve(),
+                            linkOpen: (url) => workspace.panel.browserAdd(url),
                         }),
-              })
-            : undefined;
+                    }),
+          })
+        : undefined;
     return (
         <ConversationView
             references={references}
@@ -10719,30 +10509,6 @@ function HappyAgentConversationSurface(props: {
                                so the context surface is discoverable. */
                             trailing={
                                 <>
-                                    {/* The repositories the agent checked out, read-only. A
-                                        server without checkouts names one on the agent. */}
-                                    {(
-                                        props.repositories ??
-                                        (conversation.repository
-                                            ? [
-                                                  {
-                                                      id: conversation.repository.repositoryId,
-                                                      repository: conversation.repository,
-                                                  },
-                                              ]
-                                            : [])
-                                    ).map((entry) => (
-                                        <RepositoryChip
-                                            key={entry.id}
-                                            repository={entry.repository}
-                                        />
-                                    ))}
-                                    {/* Where the agent's tools run, on a Happy Cloud server. */}
-                                    {conversation.compute ? (
-                                        <ComputeChip
-                                            compute={computeChipOf(conversation.compute)}
-                                        />
-                                    ) : null}
                                     {conversation.contextGauge ? (
                                         <ContextMeter
                                             approximate={conversation.contextGauge.approximate}
@@ -10877,20 +10643,7 @@ function HappyAgentConversationSurface(props: {
                 ) {
                     return;
                 }
-                if (attachment.openUrl) {
-                    openExternalLink(attachment.openUrl);
-                    return;
-                }
-                // A file a Happy Cloud message names is kept by the server
-                // behind the reader's sign-in, so it is fetched with it and saved.
-                const bytes =
-                    attachment.attachmentKind === "file"
-                        ? workspace.attachmentDownload(attachment.source, attachment.name)
-                        : undefined;
-                void bytes
-                    ?.then((blob) => fileDownload(attachment.name, { type: "blob", blob }))
-                    // The store has already put the failure up beside the transcript.
-                    .catch(() => undefined);
+                if (attachment.openUrl) openExternalLink(attachment.openUrl);
             }}
             onToolSelect={(entryId) => workspace.panel.previewOpen(entryId)}
             onToolMediaOpen={(entryId, tool, index) => {
@@ -10922,10 +10675,9 @@ function HappyAgentConversationSurface(props: {
             }
             onTraceToggle={(turnId) => workspace.turnTraceToggle(turnId)}
             onTracesSeen={(viewer, turnIds) => workspace.turnTracesSeen(viewer, turnIds)}
-            onEntriesSeen={(viewer, entryIds) => {
-                workspace.conversationEntriesSeen(viewer, entryIds);
-                previewBindings.entriesSeen(viewer, entryIds);
-            }}
+            onEntriesSeen={(viewer, entryIds) =>
+                workspace.conversationEntriesSeen(viewer, entryIds)
+            }
             overlay={
                 openImage ? (
                     <ModalOverlay onDismiss={() => workspace.imageClose()} placement="fill">
@@ -11774,7 +11526,6 @@ function HappyAgentDevicesSurface(props: { store: HappyAgentDeviceBridgesStore }
 }
 
 function HappyAgentPanelBody(props: {
-    previewContext: ConversationPreviewContext;
     activity?: HappyAgentConversationSnapshot;
     /**
      * What the open chat has published, offered only where the machine keeps
@@ -12074,17 +11825,13 @@ function HappyAgentPanelBody(props: {
                       ? // A root that failed to read is not an
                         // empty folder; it is retried on the
                         // next change in the checkout. A
-                        // checkout with nowhere to list from is
+                        // server with nowhere to list from is
                         // neither, and says why.
-                        props.workspaceFiles?.unavailable === "noCompute"
-                          ? "No computer joined."
-                          : props.workspaceFiles?.unavailable === "computeOffline"
-                            ? "The computer is offline."
-                            : props.workspaceFiles?.unavailable === "unsupported"
-                              ? "Files aren't available on this server."
-                              : props.workspaceFiles?.directories.get("")?.error
-                                ? "Files could not be loaded."
-                                : "No files."
+                        props.workspaceFiles?.unavailable === "unsupported"
+                          ? "Files aren't available on this server."
+                          : props.workspaceFiles?.directories.get("")?.error
+                            ? "Files could not be loaded."
+                            : "No files."
                       : changesUnavailable
                         ? "Git changes are temporarily unavailable."
                         : "No changed files."
@@ -12227,7 +11974,6 @@ function HappyAgentPanelBody(props: {
                     transferTargets={PANEL_TRANSFER_TARGETS}
                 >
                     <HappyAgentToolBodies
-                        previewContext={props.previewContext}
                         activeId={props.panel.activeViewId}
                         browserStart={(tabId) => ({
                             tools: [
@@ -12481,17 +12227,10 @@ function mediaWindowShowable(kind: FilePreviewKind): boolean {
 function HappyAgentPanelChatSurface(props: {
     readonly store: HappyAgentPanelStore;
     readonly tabId: HappyAgentPanelTabId;
-    readonly previewContext: ConversationPreviewContext;
 }) {
     const chat = props.store.chat(props.tabId) ?? happyAgentPanelChatNone;
     const snapshot = useSyncExternalStore(chat.subscribe, chat.get, chat.get);
     const chatSnapshot = snapshot.type === "ready" ? snapshot.chat : undefined;
-    const previewBindings = useConversationPreviews({
-        workspace: props.previewContext.workspace,
-        entries: chatSnapshot?.entries ?? NO_ENTRIES,
-        onOpen: (previewId) => conversationPreviewOpen({ ...props.previewContext, previewId }),
-    });
-    const previews = previewBindings.pages;
     if (snapshot.type === "error")
         return (
             <EmptyState
@@ -12503,18 +12242,6 @@ function HappyAgentPanelChatSurface(props: {
         );
     return (
         <ConversationView
-            {...(previews
-                ? {
-                      inlinePages: {
-                          previews,
-                          artifacts: inlineArtifactsStoreNoop.get(),
-                          artifactsRequest: inlineArtifactsStoreNoop.request,
-                          artifactsContentRequest: inlineArtifactsStoreNoop.contentRequest,
-                          artifactOpen: props.store.artifactViewOpen,
-                          pageOpen: props.previewContext.externalOpen,
-                      },
-                  }
-                : {})}
             {...(chatSnapshot ? { conversationId: chatSnapshot.sessionId } : {})}
             entries={chatSnapshot?.entries ?? []}
             steeringSendId={chatSnapshot?.steeringSendId}
@@ -12524,7 +12251,6 @@ function HappyAgentPanelChatSurface(props: {
             loading={chatSnapshot === undefined}
             onTraceToggle={chat.turnTraceToggle}
             onTracesSeen={chat.turnTracesSeen}
-            onEntriesSeen={previewBindings.entriesSeen}
             running={chatSnapshot?.runStatus === "running"}
         />
     );
@@ -12540,7 +12266,6 @@ const happyAgentPanelChatNone: HappyAgentPanelChatStore = {
 };
 
 function HappyAgentToolBodies(props: {
-    previewContext: ConversationPreviewContext;
     tabs: readonly HappyAgentPanelTabSnapshot[];
     activeId: string | undefined;
     store: HappyAgentPanelStore;
@@ -12674,12 +12399,7 @@ function HappyAgentToolBodies(props: {
                 )
             ) : null}
             {active?.kind === "chat" ? (
-                <HappyAgentPanelChatSurface
-                    key={active.id}
-                    previewContext={props.previewContext}
-                    store={props.store}
-                    tabId={active.id}
-                />
+                <HappyAgentPanelChatSurface key={active.id} store={props.store} tabId={active.id} />
             ) : null}
             {active?.kind === "terminal" ? (
                 <HappyAgentTerminalTab
@@ -12763,14 +12483,4 @@ function HappyAgentTerminalScreen(props: {
             status={snapshot.status}
         />
     );
-}
-
-/** The chip's words for a compute binding: its name, or a short ID when the server sent none. */
-function computeChipOf(compute: HappyAgentCompute): ComputeChipCompute {
-    if (compute.kind === "none") return { kind: "none" };
-    return {
-        kind: "computer",
-        label: compute.label ?? compute.computerId.slice(0, 8),
-        ...(compute.online === undefined ? {} : { online: compute.online }),
-    };
 }

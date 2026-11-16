@@ -23,15 +23,15 @@ export interface HappyAgentProviderEntry extends HappyAgentModelProvider {
     /** This window has asked for a change the daemon has not confirmed yet. */
     readonly saving: boolean;
     /**
-     * The team keys a Happy Cloud server keeps for this provider, with which of
+     * The team keys a server keeps for this provider, with which of
      * them this window is changing. Absent on a Happy Agent.
      */
     readonly credentials?: HappyAgentProviderCredentials & {
         readonly saving: ReadonlySet<string>;
     };
     /**
-     * The protocol of a provider the team added itself on a Happy Cloud
-     * server, which the team may edit and remove. Absent on built-ins.
+     * The protocol of a provider the team added itself on its server,
+     * which the team may edit and remove. Absent on built-ins.
      */
     readonly custom?: { readonly protocol: HappyAgentCustomProviderProtocol };
 }
@@ -79,7 +79,7 @@ export interface HappyAgentProvidersStore {
     /** Asks the daemon to start or stop using one provider machine-wide. */
     providerEnabledUpdate(providerId: string, enabled: boolean): void;
     /**
-     * Adds a team API key to a Happy Cloud provider. Rejects with the server's
+     * Adds a team API key to a server's provider. Rejects with the server's
      * reason, such as only the owner being allowed to.
      */
     credentialAdd(providerId: string, input: HappyAgentProviderCredentialInput): Promise<void>;
@@ -107,7 +107,7 @@ export interface HappyAgentProvidersStoreDeps {
      * authority is told rather than left holding the configuration from before.
      */
     readonly catalogChanged?: (catalog: HappyAgentModelCatalog) => void;
-    /** Happy Cloud's team key routes; absent on a Happy Agent, which keeps none. */
+    /** The server's team key routes; absent on a Happy Agent, which keeps none. */
     readonly credentials?: HappyAgentProviderCredentialsApi;
 }
 
@@ -225,7 +225,7 @@ export function happyAgentProvidersStoreCreate(
             (response) => {
                 if (disposed || controller !== currentController) return;
                 settle(response.config);
-                // Only a Happy Cloud server keeps team keys and the team's own providers.
+                // Only a server keeps team keys and the team's own providers.
                 const api = deps.credentials;
                 if (api && credentials.size > 0 && !permissionsAsked) {
                     permissionsAsked = true;

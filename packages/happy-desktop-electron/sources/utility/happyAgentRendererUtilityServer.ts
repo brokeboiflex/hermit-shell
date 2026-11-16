@@ -11,7 +11,6 @@ import {
 } from "../main/happyAgentDaemonClient";
 import type { ServerRemoteCredential } from "../shared/serverRemoteAuthorization";
 import { happyAgentProxyHandle } from "../main/happyAgentProxyHandle";
-import { happyCloudConnectionOf, happyCloudForward } from "../main/happyCloudForward";
 import {
     happyAgentRendererOrigin,
     happyAgentRendererProxyCreate,
@@ -23,11 +22,9 @@ import {
     type HappyAgentLiveClient,
 } from "../main/happyAgentLiveBridge";
 import type {
-    RendererCloudSite,
     RendererUtilityInput,
     RendererUtilityOutput,
 } from "../shared/happyAgentRendererUtilityContract";
-import { happyCloudServerNameOf } from "../shared/happyCloud";
 
 const LOCAL_ROUTES = new Set([
     "/open-in-targets",
@@ -81,48 +78,6 @@ function localForward(
     request.once("aborted", () => outgoing.destroy());
     response.once("close", () => outgoing.destroy());
     request.pipe(outgoing);
-}
-
-const CLOUD_SITE_PATH = /^\/connections\/([a-z][a-z0-9_-]{0,63})\/(artifact-site|vault-app)$/u;
-
-/**
- * The site a window asks a Happy Cloud connection's artifact or vault app to
- * be opened as, or why it named none; `undefined` for every other request.
- * Main opens these itself, so they need no Happy Agent on this computer.
- */
-function cloudSiteOf(
-    method: string | undefined,
-    url: URL,
-):
-    | { readonly connectionId: string; readonly site: RendererCloudSite }
-    | { readonly error: string }
-    | undefined {
-    const match = CLOUD_SITE_PATH.exec(url.pathname);
-    if (method !== "GET" || !match || happyCloudServerNameOf(match[1]!) === undefined)
-        return undefined;
-    const value = (name: string): string | undefined => {
-        const found = url.searchParams.get(name);
-        return found === null || found.trim().length === 0 ? undefined : found;
-    };
-    const names =
-        match[2] === "artifact-site"
-            ? ["artifactId", "version"]
-            : ["surfaceId", "fileId", "version"];
-    const missing = names.find((name) => value(name) === undefined);
-    if (missing !== undefined) return { error: `${missing} is required.` };
-    const version = Number(value("version"));
-    return {
-        connectionId: match[1]!,
-        site:
-            match[2] === "artifact-site"
-                ? { kind: "artifact", artifactId: value("artifactId")!, version }
-                : {
-                      kind: "vault",
-                      surfaceId: value("surfaceId")!,
-                      fileId: value("fileId")!,
-                      version,
-                  },
-    };
 }
 
 /** The daemon a backing reaches, for the requests that need one. */
@@ -192,13 +147,6 @@ export async function happyAgentRendererUtilityServerCreate(
         number,
         { resolve(): void; reject(error: Error): void; timer: ReturnType<typeof setTimeout> }
     >();
-    let cloudSiteRequestId = 0;
-    const cloudSiteRequests = new Map<number, ServerResponse>();
-    const cloudSiteAnswer = (response: ServerResponse, status: number, body: unknown): void => {
-        response
-            .writeHead(status, { "content-type": "application/json", "cache-control": "no-store" })
-            .end(JSON.stringify(body));
-    };
     const live = happyAgentLiveBridgeCreate({
         client: () => {
             if (!activeClient) throw new Error("The GPT-Live daemon connection is unavailable.");
@@ -224,11 +172,7 @@ export async function happyAgentRendererUtilityServerCreate(
                 send({ type: "live-attempt-reserve", reservationId: id, backingId, attempt });
             }),
     });
-    /**
-     * What answers while no daemon backs this transport, as on a computer that
-     * only uses Happy Cloud: Happy Cloud's servers, which never go through a
-     * Happy Agent, and a refusal for everything else.
-     */
+    /** What answers while no daemon backs this transport: a refusal for everything. */
     const daemonless: HappyAgentRendererTarget = {
         // Never dialled: every upgrade is refused here first.
         url: happyAgentRendererOrigin,
@@ -248,13 +192,12 @@ export async function happyAgentRendererUtilityServerCreate(
         daemon: RendererDaemon | undefined,
     ): void => {
         const path = url.pathname;
-        const cloudSite = cloudSiteOf(request.method, url);
-        if (!cloudSite && localRoute(path)) {
+        if (localRoute(path)) {
             if (daemon) localForward(request, response, url, daemon.bridgeUrl);
             else localUnavailable(response);
             return;
         }
-        if (!cloudSite && path !== "/health" && path !== "/v0" && !path.startsWith("/v0/")) {
+        if (path !== "/health" && path !== "/v0" && !path.startsWith("/v0/")) {
             response.writeHead(404, { "cache-control": "no-store" }).end();
             return;
         }
@@ -295,22 +238,6 @@ export async function happyAgentRendererUtilityServerCreate(
                     "access-control-max-age": "600",
                 })
                 .end();
-            return;
-        }
-        if (cloudSite) {
-            if ("error" in cloudSite) {
-                cloudSiteAnswer(response, 400, { error: cloudSite.error });
-                return;
-            }
-            const requestId = ++cloudSiteRequestId;
-            cloudSiteRequests.set(requestId, response);
-            response.once("close", () => cloudSiteRequests.delete(requestId));
-            send({ type: "cloud-site-open", requestId, ...cloudSite });
-            return;
-        }
-        const cloud = happyCloudConnectionOf(path);
-        if (cloud !== undefined) {
-            happyCloudForward(request, response, url, remoteTokens[cloud]);
             return;
         }
         if (!daemon) {
@@ -382,15 +309,6 @@ export async function happyAgentRendererUtilityServerCreate(
                 remoteTokens = message.tokens;
                 return;
             }
-            if (message.type === "cloud-site-opened" || message.type === "cloud-site-refused") {
-                const response = cloudSiteRequests.get(message.requestId);
-                cloudSiteRequests.delete(message.requestId);
-                if (!response || response.headersSent) return;
-                if (message.type === "cloud-site-opened")
-                    cloudSiteAnswer(response, 200, { url: message.url });
-                else cloudSiteAnswer(response, message.status, { error: message.error });
-                return;
-            }
             if (message.type === "remote-refreshed") {
                 const resolve = remoteRefreshes.get(message.requestId);
                 remoteRefreshes.delete(message.requestId);
@@ -434,7 +352,6 @@ export async function happyAgentRendererUtilityServerCreate(
             reservations.clear();
             for (const resolve of remoteRefreshes.values()) resolve(undefined);
             remoteRefreshes.clear();
-            cloudSiteRequests.clear();
             detach?.();
             proxy.close();
         },

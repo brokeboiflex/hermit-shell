@@ -76,7 +76,6 @@ const ALL_ACTIONS: ReadonlySet<GenUiActionType> = new Set([
     "copy",
     "tool",
     "secret",
-    "cluster_secret",
     "plugin",
 ]);
 

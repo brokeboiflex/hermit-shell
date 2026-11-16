@@ -24,12 +24,6 @@ export interface ConnectionShellItem {
      * the generated tile alike; the thumbhash stands in until the bytes arrive.
      */
     readonly avatar?: { readonly url: string; readonly thumbhash: string };
-    /**
-     * Without a picture, the placeholder this picks is worn instead of an
-     * initial: a Happy Cloud server's handle, so it wears the same one
-     * everywhere it is shown.
-     */
-    readonly placeholderSeed?: string;
 }
 
 function ConnectionShellTile(props: { readonly item: ConnectionShellItem }) {
@@ -54,9 +48,6 @@ function ConnectionShellTile(props: { readonly item: ConnectionShellItem }) {
         <Avatar
             // A handle such as `@acme` takes its initial from the name.
             initials={item.label.replace(/^@/, "").slice(0, 1).toUpperCase()}
-            {...(item.placeholderSeed === undefined
-                ? {}
-                : { placeholderSeed: item.placeholderSeed })}
             size="md"
             style={{ width: 36, height: 36, borderRadius: 10 }}
             type="agent"
@@ -94,11 +85,6 @@ export function ConnectionShell(props: {
     readonly itemMenuItems?: (item: ConnectionShellItem) => MenuItem[];
     /** A row was chosen from an entry's context menu. */
     readonly onItemMenuSelect?: (id: string, actionId: string) => void;
-    /**
-     * A "+" tile after the last connection. While it is offered the rail shows
-     * even beside Home alone, so the first connection can be added from it.
-     */
-    readonly add?: { readonly label: string; readonly onAdd: () => void };
 }) {
     // Which entry's menu is open and where the pointer asked for it. The menu
     // is this rail's own passing state; what it offers belongs to the caller.
@@ -132,7 +118,7 @@ export function ConnectionShell(props: {
     );
     return (
         <div className="happy-connections" data-happy-desktop-ui="connection-shell">
-            {(props.items.length > 1 || props.add) && !props.collapsed ? (
+            {props.items.length > 1 && !props.collapsed ? (
                 <nav
                     className="happy-connections__rail"
                     aria-label="Connections"
@@ -255,18 +241,6 @@ export function ConnectionShell(props: {
                                     ) : null}
                                 </Fragment>
                             ))}
-                            {props.add ? (
-                                <button
-                                    className="happy-connections__item happy-connections__add"
-                                    type="button"
-                                    aria-label={props.add.label}
-                                    title={props.add.label}
-                                    data-happy-desktop-ui="connection-add"
-                                    onClick={props.add.onAdd}
-                                >
-                                    <Icon name="plus" size={20} />
-                                </button>
-                            ) : null}
                         </div>
                     </ScrollArea>
                     <div className="happy-connections__footer" aria-hidden="true" />

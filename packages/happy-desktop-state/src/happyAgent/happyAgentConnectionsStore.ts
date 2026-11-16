@@ -36,12 +36,6 @@ export interface HappyAgentConnectionsStore {
     subscribe(listener: () => void): () => void;
     connectionSelect(id: string): void;
     connectionReorder(id: string, afterId: string | null): void;
-    /**
-     * Connections this app reaches itself, not through the host, listed after
-     * the host's in the given order: Happy Cloud's servers. Their owner says
-     * which there are.
-     */
-    connectionsDirectSet(items: readonly HappyAgentConnectionItem[]): void;
     [Symbol.dispose](): void;
 }
 
@@ -74,15 +68,6 @@ export function happyAgentConnectionsStoreCreate(
     let version: string | undefined;
     let confirmedItems = snapshot.items;
     let optimisticOrder: readonly string[] | undefined;
-    let direct: readonly HappyAgentConnectionItem[] = [];
-    const directIs = (id: string): boolean => direct.some((item) => item.id === id);
-    /** The host's membership with the direct connections after it. */
-    const withDirect = (
-        items: readonly HappyAgentConnectionItem[],
-    ): readonly HappyAgentConnectionItem[] => [
-        ...items.filter((item) => !directIs(item.id)),
-        ...direct,
-    ];
     let reorderController: AbortController | undefined;
     const publish = (next: HappyAgentConnectionsSnapshot): void => {
         snapshot = next;
@@ -117,7 +102,6 @@ export function happyAgentConnectionsStoreCreate(
             );
         }
         persistence?.write(items.filter((item) => item.remoteId !== undefined));
-        items = [...withDirect(items)];
         confirmedItems = items;
         if (optimisticOrder) {
             const byId = new Map(items.map((item) => [item.id, item]));
@@ -235,29 +219,6 @@ export function happyAgentConnectionsStoreCreate(
                 if (listeners.size === 0) stop();
             };
         },
-        connectionsDirectSet(items) {
-            if (
-                items.length === direct.length &&
-                items.every(
-                    (item, index) =>
-                        item.id === direct[index]!.id && item.name === direct[index]!.name,
-                )
-            )
-                return;
-            const previous = direct;
-            const host = (list: readonly HappyAgentConnectionItem[]) =>
-                list.filter((entry) => !previous.some((item) => item.id === entry.id));
-            direct = items;
-            confirmedItems = withDirect(host(confirmedItems));
-            const next = withDirect(host(snapshot.items));
-            publish({
-                ...snapshot,
-                items: next,
-                selectedId: next.some((entry) => entry.id === snapshot.selectedId)
-                    ? snapshot.selectedId
-                    : "local",
-            });
-        },
         connectionSelect(id) {
             if (id !== snapshot.selectedId && snapshot.items.some((item) => item.id === id))
                 publish({ ...snapshot, selectedId: id });
@@ -268,8 +229,6 @@ export function happyAgentConnectionsStoreCreate(
             const after = snapshot.items.find((entry) => entry.id === afterId);
             // Home is outside the server roster and can never be moved.
             if (!item?.remoteId || id === afterId || (afterId !== null && !after?.remoteId)) return;
-            // The host does not know the direct connection, so it keeps its place.
-            if (directIs(id) || (afterId !== null && directIs(afterId))) return;
             const index = snapshot.items.indexOf(item);
             if ((snapshot.items[index - 1]?.remoteId ?? null) === (after?.remoteId ?? null)) return;
             const request = new AbortController();
@@ -312,65 +271,6 @@ export function happyAgentConnectionsStoreCreate(
             disposed = true;
             reorderController?.abort();
             stop();
-            listeners.clear();
-        },
-    };
-}
-
-/**
- * The connections of a computer that runs no Happy Agent: only the direct
- * ones, Happy Cloud's servers, after the place this computer's own would take.
- * Nothing is read and nothing can be reordered, because no host keeps a
- * roster. Until the person picks one, the first direct connection is shown,
- * since this computer has no work of its own to show.
- */
-export function happyAgentConnectionsDirectStoreCreate(): HappyAgentConnectionsStore {
-    const local: HappyAgentConnectionItem = { id: "local", name: "This Mac" };
-    let snapshot: HappyAgentConnectionsSnapshot = {
-        items: [local],
-        selectedId: "local",
-        reordering: false,
-    };
-    let chosen = false;
-    const listeners = new Set<() => void>();
-    const publish = (next: HappyAgentConnectionsSnapshot): void => {
-        snapshot = next;
-        for (const listener of listeners) listener();
-    };
-    return {
-        get: () => snapshot,
-        subscribe(listener) {
-            listeners.add(listener);
-            return () => listeners.delete(listener);
-        },
-        connectionsDirectSet(items) {
-            const direct = snapshot.items.slice(1);
-            if (
-                items.length === direct.length &&
-                items.every(
-                    (item, index) =>
-                        item.id === direct[index]!.id && item.name === direct[index]!.name,
-                )
-            )
-                return;
-            const next = [local, ...items];
-            const kept = next.some((entry) => entry.id === snapshot.selectedId);
-            publish({
-                ...snapshot,
-                items: next,
-                selectedId:
-                    kept && (chosen || snapshot.selectedId !== "local")
-                        ? snapshot.selectedId
-                        : (items[0]?.id ?? "local"),
-            });
-        },
-        connectionSelect(id) {
-            if (!snapshot.items.some((item) => item.id === id)) return;
-            chosen = true;
-            if (id !== snapshot.selectedId) publish({ ...snapshot, selectedId: id });
-        },
-        connectionReorder() {},
-        [Symbol.dispose]() {
             listeners.clear();
         },
     };

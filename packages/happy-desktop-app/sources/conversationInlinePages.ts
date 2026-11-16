@@ -1,13 +1,11 @@
 import type {
     HappyAgentArtifactId,
     HappyAgentGenUiActions,
-    HappyAgentGenUiClusterActions,
     HappyAgentInlineArtifactsSnapshot,
     HappyAgentInlineArtifactsStore,
 } from "happy-desktop-state";
 import type {
     GenUiAction,
-    GenUiClusterSecretHost,
     GenUiInlineHost,
     GenUiSecretHost,
     ArtifactLiveRenderer,
@@ -17,7 +15,6 @@ import type {
     HtmlPreviewFailure,
     HtmlPreviewRenderer,
 } from "happy-desktop-ui";
-import { clusterSecretRow } from "./views/AppClusterSecretSettings";
 
 const INLINE_EMPTY: HappyAgentInlineArtifactsSnapshot = new Map();
 
@@ -94,13 +91,11 @@ export function conversationInlinePagesCreate(input: {
     readonly artifactOpen: (artifactId: HappyAgentArtifactId, version?: number) => void;
     readonly pageOpen: (url: string) => void;
     readonly entities?: ConversationInlinePages["entities"];
-    readonly previews?: ConversationInlinePages["previews"];
     readonly genUi?: GenUiInlineHost;
 }): ConversationInlinePages {
     const artifactPage = input.artifactPage;
     const browserContent = input.browserContent;
     return {
-        ...(input.previews ? { previews: input.previews } : {}),
         artifacts: input.artifacts,
         artifactsRequest: (artifactIds) => input.store.request(artifactIds),
         artifactsContentRequest: (artifactIds) => input.store.contentRequest(artifactIds),
@@ -155,26 +150,22 @@ export function conversationInlinePagesCreate(input: {
  * https address is refused. A `plugin` opens that plugin's page, where the
  * person may install it; the tap installs nothing. A `tool` call is shown as
  * not supported yet, and so is a `message` where there is no conversation to
- * send it to. `secret` and `cluster_secret` open the artifact's own form, each
- * served on the kind of server that stores it.
+ * send it to. `secret` opens the artifact's own form.
  */
 export function genUiInlineHostCreate(input: {
     readonly messageSend?: (text: string) => Promise<void>;
     readonly linkOpen: (url: string) => void;
     readonly pluginOpen?: (pluginId: string) => void;
     readonly secrets?: GenUiSecretHost;
-    readonly clusterSecrets?: GenUiClusterSecretHost;
 }): GenUiInlineHost {
     const messageSend = input.messageSend;
     const supported: GenUiAction["type"][] = ["open", "copy"];
     if (messageSend) supported.push("message");
     if (input.pluginOpen) supported.push("plugin");
     if (input.secrets) supported.push("secret");
-    if (input.clusterSecrets) supported.push("cluster_secret");
     return {
         actionsSupported: new Set(supported),
         ...(input.secrets ? { secrets: input.secrets } : {}),
-        ...(input.clusterSecrets ? { clusterSecrets: input.clusterSecrets } : {}),
         onAction: async (_elementKey, action) => {
             switch (action.type) {
                 case "message":
@@ -198,7 +189,6 @@ export function genUiInlineHostCreate(input: {
                     return;
                 case "tool":
                 case "secret":
-                case "cluster_secret":
                     return;
             }
         },
@@ -206,56 +196,33 @@ export function genUiInlineHostCreate(input: {
 }
 
 /**
- * The secret forms of Gen UI documents, by the server's kind: a Happy Agent's
- * `secret` form or a Happy Cloud server's `cluster_secret` form. The artifact
- * draws the form; saving it goes through the version's action route, which
- * also tells the agent that asked.
+ * The secret form of Gen UI documents. The artifact draws the form; saving it
+ * goes through the version's action route, which also tells the agent that
+ * asked.
  */
-export function genUiSecretHostsCreate(
-    actions: HappyAgentGenUiActions,
-): { readonly secrets: GenUiSecretHost } | { readonly clusterSecrets: GenUiClusterSecretHost } {
-    if (actions.backend === "happyAgent")
-        return {
-            secrets: {
-                formOpen: async (source, element, secretId) => {
-                    const form = await actions.secretFormOpen(source, element, secretId);
-                    return {
-                        secret: form.secret
-                            ? {
-                                  id: form.secret.id,
-                                  description: form.secret.description,
-                                  variables: form.secret.environmentVariables,
-                              }
-                            : undefined,
-                        create: async (input) => {
-                            await form.create(input);
-                        },
-                        update: async (input) => {
-                            await form.update(input);
-                        },
-                    };
-                },
-            },
-        };
-    return { clusterSecrets: genUiClusterSecretHostCreate(actions) };
-}
-
-function genUiClusterSecretHostCreate(
-    actions: HappyAgentGenUiClusterActions,
-): GenUiClusterSecretHost {
+export function genUiSecretHostsCreate(actions: HappyAgentGenUiActions): {
+    readonly secrets: GenUiSecretHost;
+} {
     return {
-        formOpen: async (source, element, secretId) => {
-            const form = await actions.clusterSecretFormOpen(source, element, secretId);
-            return {
-                owners: form.owners,
-                secret: form.secret ? clusterSecretRow(form.secret) : undefined,
-                create: async (input) => {
-                    await form.create(input);
-                },
-                update: async (version, input) => {
-                    await form.update(version, input);
-                },
-            };
+        secrets: {
+            formOpen: async (source, element, secretId) => {
+                const form = await actions.secretFormOpen(source, element, secretId);
+                return {
+                    secret: form.secret
+                        ? {
+                              id: form.secret.id,
+                              description: form.secret.description,
+                              variables: form.secret.environmentVariables,
+                          }
+                        : undefined,
+                    create: async (input) => {
+                        await form.create(input);
+                    },
+                    update: async (input) => {
+                        await form.update(input);
+                    },
+                };
+            },
         },
     };
 }

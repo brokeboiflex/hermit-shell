@@ -9,7 +9,6 @@ import {
     powerSaveBlocker,
     protocol,
     screen,
-    safeStorage,
     session as electronSession,
     shell,
     utilityProcess,
@@ -29,9 +28,6 @@ import { desktopQuitListen } from "./desktopQuit";
 import { happyAgentDaemonPathsResolve } from "./happyAgentDaemonClient";
 import { HappyAgentDaemonClient } from "./happyAgentDaemonClient";
 import { ServerSessionError, serverSessionsCreate } from "./serverSessions";
-import { happyCloudCreate } from "./happyCloud";
-import { happyCloudVaultCreate } from "./happyCloudVault";
-import { happyCloudServerNameOf } from "../shared/happyCloud";
 import { browserPermissionsInstall } from "./browserPermissions";
 import { desktopInstanceMenuTargets } from "./applicationMenu";
 import {
@@ -57,7 +53,6 @@ import {
     buildIdentityArgument,
     debugMetricsArgument,
     doNotTrackArgument,
-    happyCloudArgument,
     desktopIpc,
     happyArtifactPartition,
     happyHtmlPreviewPartition,
@@ -78,7 +73,6 @@ import {
     type DesktopPreviewNavigation,
     type DesktopPreviewNavigationStep,
     type DesktopAppearanceMode,
-    type DesktopCredentialImportItem,
 } from "../shared/desktopContract";
 import { rendererUtilityOriginArgument } from "../shared/happyAgentRendererUtilityContract";
 import {
@@ -103,13 +97,7 @@ import {
     desktopBrowserProxyTargetValidate,
 } from "./happyAgentIpcValidation";
 import { htmlPreviewProxyCreate, type HtmlPreviewProxyHandle } from "./htmlPreviewProxy";
-import {
-    ArtifactSiteError,
-    artifactSiteScheme,
-    artifactSitesCreate,
-    type ArtifactSiteHandle,
-} from "./artifactSite";
-import { happyCloudArtifactClient } from "./happyCloudArtifacts";
+import { artifactSiteScheme, artifactSitesCreate, type ArtifactSiteHandle } from "./artifactSite";
 import { artifactNetworkProxyCreate, type ArtifactNetworkProxyHandle } from "./artifactNetwork";
 import { deviceBridgeHostCreate } from "./deviceBridgeHost";
 import {
@@ -141,7 +129,6 @@ import { doNotTrackEnabled, doNotTrackEnvironment } from "../shared/doNotTrack";
 import { powerSavingInstall } from "./powerSaving";
 import { cloudAuthProductionRedirectUri, serverOAuthRedirectUri } from "../shared/cloudAuthConfig";
 import { cloudAuthCallbackRead } from "./cloudAuthCallback";
-import { credentialImportCreate, credentialImportSend } from "./credentialImport";
 import { happyExternalLinkUrl } from "./happyLink";
 
 if (process.platform !== "darwin" && process.platform !== "linux" && process.platform !== "win32") {
@@ -484,27 +471,8 @@ const serverOAuthRedirect = new URL(serverOAuthRedirectUri);
  * a team-server token: the isolated transport and main's own daemon clients
  * add each one to requests through the host Happy Agent.
  */
-/**
- * Happy Cloud, which this app signs in to and talks to itself, never through
- * the host Happy Agent. Only builds that are not production offer it: a
- * development checkout and the Nightly flavor. Its tokens stay in memory like
- * every team server's; the servers the person added are remembered in a file.
- */
-const happyCloud =
-    buildIdentity !== undefined || desktopFlavor.kind === "local-web"
-        ? happyCloudCreate({
-              listPath: join(app.getPath("userData"), "happy-cloud-servers.json"),
-              fetch: (input, init) => net.fetch(input instanceof URL ? input.href : input, init),
-              sessions: () => serverSessions,
-              vault: happyCloudVaultCreate({
-                  path: join(app.getPath("userData"), "happy-cloud-sessions.bin"),
-                  cipher: safeStorage,
-              }),
-          })
-        : undefined;
 const serverSessions = serverSessionsCreate({
     roster: () => runtime.serverRoster(),
-    ...(happyCloud ? { direct: happyCloud.direct } : {}),
     fetch: (input, init) => net.fetch(input instanceof URL ? input.href : input, init),
     async browserOpen(url) {
         await shell.openExternal(url);
@@ -927,7 +895,6 @@ function artifactSessionGet() {
 async function artifactSessionStart(): Promise<void> {
     const sites = artifactSitesCreate({
         codeModuleRead: () => readFile(join(dirname, "artifact-code", "code.js")),
-        happyCloud: (connectionId) => happyCloudArtifactClient(connectionId, serverSessions),
     });
     artifactNetworkProxy = await artifactNetworkProxyCreate().catch(() => undefined);
     artifactGuests = new ArtifactGuests(sites);
@@ -1233,7 +1200,6 @@ function localWindowCreate(bounds?: DesktopWindowBounds) {
                     ? [`${buildIdentityArgument}${JSON.stringify(buildIdentity)}`]
                     : []),
                 ...(desktopDebugEnabled ? [debugMetricsArgument] : []),
-                ...(happyCloud ? [happyCloudArgument] : []),
                 ...(desktopDoNotTrack ? [doNotTrackArgument] : []),
             ],
             contextIsolation: true,
@@ -1747,21 +1713,6 @@ void app
                 ),
             desktopDebugEnabled ? desktopDebugLog : undefined,
             serverSessions,
-            // Happy Cloud's sites need no Happy Agent, only the artifact
-            // partition and the person's sign-in, both held here.
-            async (connectionId, site) => {
-                const sites = artifactSites?.register();
-                if (!sites)
-                    throw new ArtifactSiteError(501, "This desktop cannot run a vault app.");
-                return site.kind === "artifact"
-                    ? await sites.open(site.artifactId, site.version, connectionId)
-                    : await sites.openVaultApp(
-                          site.surfaceId,
-                          site.fileId,
-                          site.version,
-                          connectionId,
-                      );
-            },
         );
         htmlPreviewProxy = await htmlPreviewProxyCreate();
         await htmlPreviewSessionConfigure();
@@ -1990,137 +1941,6 @@ void app
             desktopDaemonSenderRequire(event.sender);
             if (typeof attemptId === "string") serverSessions.signInCancel(attemptId);
         });
-        if (happyCloud) {
-            const cloud = happyCloud;
-            // The secret store answers only once the app is ready.
-            serverSessions.directRestore();
-            const credentialImport = credentialImportCreate();
-            const name = (value: unknown): string => {
-                if (typeof value !== "string" || value.length > 64)
-                    throw new Error("Happy asked about an invalid server name.");
-                return value;
-            };
-            ipcMain.handle(desktopIpc.happyCloudServersList, (event) => {
-                desktopDaemonSenderRequire(event.sender);
-                return cloud.serversList();
-            });
-            ipcMain.handle(desktopIpc.happyCloudAvailability, (event, value: unknown) => {
-                desktopDaemonSenderRequire(event.sender);
-                return cloud.availability(name(value));
-            });
-            ipcMain.handle(desktopIpc.happyCloudServerCreate, (event, value: unknown) => {
-                desktopDaemonSenderRequire(event.sender);
-                return cloud.serverCreate(name(value));
-            });
-            ipcMain.handle(
-                desktopIpc.happyCloudServerJoin,
-                (event, value: unknown, code: unknown) => {
-                    desktopDaemonSenderRequire(event.sender);
-                    if (typeof code !== "string" || code.length > 64)
-                        throw new Error("Happy asked to join with an invalid invite code.");
-                    return cloud.serverJoin(name(value), code);
-                },
-            );
-            ipcMain.handle(desktopIpc.happyCloudImageRead, (event, value: unknown) => {
-                desktopDaemonSenderRequire(event.sender);
-                return typeof value === "string" ? cloud.imageRead(value) : undefined;
-            });
-            ipcMain.handle(desktopIpc.happyCloudServerRemove, (event, value: unknown) => {
-                desktopDaemonSenderRequire(event.sender);
-                return cloud.serverRemove(name(value));
-            });
-            ipcMain.handle(
-                desktopIpc.happyCloudPasswordSignIn,
-                (event, login: unknown, password: unknown) => {
-                    desktopDaemonSenderRequire(event.sender);
-                    if (
-                        typeof login !== "string" ||
-                        typeof password !== "string" ||
-                        login.length === 0 ||
-                        login.length > 256 ||
-                        password.length === 0 ||
-                        password.length > 1024
-                    )
-                        throw new Error("Happy asked to sign in with an invalid login.");
-                    return cloud.passwordSignIn(login, password);
-                },
-            );
-            const email = (value: unknown): string => {
-                if (typeof value !== "string" || value.length < 3 || value.length > 320)
-                    throw new Error("Happy asked to sign in with an invalid email address.");
-                return value;
-            };
-            ipcMain.handle(desktopIpc.happyCloudEmailCodeStart, (event, value: unknown) => {
-                desktopDaemonSenderRequire(event.sender);
-                return cloud.emailCodeStart(email(value));
-            });
-            ipcMain.handle(
-                desktopIpc.happyCloudEmailCodeVerify,
-                (event, value: unknown, code: unknown) => {
-                    desktopDaemonSenderRequire(event.sender);
-                    if (typeof code !== "string" || code.length === 0 || code.length > 64)
-                        throw new Error("Happy asked to sign in with an invalid code.");
-                    return cloud.emailCodeVerify(email(value), code);
-                },
-            );
-            ipcMain.handle(desktopIpc.happyCloudCredentialScan, (event, options: unknown) => {
-                desktopDaemonSenderRequire(event.sender);
-                return credentialImport.scan({
-                    shell:
-                        typeof options === "object" &&
-                        options !== null &&
-                        (options as { shell?: unknown }).shell === true,
-                });
-            });
-            ipcMain.handle(
-                desktopIpc.happyCloudCredentialImport,
-                (event, connectionId: unknown, items: unknown) => {
-                    desktopDaemonSenderRequire(event.sender);
-                    if (
-                        typeof connectionId !== "string" ||
-                        happyCloudServerNameOf(connectionId) === undefined ||
-                        !Array.isArray(items) ||
-                        items.length === 0 ||
-                        items.length > 200 ||
-                        !items.every(
-                            (item: unknown) =>
-                                typeof item === "object" &&
-                                item !== null &&
-                                typeof (item as { id?: unknown }).id === "string" &&
-                                ((item as { scope?: unknown }).scope === "team" ||
-                                    (item as { scope?: unknown }).scope === "private"),
-                        )
-                    )
-                        throw new Error("Happy asked to import invalid credentials.");
-                    return credentialImportSend({
-                        importer: credentialImport,
-                        sessions: serverSessions,
-                        fetch: (input, init) =>
-                            net.fetch(input instanceof URL ? input.href : input, init),
-                        connectionId,
-                        items: items as readonly DesktopCredentialImportItem[],
-                    });
-                },
-            );
-            ipcMain.handle(desktopIpc.happyCloudServerSignOut, (event, value: unknown) => {
-                desktopDaemonSenderRequire(event.sender);
-                return cloud.serverSignOut(name(value));
-            });
-            ipcMain.handle(desktopIpc.happyCloudSignInsKept, (event) => {
-                desktopDaemonSenderRequire(event.sender);
-                return serverSessions.directKept();
-            });
-            ipcMain.handle(desktopIpc.happyCloudAccountSignOut, (event) => {
-                desktopDaemonSenderRequire(event.sender);
-                cloud.accountSignOut();
-            });
-            ipcMain.handle(desktopIpc.happyCloudServerConnect, (event, value: unknown) => {
-                desktopDaemonSenderRequire(event.sender);
-                if (typeof value !== "string" || value.length > 128)
-                    throw new Error("Happy asked to connect to an invalid server.");
-                return cloud.serverConnect(value);
-            });
-        }
         ipcMain.handle(desktopIpc.serverSessionsGet, (event) => {
             desktopDaemonSenderRequire(event.sender);
             return serverSessions.get();

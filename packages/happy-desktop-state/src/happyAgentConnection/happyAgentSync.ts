@@ -26,27 +26,11 @@ type QueuedSyncInput =
     | HappyAgentSyncInput
     | { readonly kind: "onboarding"; readonly input: HappyAgentOnboardingInput | undefined };
 
-/**
- * Events only Happy Cloud sends, which the daemon's protocol package does not
- * name. They carry no payload a follower reads; each is a hint to read again.
- */
-export type HappyCloudEventType =
-    | "compute.nodes.updated"
-    | "compute.approvals.updated"
-    | "plugins.changed"
-    | "onboarding.updated"
-    | "invite.created"
-    | "member.updated"
-    | "member.removed"
-    | "payments.updated"
-    | "checkout.updated"
-    | "checkout.deleted";
-
 /** One connection's transport input. Following it never opens another request or SSE stream. */
 export interface HappyAgentSync {
     follow(options: {
         readonly signal: AbortSignal;
-        readonly events: readonly (HappyAgentEvent["type"] | HappyCloudEventType)[];
+        readonly events: readonly HappyAgentEvent["type"][];
         /**
          * Opts into live document frames, which carry typing as it happens and
          * would otherwise crowd every other follower's queue.

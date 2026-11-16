@@ -5401,20 +5401,15 @@ export function connectHappyAgent(options: ConnectHappyAgentOptions): HappyAgent
                 agentModes.get(sessionId),
                 intendedModes.get(sessionId),
             );
-            // A Happy Cloud file block is the server's to show once it holds
-            // the message: the pending row carries only what it can draw.
-            const files = (input.content ?? []).filter((block) => block.type === "file");
-            const content = input.content
-                ?.filter((block) => block.type !== "file")
-                .map((block) =>
-                    block.type === "image"
-                        ? {
-                              type: "image" as const,
-                              mimeType: block.mediaType,
-                              data: block.data,
-                          }
-                        : block,
-                ) ?? [{ type: "text" as const, text: input.text }];
+            const content = input.content?.map((block) =>
+                block.type === "image"
+                    ? {
+                          type: "image" as const,
+                          mimeType: block.mediaType,
+                          data: block.data,
+                      }
+                    : block,
+            ) ?? [{ type: "text" as const, text: input.text }];
             const richContent = content.filter((block) => block.type !== "text");
             // The composer deliberately permits an image-only turn, while the
             // daemon's send contract requires non-empty display text. Happy Agent uses
@@ -5423,14 +5418,13 @@ export function connectHappyAgent(options: ConnectHappyAgentOptions): HappyAgent
             const requestText =
                 input.text.trim().length > 0
                     ? input.text
-                    : [
-                          ...richContent.map((block) =>
+                    : richContent
+                          .map((block) =>
                               block.type === "image"
                                   ? `[image:${block.mimeType}]`
                                   : `[tool:${block.name}]`,
-                          ),
-                          ...files.map((block) => `[file:${block.name}]`),
-                      ].join("");
+                          )
+                          .join("");
             // Always steer: a message sent mid-run interrupts the run rather
             // than waiting behind it, and on an idle agent the daemon treats
             // steer and queue identically.
@@ -5449,9 +5443,7 @@ export function connectHappyAgent(options: ConnectHappyAgentOptions): HappyAgent
                         id: mutationId,
                         role: "user",
                         createdAt: now(),
-                        // The files ride the echo too, so their cards show
-                        // before the server answers.
-                        content: [...content, ...files] as unknown as typeof content,
+                        content,
                         metadata: {},
                         status: "pending",
                         delivery,
@@ -5474,16 +5466,7 @@ export function connectHappyAgent(options: ConnectHappyAgentOptions): HappyAgent
                         {
                             id: mutationId,
                             text: requestText,
-                            ...(richContent.length === 0 && files.length === 0
-                                ? {}
-                                : {
-                                      // The SDK's blocks are a Happy Agent daemon's; Happy
-                                      // Cloud adds the file block, which only it is sent.
-                                      content: [
-                                          ...richContent,
-                                          ...files,
-                                      ] as unknown as typeof richContent,
-                                  }),
+                            ...(richContent.length === 0 ? {} : { content: richContent }),
                             delivery,
                             mode,
                             ...(environmentDeviceId !== undefined &&
@@ -5499,7 +5482,7 @@ export function connectHappyAgent(options: ConnectHappyAgentOptions): HappyAgent
                 (response) => {
                     sendConfirmations.delete(mutationId);
                     if (response !== undefined) {
-                        // Happy Cloud answers before the run that takes the
+                        // A server may answer before the run that takes the
                         // message is announced: its events take a Redis hint
                         // and a journal read to arrive, its reply does not.
                         // The reply names that run, or on an older server

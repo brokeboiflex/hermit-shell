@@ -5,8 +5,6 @@ import {
     HappyAgentClient,
     happyAgentWorkspaceClientCreate,
     happyAgentProviderCredentialsApiCreate,
-    happyAgentCloudProvidersApiCreate,
-    happyCloudRequestCreate,
     happyAgentClockStoreCreate,
     gptLiveRuntimeCreate,
     type GptLiveRuntime,
@@ -44,7 +42,6 @@ import {
     type HappyAgentVoiceSettingsStore,
     type HappyAgentSecurityPolicyStore,
     type HappyAgentSecretsStore,
-    type HappyAgentClusterSecretsStore,
     type HappyAgentArtifacts,
     type HappyAgentSearchStore,
     type HappyAgentSurfaces,
@@ -53,7 +50,6 @@ import {
     type HappyAgentFeedFilterPersistence,
     type HappyAgentWorkspaceMemoryPersistence,
     type HappyAgentWorkspaceStore,
-    type HappyAgentCredentialImportHost,
     type ServerCompatibility,
     type TerminalColorScheme,
     UserError,
@@ -152,30 +148,9 @@ export interface HappyAgentSession {
     readonly profile: () => HappyAgentProfileStore | undefined;
     readonly providerUsage: HappyAgentProviderUsageStore | undefined;
     readonly providers: HappyAgentProvidersStore;
-    readonly members: () => import("happy-desktop-state").HappyAgentMembersStore | undefined;
-    readonly userProfile: (
-        userId: string,
-    ) => import("happy-desktop-state").HappyAgentUserProfileStore | undefined;
-    readonly repositories: () =>
-        | import("happy-desktop-state").HappyAgentRepositoriesStore
-        | undefined;
-    readonly compute: () => import("happy-desktop-state").HappyAgentComputeStore | undefined;
-    readonly payments: () => import("happy-desktop-state").HappyAgentPaymentsStore | undefined;
-    readonly onboardingSettings: () =>
-        | import("happy-desktop-state").HappyAgentOnboardingSettingsStore
-        | undefined;
-    readonly checkouts: (
-        agentId: string,
-    ) => import("happy-desktop-state").HappyAgentCheckoutsStore | undefined;
     readonly plugins: () => import("happy-desktop-state").HappyAgentPluginsStore | undefined;
     readonly genUiActions: () => import("happy-desktop-state").HappyAgentGenUiActions | undefined;
     readonly dailyUsage: () => import("happy-desktop-state").HappyAgentDailyUsageStore | undefined;
-    readonly cloudProviders: () =>
-        | import("happy-desktop-state").HappyAgentCloudProvidersStore
-        | undefined;
-    readonly credentialImport: () =>
-        | import("happy-desktop-state").HappyAgentCredentialImportStore
-        | undefined;
     readonly voiceSettings: HappyAgentVoiceSettingsStore;
     readonly taskSettings: () => import("happy-desktop-state").HappyAgentTaskSettingsStore;
     readonly surfaceSettings: () => import("happy-desktop-state").HappyAgentSurfaceSettingsStore;
@@ -183,7 +158,6 @@ export interface HappyAgentSession {
     readonly instructions: HappyAgentInstructionsStore;
     readonly securityPolicy: HappyAgentSecurityPolicyStore;
     readonly secrets: () => HappyAgentSecretsStore;
-    readonly clusterSecrets: () => HappyAgentClusterSecretsStore | undefined;
     /** This Happy Agent's published artifacts, materialized as their surfaces open. */
     readonly artifacts: HappyAgentArtifacts;
     /** The reader's feed on this Happy Agent, materialized as its surfaces open. */
@@ -414,12 +388,6 @@ export function happyAgentConnectionOpen(input: {
     readonly hostServicesUrl?: string;
     /** Whether this computer's USB devices and ports can be bridged to this Happy Agent. */
     readonly deviceBridges?: boolean;
-    /** The shell's credential import, when this is a Happy Cloud server. */
-    readonly credentialImportHost?: HappyAgentCredentialImportHost;
-    /** Drops this Happy Cloud server from the window, after leaving or deleting it. */
-    readonly cloudServer?: { readonly name: string; readonly forget: () => Promise<void> };
-    /** Whether this is a Happy Cloud server, in the desktop or on the web. */
-    readonly happyCloud?: boolean;
     /**
      * The window's appearance right now, read again for every terminal this
      * connection opens. A terminal is started in it and keeps it afterwards.
@@ -493,9 +461,6 @@ export function happyAgentConnectionOpen(input: {
         { deviceBridges: input.deviceBridges ?? false },
     );
     const welcome = welcomeStoreCreate(desktopWelcomePersistence(input.happyAgentId));
-    // A Happy Cloud server is reached through Happy Cloud's own welcome, so it
-    // opens on the server rather than introducing Happy from scratch again.
-    if (input.cloudServer && !welcome.get().welcomeAcknowledged) welcome.welcomeAcknowledge();
     // One clock and one mobile connector per Happy Agent: onboarding and
     // Settings show the same pairing, and both count its codes down.
     const clock = happyAgentClockStoreCreate();
@@ -507,28 +472,12 @@ export function happyAgentConnectionOpen(input: {
     const mobileConnector = pairingObserve?.connector(connectorStore) ?? connectorStore;
     /** Settings' Happy Mobile store, observed once for the connection. */
     let happyIntegration: HappyAgentIntegrationStore | undefined;
-    // Happy Cloud's own routes, over the same transport as the daemon's.
-    const cloudRequest = input.happyCloud
-        ? happyCloudRequestCreate({
-              endpoint: directClient.endpoint,
-              token: "happy-local-capability",
-          })
-        : undefined;
     const onboardingStore = happyAgentOnboardingStoreCreate(directClient, agentConnection.sync, {
         setupActive: input.happyAgentId !== "local" && welcome.get().welcomeAcknowledged,
         mobileSkipped: desktopHappyMobileOnboardingSkipped(input.happyAgentId),
         onMobileSkip: () => desktopHappyMobileOnboardingSkip(input.happyAgentId),
         guidedMobileSetup: input.guidedMobileSetup,
         mobileConnector,
-        ...(cloudRequest
-            ? {
-                  cloudRequest,
-                  plugins: () => client.plugins(),
-                  // The first owner to finish starts the Chief of Staff's first
-                  // conversation, which is where the reader goes next.
-                  onFinished: () => workspace?.chiefOfStaffOpen(),
-              }
-            : {}),
     });
     const onboarding = pairingObserve
         ? { ...onboardingStore, mobile: pairingObserve.onboarding(onboardingStore.mobile) }
@@ -539,25 +488,6 @@ export function happyAgentConnectionOpen(input: {
             endpoint: directClient.endpoint,
             token: "happy-local-capability",
         }),
-        ...(input.credentialImportHost ? { credentialImportHost: input.credentialImportHost } : {}),
-        ...(cloudRequest
-            ? {
-                  cloudRequest,
-                  cloudProviders: happyAgentCloudProvidersApiCreate(cloudRequest),
-              }
-            : {}),
-        ...(input.cloudServer
-            ? {
-                  cloudServer: {
-                      serverName: input.cloudServer.name,
-                      request: happyCloudRequestCreate({
-                          endpoint: directClient.endpoint,
-                          token: "happy-local-capability",
-                      }),
-                      serverForget: input.cloudServer.forget,
-                  },
-              }
-            : {}),
         guidedMobileSetup: input.guidedMobileSetup,
         mobileConnector,
         cloudHost: input.cloudHost,
@@ -571,8 +501,8 @@ export function happyAgentConnectionOpen(input: {
         profilePhotoCodec: { open: imageCropOpen },
         profileSource: profile.source,
         providerUsageSource: happyAgentUsageSourceCreate(directClient, agentConnection.sync),
-        // The same route on a Happy Agent and on Happy Cloud, both of which say in
-        // their health whether they serve it. One that says it does not is not asked;
+        // The same route on every server, each of which says in its health
+        // whether it serves it. One that says it does not is not asked;
         // one that has not said yet is asked, and a 404 ends it the same way.
         dailyUsageRead: async (days: number, tz: string) => {
             const health = agentConnection.sync.health();
@@ -611,14 +541,6 @@ export function happyAgentConnectionOpen(input: {
               profile: profileStore,
               clock,
               retry: () => agentConnection.retry(),
-              ...(cloudRequest
-                  ? {
-                        cloudProviders: () => client.cloudProviders(),
-                        plugins: () => client.plugins(),
-                        payments: () => client.payments(),
-                        providers: () => client.providers(),
-                    }
-                  : {}),
           }
         : undefined;
 
@@ -726,18 +648,9 @@ export function happyAgentConnectionOpen(input: {
                     profile: () => profileStore,
                     providerUsage: client.providerUsage(),
                     providers: client.providers(),
-                    credentialImport: () => client.credentialImport(),
-                    cloudProviders: () => client.cloudProviders(),
-                    repositories: () => client.repositories(),
-                    compute: () => client.compute(),
-                    onboardingSettings: () => client.onboardingSettings(),
-                    payments: () => client.payments(),
                     plugins: () => client.plugins(),
                     genUiActions: () => client.genUiActions(),
                     dailyUsage: () => client.dailyUsage(),
-                    members: () => client.members(),
-                    userProfile: (userId) => client.userProfile(userId),
-                    checkouts: (agentId) => client.checkouts(agentId),
                     voiceSettings: client.voiceSettings(),
                     taskSettings: () => client.taskSettings(),
                     surfaceSettings: () => client.surfaceSettings(),
@@ -745,7 +658,6 @@ export function happyAgentConnectionOpen(input: {
                     instructions: client.instructions(),
                     securityPolicy: client.securityPolicy(),
                     secrets: () => client.secrets(),
-                    clusterSecrets: () => client.clusterSecrets(),
                     artifacts: client.artifacts(),
                     feed: client.feed(),
                     surfaces: client.surfaces(),
@@ -800,17 +712,6 @@ export function happyAgentConnectionOpen(input: {
         ...(profileStore ? [profileStore.subscribe(() => undefined)] : []),
     );
 
-    // A phone signing in moves the onboarding on and tells no other device, so
-    // a Happy Cloud server's gates are read again when the window comes back.
-    // Coming back from Stripe in the system browser asks the server to read
-    // Stripe again, once Payments has been shown.
-    const onboardingFocusRead = (): void => {
-        onboarding.onboardingRead();
-        const payments = disposed ? undefined : client.payments();
-        if (payments?.get().available) payments.paymentsSync();
-    };
-    if (cloudRequest) window.addEventListener("focus", onboardingFocusRead);
-
     return {
         setup,
         get: () => session,
@@ -836,7 +737,6 @@ export function happyAgentConnectionOpen(input: {
                 sessionConnection = undefined;
             }
             for (const unsubscribe of accountKeepWarm) unsubscribe();
-            window.removeEventListener("focus", onboardingFocusRead);
             onboarding[Symbol.dispose]();
             client[Symbol.dispose]();
             mobileConnector[Symbol.dispose]();

@@ -312,12 +312,6 @@ export interface HappyAgentModelProvider {
      * for an account that is not a pool, and from a daemon too old to say.
      */
     readonly poolMembers?: readonly string[];
-    /**
-     * Happy Cloud: an older ID the server still answers as the provider named
-     * here, such as a bare `openai` meaning Happy (free). Never listed; a
-     * conversation on it reads as that provider.
-     */
-    readonly aliasOf?: string;
     readonly disabledReason?: "not_authenticated" | "not_enabled" | "no_models";
 }
 
@@ -337,17 +331,6 @@ export interface HappyAgentModelCatalog {
 export interface HappyAgentImageInput {
     readonly mediaType: string;
     readonly data: string;
-}
-
-/**
- * A file uploaded to a Happy Cloud conversation, named in a message by its
- * attachment ID. Happy Cloud's addition to the send contract; a Happy Agent
- * daemon has no such block.
- */
-export interface HappyCloudFileBlock {
-    readonly type: "file";
-    readonly attachment: string;
-    readonly name: string;
 }
 
 /**
@@ -476,40 +459,6 @@ export interface HappyAgentUsageContext {
  * Only exists when the model declares a window; a model that does not is not
  * reported as full, or as empty, but not reported at all.
  */
-/**
- * Where a Happy Cloud conversation's shell, file and git tools run: nothing,
- * or the one computer the agent joined. `label` is the computer's name;
- * `online` is absent until the server has said.
- */
-export type HappyAgentCompute =
-    | { readonly kind: "none" }
-    | {
-          readonly kind: "computer";
-          readonly computerId: string;
-          readonly label?: string;
-          readonly online?: boolean;
-      }
-    | {
-          readonly kind: "computer";
-          readonly computerId: string;
-          readonly label?: string;
-          readonly online?: boolean;
-      };
-
-/**
- * The Happy Cloud repository a task's agent attached, and how its checkout
- * went. The agent attaches it itself; the person only sees it.
- */
-export interface HappyAgentRepositoryBinding {
-    readonly repositoryId: string;
-    /** The repository's name when it was attached. */
-    readonly name: string;
-    readonly branch: string;
-    readonly checkout: "pending" | "ready" | "failed";
-    /** Why the checkout failed, in words for a person. */
-    readonly error?: string;
-}
-
 export interface HappyAgentContextGauge {
     readonly usedTokens: number;
     readonly remainingTokens: number;
@@ -1039,11 +988,9 @@ export interface HappyAgentWorkspaceFileTreePage {
 
 /**
  * Why a checkout's files cannot be listed at all, as opposed to one read that
- * failed: a Happy Cloud conversation with no compute attached has no folder to
- * list yet, one whose compute is offline has no machine to read it from, and a
- * server without the route never will.
+ * failed: a server without the route never will.
  */
-export type HappyAgentWorkspaceFilesUnavailable = "noCompute" | "computeOffline" | "unsupported";
+export type HappyAgentWorkspaceFilesUnavailable = "unsupported";
 
 /** What reading one checkout directory answered. */
 export type HappyAgentWorkspaceFileTreeRead =

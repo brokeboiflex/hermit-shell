@@ -17,8 +17,6 @@ import type {
     HappyAgentCustomProviderEditor,
     HappyAgentProvidersSnapshot,
     HappyAgentProvidersStore,
-    HappyAgentCloudConnection,
-    HappyAgentCloudProvidersSnapshot,
     HappyAgentProviderEntry,
     HappyAgentSettingsSnapshot,
     HappyAgentSettingsStore,
@@ -57,27 +55,8 @@ import {
     happyAgentProviderUsageStoreNoop,
     type HappyAgentProviderUsageStore,
     happyAgentProvidersStoreNoop,
-    happyAgentCredentialImportStoreNoop,
-    happyAgentCloudProvidersStoreNoop,
-    happyAgentRepositoriesStoreNoop,
-    happyAgentComputeStoreNoop,
-    happyAgentOnboardingSettingsStoreNoop,
-    happyAgentPaymentsStoreNoop,
     happyAgentDailyUsageStoreNoop,
-    happyAgentCloudProviderAddTeamOnly,
-    happyAgentCloudConnectionName,
-    happyAgentCloudConnectionEditable,
-    happyAgentCloudCredentialReplaceable,
-    happyAgentProviderAddLinkParse,
-    type HappyAgentCloudProvidersStore,
-    HAPPY_AGENT_INVITE_RESEND_COOLDOWN_MS,
-    happyAgentMembersStoreNoop,
-    type HappyAgentInvite,
-    type HappyAgentInviteNotice,
-    type HappyAgentMembersSnapshot,
-    type HappyAgentCredentialImportSnapshot,
     happyAgentSecretsStoreNoop,
-    happyAgentClusterSecretsStoreNoop,
     happyAgentVoiceSettingsStoreNoop,
     happyAgentWindowStoreNoop,
     happyAgentAttentionConnection,
@@ -103,16 +82,6 @@ import {
     HappyAgentCustomProviderDialog,
     type HappyAgentCustomProviderDialogProps,
     HappyAgentProviderSettings,
-    HappyAgentCredentialImport,
-    HappyAgentAiProviders,
-    type HappyAgentAiProviderConnectionRow,
-    type HappyAgentProviderAddDialogProps,
-    type HappyAgentProviderEditDialogProps,
-    HappyAgentMembersSettings,
-    type HappyAgentInviteNoticeView,
-    type HappyAgentInviteRow,
-    Banner,
-    type HappyAgentCredentialImportRow,
     HappyAgentProfilerSettings,
     HappyAgentProfileSettings,
     HappyAgentSecretSettings,
@@ -127,16 +96,9 @@ import {
     type HappyAgentSecretRow,
     type HappyAgentSettingsCategory,
     type HappyAgentStateDocument,
-    HappyCloudWebSettings,
 } from "happy-desktop-ui";
 import { chatWallpaperImageRead } from "../chatWallpaperImage";
 import { HappyAgentVersionProvider } from "../HappyAgentVersionProvider";
-import { AppOnboardingSettings } from "./AppOnboardingSettings";
-import { AppPaymentsSettings } from "./AppPaymentsSettings";
-import { AppComputeSettings } from "./AppComputeSettings";
-import { AppRepositoriesSettings } from "./AppRepositoriesSettings";
-import { AppClusterSecretSettings } from "./AppClusterSecretSettings";
-import { happyAgentSettingsCategoryAvailable } from "../happyAgentSettingsCategoryAvailable";
 import {
     AppMobileDirectSection,
     appMobileDirectOff,
@@ -166,22 +128,10 @@ export const HAPPY_AGENT_SETTINGS_CATEGORIES: readonly HappyAgentSettingsCategor
     // What agents on this machine are told, run on, and may use.
     { group: "Agents", icon: "doc", id: "instructions", label: "Instructions" },
     { group: "Agents", icon: "globe", id: "providers", label: "Inference" },
-    // The computers agents run on, beside the models they run; Happy Cloud only.
-    { group: "Agents", icon: "terminal", id: "compute", label: "Compute" },
     // Usage follows Inference because it is the same accounts read the other
     // way round: which of them exist, then what each has spent.
     { group: "Agents", icon: "zap", id: "usage", label: "Usage" },
     { group: "Agents", icon: "lock", id: "secrets", label: "Secrets" },
-    // Who is on a Happy Cloud server; offered only there.
-    { group: "Team", icon: "users", id: "members", label: "Members" },
-    // The team's code on a Happy Cloud server; offered only there.
-    { group: "Team", icon: "repository", id: "repositories", label: "Repositories" },
-    // What people are asked for when they first open a Happy Cloud server;
-    // listed only where the server reports onboarding settings.
-    { group: "Team", icon: "check-circle", id: "onboarding", label: "Onboarding" },
-    // The team's credit and card; listed only where the server takes payments
-    // and the reader may manage them.
-    { group: "Team", icon: "zap", id: "payments", label: "Payments" },
     // How each project's changes are split into tiers in the Changes listing.
     { group: "Advanced", icon: "file-diff", id: "file-tiers", label: "File tiers" },
     { group: "Advanced", icon: "zap", id: "experimental", label: "Experimental" },
@@ -200,38 +150,10 @@ export const HAPPY_AGENT_SETTINGS_MOVED_CATEGORIES: Readonly<Record<string, stri
 
 /**
  * The category a `happy://settings/<page>` link opens here, or nothing when
- * this window has no such page. Import lives on the Inference page.
+ * this window has no such page.
  */
 export function happyAgentSettingsSectionOf(page: string): string | undefined {
-    const section =
-        page === "providers/import" || happyAgentProviderAddLinkParse(page) !== undefined
-            ? "providers"
-            : page;
-    return happyAgentSettingsCategoryExists(section) ? section : undefined;
-}
-
-/**
- * Opens what a settings page names beyond its category: Import's scan on a
- * desktop, or an AI provider's add dialog. Where there is no scan, as on the
- * web, the import page opens the add dialog's choices instead.
- */
-export function happyAgentSettingsPageOpen(
-    session:
-        | {
-              readonly credentialImport?: () => { dialogOpen(): void } | undefined;
-              readonly cloudProviders?: () => HappyAgentCloudProvidersStore | undefined;
-          }
-        | undefined,
-    page: string,
-): void {
-    if (page === "providers/import") {
-        const scan = session?.credentialImport?.();
-        if (scan) scan.dialogOpen();
-        else session?.cloudProviders?.()?.addOpen();
-        return;
-    }
-    const add = happyAgentProviderAddLinkParse(page);
-    if (add) session?.cloudProviders?.()?.addOpen(add);
+    return happyAgentSettingsCategoryExists(page) ? page : undefined;
 }
 
 /** True when `section` addresses a category this window actually has. */
@@ -437,12 +359,7 @@ const CATEGORY_DESCRIPTIONS: Record<string, string> = {
     instructions: "Agent guidance and permission review for this machine",
     secrets: "Environment variables for agents",
     providers: "The models agents run on, and the accounts behind them",
-    members: "Who is on this server and what they may do",
     usage: "What each provider account has spent",
-    repositories: "The code your team works on",
-    compute: "The computers agents run on",
-    onboarding: "What people are asked for when they first open this server",
-    payments: "Credit, the card on file and what agents spend",
 };
 
 /** Stands in where the host cannot hold the machine awake, keeping hook order fixed. */
@@ -459,19 +376,10 @@ const usageAnalyticsAbsent: UsageAnalyticsStore = {
     usageAnalyticsUpdate: () => undefined,
 };
 
-/** The cloud web app's session at the edge: its server, switching, and signing out. */
-export interface AppCloudWebSession {
-    readonly serverName: string;
-    onServerSwitch(): void;
-    onSignOut(): void;
-}
-
 export interface AppHappyAgentSettingsViewProps {
     appearance: AppearanceStore;
     /** Opens a page in the person's own browser, such as a provider's sign-in page. */
     externalLinkOpen?: (url: string) => void;
-    /** Present only in the cloud web app. */
-    cloudWebSession?: AppCloudWebSession;
     /** Application update status remains visible here while the footer waits for a download. */
     update?: AppHappyAgentUpdate;
     onUpdateApply?: () => void;
@@ -505,8 +413,6 @@ export interface AppHappyAgentSettingsViewProps {
     happyAgents: AppHappyAgentDirectoryStore;
     onClose(): void;
     onCategorySelect(id: string): void;
-    /** Opens a person's profile on a Happy Cloud server. */
-    onUserProfileOpen?(happyAgentId: string, userId: string): void;
     platform?: "desktop" | "web";
     section: string;
     settings: HappyAgentSettingsStore;
@@ -593,23 +499,6 @@ export function AppHappyAgentSettingsView(props: AppHappyAgentSettingsViewProps)
         props.happyAgents.get,
     );
     const host = hostHappyAgent(directory);
-    const happyCloud = host?.happyCloud === true;
-    // Followed while Settings is open: whether Onboarding is listed at all
-    // depends on the server reporting onboarding settings.
-    const onboardingSettingsStore = host?.session?.onboardingSettings?.();
-    const onboardingSettings = useSyncExternalStore(
-        (onboardingSettingsStore ?? happyAgentOnboardingSettingsStoreNoop).subscribe,
-        (onboardingSettingsStore ?? happyAgentOnboardingSettingsStoreNoop).get,
-        (onboardingSettingsStore ?? happyAgentOnboardingSettingsStoreNoop).get,
-    );
-    // Followed while Settings is open: Payments is listed only once the server
-    // has said it takes payments and the reader may manage them.
-    const paymentsStore = host?.session?.payments?.();
-    const payments = useSyncExternalStore(
-        (paymentsStore ?? happyAgentPaymentsStoreNoop).subscribe,
-        (paymentsStore ?? happyAgentPaymentsStoreNoop).get,
-        (paymentsStore ?? happyAgentPaymentsStoreNoop).get,
-    );
     // Subscribing is what starts the read, so the instructions are asked for
     // only while this window is open, and only once however often it is.
     const instructionsStore = host?.session?.instructions;
@@ -624,41 +513,9 @@ export function AppHappyAgentSettingsView(props: AppHappyAgentSettingsViewProps)
         securityPolicyStore?.get ?? securityPolicyUnavailable,
         securityPolicyStore?.get ?? securityPolicyUnavailable,
     );
-    // Instructions is left out only where Happy Cloud has no routes for the documents.
-    const instructionsShown = !happyCloud || instructions.access !== "unserved";
-    const instructionsReadOnly = happyCloud && instructions.access === "read";
-    const securityPolicyReadOnly = happyCloud && securityPolicy.access === "read";
-    const paymentsAbsent = !paymentsStore || (!payments.loading && !payments.available);
-    // A link to Onboarding on a server that reports no onboarding settings
-    // opens the default category, once the server has said so.
-    const onboardingAbsent =
-        !onboardingSettingsStore || (!onboardingSettings.loading && !onboardingSettings.available);
-    const section =
-        happyAgentSettingsCategoryAvailable(props.section, happyCloud) &&
-        !(props.section === "onboarding" && onboardingAbsent) &&
-        !(props.section === "payments" && paymentsAbsent) &&
-        !(props.section === "instructions" && happyCloud && instructions.access === "unserved")
-            ? props.section
-            : HAPPY_AGENT_SETTINGS_DEFAULT_CATEGORY;
+    const section = props.section;
     const stateOpen = section === "debug";
-    const membersStore = host?.session?.members?.();
-    const repositoriesStore = host?.session?.repositories?.();
-    const computeStore = host?.session?.compute?.();
-    // The plugins step's choices come from the server's plugin catalog.
-    const onboardingPlugins = section === "onboarding" ? host?.session?.plugins?.() : undefined;
-    // A category the host cannot serve is left out of the list rather than
-    // shown and refused.
-    const categories = HAPPY_AGENT_SETTINGS_CATEGORIES.filter(
-        (category) =>
-            happyAgentSettingsCategoryAvailable(category.id, happyCloud) &&
-            (category.id !== "instructions" || instructionsShown) &&
-            (category.id !== "members" || membersStore !== undefined) &&
-            (category.id !== "repositories" || repositoriesStore !== undefined) &&
-            (category.id !== "compute" || computeStore !== undefined) &&
-            (category.id !== "onboarding" ||
-                (onboardingSettingsStore !== undefined && onboardingSettings.available)) &&
-            (category.id !== "payments" || (paymentsStore !== undefined && payments.available)),
-    );
+    const categories = HAPPY_AGENT_SETTINGS_CATEGORIES;
     const hostAvailability = host?.session
         ? happyAgentAvailabilityProject(host.session.connection.get(), true, {
               status: host.status,
@@ -704,9 +561,8 @@ export function AppHappyAgentSettingsView(props: AppHappyAgentSettingsViewProps)
     // The connection keeps both identities synchronized. This category only
     // observes their already-warm snapshots while it is visible.
     const cloudStore =
-        (!happyCloud && (section === "account" || stateOpen)
-            ? host?.session?.cloud?.()
-            : undefined) ?? happyAgentCloudStoreNoop;
+        (section === "account" || stateOpen ? host?.session?.cloud?.() : undefined) ??
+        happyAgentCloudStoreNoop;
     const cloud = useSyncExternalStore(cloudStore.subscribe, cloudStore.get, cloudStore.get);
     const happyIntegrationStore =
         (section === "mobile-access" || stateOpen
@@ -759,24 +615,14 @@ export function AppHappyAgentSettingsView(props: AppHappyAgentSettingsViewProps)
         happyIntegration.setup === undefined;
     // Secrets are safe metadata only. The store starts its repeating read while
     // this category (or raw Dev Tools state) watches it and stops immediately
-    // when the surface leaves. Happy Cloud keeps a typed catalog instead of the
-    // daemon's environment bundles, and answers the daemon's routes with 404.
+    // when the surface leaves.
     const secretsWatched = section === "secrets" || stateOpen;
     const secretsStore =
-        (secretsWatched && !happyCloud ? host?.session?.secrets?.() : undefined) ??
-        happyAgentSecretsStoreNoop;
+        (secretsWatched ? host?.session?.secrets?.() : undefined) ?? happyAgentSecretsStoreNoop;
     const secrets = useSyncExternalStore(
         secretsStore.subscribe,
         secretsStore.get,
         secretsStore.get,
-    );
-    const clusterSecretsStore =
-        (secretsWatched && happyCloud ? host?.session?.clusterSecrets?.() : undefined) ??
-        happyAgentClusterSecretsStoreNoop;
-    const clusterSecrets = useSyncExternalStore(
-        clusterSecretsStore.subscribe,
-        clusterSecretsStore.get,
-        clusterSecretsStore.get,
     );
     // The Providers category is the only thing that reads this, and subscribing
     // is what starts the work: the daemon's configuration is read, and re-read
@@ -788,51 +634,6 @@ export function AppHappyAgentSettingsView(props: AppHappyAgentSettingsViewProps)
         providersStore.subscribe,
         providersStore.get,
         providersStore.get,
-    );
-    // Import exists only on a Happy Cloud server reached from a desktop, and
-    // looks for nothing until the person asks it to.
-    const credentialImportStore =
-        section === "providers" ? host?.session?.credentialImport?.() : undefined;
-    // The member list is read, and re-read every few seconds, only while
-    // Members is on screen.
-    const membersShown = section === "members" ? membersStore : undefined;
-    const members = useSyncExternalStore(
-        (membersShown ?? happyAgentMembersStoreNoop).subscribe,
-        (membersShown ?? happyAgentMembersStoreNoop).get,
-        (membersShown ?? happyAgentMembersStoreNoop).get,
-    );
-    // The repository list is read, and re-read every few seconds, only while
-    // Repositories is on screen.
-    const repositoriesShown = section === "repositories" ? repositoriesStore : undefined;
-    const repositories = useSyncExternalStore(
-        (repositoriesShown ?? happyAgentRepositoriesStoreNoop).subscribe,
-        (repositoriesShown ?? happyAgentRepositoriesStoreNoop).get,
-        (repositoriesShown ?? happyAgentRepositoriesStoreNoop).get,
-    );
-    // Pools and machines are read, and re-read every few seconds, only while
-    // Compute is on screen.
-    const computeShown = section === "compute" ? computeStore : undefined;
-    const compute = useSyncExternalStore(
-        (computeShown ?? happyAgentComputeStoreNoop).subscribe,
-        (computeShown ?? happyAgentComputeStoreNoop).get,
-        (computeShown ?? happyAgentComputeStoreNoop).get,
-    );
-    // AI providers exist only on Happy Cloud; the list is followed while
-    // Providers is on screen.
-    const cloudProvidersStore =
-        section === "providers" ? host?.session?.cloudProviders?.() : undefined;
-    const cloudProviders = useSyncExternalStore(
-        (cloudProvidersStore ?? happyAgentCloudProvidersStoreNoop).subscribe,
-        (cloudProvidersStore ?? happyAgentCloudProvidersStoreNoop).get,
-        (cloudProvidersStore ?? happyAgentCloudProvidersStoreNoop).get,
-    );
-    const cloudProviderEdit = cloudProvidersStore
-        ? providerEditProps(cloudProviders, cloudProvidersStore)
-        : undefined;
-    const credentialImport = useSyncExternalStore(
-        (credentialImportStore ?? happyAgentCredentialImportStoreNoop).subscribe,
-        (credentialImportStore ?? happyAgentCredentialImportStoreNoop).get,
-        (credentialImportStore ?? happyAgentCredentialImportStoreNoop).get,
     );
     // The voice controller and prompt are read, and re-read every few seconds,
     // only while the Voice category is on screen, including while calls are off.
@@ -875,7 +676,7 @@ export function AppHappyAgentSettingsView(props: AppHappyAgentSettingsViewProps)
     );
     // Tiers are one list for the window, remembered by the host's workspace;
     // every machine's Changes is split by these.
-    const changeTiersStore = happyCloud ? undefined : host?.session?.workspace.changeTiers;
+    const changeTiersStore = host?.session?.workspace.changeTiers;
     const changeTiers = useSyncExternalStore(
         changeTiersStore?.subscribe ?? noSubscribe,
         changeTiersStore?.get ?? changeTiersNone,
@@ -960,13 +761,7 @@ export function AppHappyAgentSettingsView(props: AppHappyAgentSettingsViewProps)
             activeCategoryId={section}
             categories={categories}
             description={
-                mobileLinkHeading
-                    ? mobileLinkHeading.description
-                    : section === "secrets" && happyCloud
-                      ? "Keys and credentials agents use without seeing them"
-                      : section === "instructions" && happyCloud
-                        ? "Agent guidance and permission review for this team"
-                        : CATEGORY_DESCRIPTIONS[section]
+                mobileLinkHeading ? mobileLinkHeading.description : CATEGORY_DESCRIPTIONS[section]
             }
             onCategorySelect={props.onCategorySelect}
             onClose={props.onClose}
@@ -1250,7 +1045,7 @@ export function AppHappyAgentSettingsView(props: AppHappyAgentSettingsViewProps)
                             models,
                             profile,
                             providers,
-                            secrets: happyCloud ? clusterSecrets : secrets,
+                            secrets,
                             securityPolicy,
                             settings,
                             titleShimmer,
@@ -1310,13 +1105,6 @@ export function AppHappyAgentSettingsView(props: AppHappyAgentSettingsViewProps)
             ) : section === "account" ? (
                 // The local author identity and optional WorkOS connection.
                 <>
-                    {props.cloudWebSession ? (
-                        <HappyCloudWebSettings
-                            onServerSwitch={props.cloudWebSession.onServerSwitch}
-                            onSignOut={props.cloudWebSession.onSignOut}
-                            serverName={props.cloudWebSession.serverName}
-                        />
-                    ) : null}
                     <HappyAgentProfileSettings
                         dirty={profile.dirty}
                         email={profile.email}
@@ -1360,25 +1148,21 @@ export function AppHappyAgentSettingsView(props: AppHappyAgentSettingsViewProps)
                         {...(profile.saveError ? { saveError: profile.saveError } : {})}
                         {...(unavailable === undefined ? {} : { unavailable })}
                     />
-                    {/* The web app's Happy Cloud session stands in for the
-                        machine's own WorkOS connection, which it has none of. */}
-                    {happyCloud || props.cloudWebSession ? null : (
-                        <HappyAgentAccountSettings
-                            authorizationCompleting={cloud.authorizationCompleting}
-                            authorizationStarting={cloud.authorizationStarting}
-                            disconnecting={cloud.disconnecting}
-                            onConnect={() => {
-                                if (happyAgentOnline()) cloudStore.cloudAccountConnect();
-                            }}
-                            onDisconnect={() => {
-                                if (happyAgentOnline()) cloudStore.cloudAccountDisconnect();
-                            }}
-                            status={cloud.status}
-                            {...(cloud.error ? { error: cloud.error.message } : {})}
-                            {...(cloud.user ? { email: cloud.user.email } : {})}
-                            {...(unavailable === undefined ? {} : { unavailable })}
-                        />
-                    )}
+                    <HappyAgentAccountSettings
+                        authorizationCompleting={cloud.authorizationCompleting}
+                        authorizationStarting={cloud.authorizationStarting}
+                        disconnecting={cloud.disconnecting}
+                        onConnect={() => {
+                            if (happyAgentOnline()) cloudStore.cloudAccountConnect();
+                        }}
+                        onDisconnect={() => {
+                            if (happyAgentOnline()) cloudStore.cloudAccountDisconnect();
+                        }}
+                        status={cloud.status}
+                        {...(cloud.error ? { error: cloud.error.message } : {})}
+                        {...(cloud.user ? { email: cloud.user.email } : {})}
+                        {...(unavailable === undefined ? {} : { unavailable })}
+                    />
                 </>
             ) : section === "file-tiers" ? (
                 fileTierSettings(changeTiers, changeTiersStore, unavailable)
@@ -1387,9 +1171,8 @@ export function AppHappyAgentSettingsView(props: AppHappyAgentSettingsViewProps)
                     documents={[
                         {
                             bytes: instructions.bytes,
-                            description: happyCloud
-                                ? `Given to every agent on this team, on top of the project's own AGENTS.md. ${OWNERS_ONLY}`
-                                : "Given to every agent this machine starts, on top of the project's own AGENTS.md.",
+                            description:
+                                "Given to every agent this machine starts, on top of the project's own AGENTS.md.",
                             dirty: instructions.dirty,
                             error: documentError(instructionsStore, instructions),
                             id: "agents",
@@ -1401,13 +1184,8 @@ export function AppHappyAgentSettingsView(props: AppHappyAgentSettingsViewProps)
                                 if (happyAgentOnline()) instructionsStore?.save();
                             },
                             onValueChange: (value) => instructionsStore?.draftUpdate(value),
-                            path: happyCloud ? "Team AGENTS.md" : INSTRUCTIONS_PATH,
-                            placeholder: instructionsReadOnly
-                                ? "No team instructions yet."
-                                : happyCloud
-                                  ? "Anything every agent on this team should know…"
-                                  : "Anything every agent on this machine should know…",
-                            readOnly: instructionsReadOnly,
+                            path: INSTRUCTIONS_PATH,
+                            placeholder: "Anything every agent on this machine should know…",
                             saveError: instructions.saveError?.message,
                             saving: instructions.saving,
                             value: instructions.draft,
@@ -1420,9 +1198,8 @@ export function AppHappyAgentSettingsView(props: AppHappyAgentSettingsViewProps)
                         },
                         {
                             bytes: securityPolicy.bytes,
-                            description: happyCloud
-                                ? `Applied when this team's agents are reviewed for whether an action is allowed. ${OWNERS_ONLY}`
-                                : "Applied when this machine reviews whether an agent action is allowed.",
+                            description:
+                                "Applied when this machine reviews whether an agent action is allowed.",
                             dirty: securityPolicy.dirty,
                             error: documentError(securityPolicyStore, securityPolicy),
                             id: "security",
@@ -1434,11 +1211,8 @@ export function AppHappyAgentSettingsView(props: AppHappyAgentSettingsViewProps)
                                 if (happyAgentOnline()) securityPolicyStore?.save();
                             },
                             onValueChange: (value) => securityPolicyStore?.draftUpdate(value),
-                            path: happyCloud ? "Team SECURITY.md" : SECURITY_POLICY_PATH,
-                            placeholder: securityPolicyReadOnly
-                                ? "No team security policy yet."
-                                : "Rules for deciding which agent actions are allowed…",
-                            readOnly: securityPolicyReadOnly,
+                            path: SECURITY_POLICY_PATH,
+                            placeholder: "Rules for deciding which agent actions are allowed…",
                             saveError: securityPolicy.saveError?.message,
                             saving: securityPolicy.saving,
                             value: securityPolicy.draft,
@@ -1453,72 +1227,6 @@ export function AppHappyAgentSettingsView(props: AppHappyAgentSettingsViewProps)
                 />
             ) : section === "providers" ? (
                 <>
-                    {cloudProvidersStore ? (
-                        <HappyAgentAiProviders
-                            connections={cloudProviders.connections.map(cloudConnectionRow)}
-                            loading={cloudProviders.loading}
-                            {...(cloudProviders.error
-                                ? { error: cloudProviders.error.message }
-                                : {})}
-                            {...(cloudProviders.saveError
-                                ? { saveError: cloudProviders.saveError.message }
-                                : {})}
-                            teamManageable={cloudProviders.teamAllowed}
-                            {...(cloudProviders.add
-                                ? {
-                                      add: {
-                                          ...providerAddProps(
-                                              cloudProviders,
-                                              cloudProvidersStore,
-                                              props.externalLinkOpen,
-                                          ),
-                                          ...(providers.customProvidersManageable
-                                              ? {
-                                                    onCustomProviderCreate: () => {
-                                                        if (!happyAgentOnline()) return;
-                                                        cloudProvidersStore.addClose();
-                                                        providersStore.customProviderCreateOpen();
-                                                    },
-                                                }
-                                              : {}),
-                                      },
-                                  }
-                                : {})}
-                            {...(cloudProviderEdit ? { edit: cloudProviderEdit } : {})}
-                            onAdd={() => cloudProvidersStore.addOpen()}
-                            onEdit={(connectionId) => cloudProvidersStore.editOpen(connectionId)}
-                            onCredentialEnabledChange={(connectionId, credentialId, enabled) =>
-                                cloudProvidersStore.credentialEnabledUpdate(
-                                    connectionId,
-                                    credentialId,
-                                    enabled,
-                                )
-                            }
-                            onCredentialRemove={(connectionId, credentialId) =>
-                                cloudProvidersStore.credentialRemove(connectionId, credentialId)
-                            }
-                        />
-                    ) : null}
-                    {credentialImportStore ? (
-                        <HappyAgentCredentialImport
-                            open={credentialImport.open}
-                            onOpen={() => credentialImportStore.dialogOpen()}
-                            onClose={() => credentialImportStore.dialogClose()}
-                            phase={credentialImport.phase}
-                            rows={credentialImportRows(credentialImport)}
-                            shellScanned={credentialImport.shellScanned}
-                            teamAllowed={credentialImport.teamAllowed}
-                            {...(credentialImport.error
-                                ? { error: credentialImport.error.message }
-                                : {})}
-                            onScan={(options) => credentialImportStore.scanStart(options)}
-                            onPickToggle={(id) => credentialImportStore.pickToggle(id)}
-                            onPickScopeChange={(id, scope) =>
-                                credentialImportStore.pickScopeUpdate(id, scope)
-                            }
-                            onImport={() => credentialImportStore.importSubmit()}
-                        />
-                    ) : null}
                     <HappyAgentProviderSettings
                         loading={providers.loading}
                         onModelEnabledChange={(id, enabled) =>
@@ -1556,11 +1264,8 @@ export function AppHappyAgentSettingsView(props: AppHappyAgentSettingsViewProps)
                                   },
                               }
                             : {})}
-                        providers={providerRows(
-                            providers.providers,
-                            settings,
-                            selection,
-                            cloudProvidersStore !== undefined,
+                        providers={providers.providers.map((provider) =>
+                            providerRow(provider, settings, selection),
                         )}
                         {...(providers.error ? { error: providers.error.message } : {})}
                         {...(providers.saveError ? { saveError: providers.saveError.message } : {})}
@@ -1568,95 +1273,6 @@ export function AppHappyAgentSettingsView(props: AppHappyAgentSettingsViewProps)
                     />
                     <AppCustomProviderDialog snapshot={providers} store={providersStore} />
                 </>
-            ) : section === "repositories" ? (
-                repositoriesShown ? (
-                    <AppRepositoriesSettings snapshot={repositories} store={repositoriesShown} />
-                ) : null
-            ) : section === "onboarding" ? (
-                onboardingSettingsStore && onboardingSettings.available ? (
-                    <AppOnboardingSettings
-                        {...(onboardingPlugins ? { plugins: onboardingPlugins } : {})}
-                        snapshot={onboardingSettings}
-                        store={onboardingSettingsStore}
-                    />
-                ) : null
-            ) : section === "payments" ? (
-                paymentsStore ? (
-                    <AppPaymentsSettings
-                        // A desktop sends Stripe's pages to the system browser and
-                        // reads again on focus; a browser tab goes there itself and
-                        // comes back to this page.
-                        pageOpen={props.externalLinkOpen ?? ((url) => window.location.assign(url))}
-                        snapshot={payments}
-                        store={paymentsStore}
-                    />
-                ) : null
-            ) : section === "compute" ? (
-                computeShown ? (
-                    <AppComputeSettings snapshot={compute} store={computeShown} />
-                ) : null
-            ) : section === "members" ? (
-                membersShown ? (
-                    <HappyAgentMembersSettings
-                        {...(members.error ? { error: members.error.message } : {})}
-                        inviteEmail={members.inviteEmail}
-                        {...(members.inviteCreating
-                            ? { inviteCreating: members.inviteCreating }
-                            : {})}
-                        {...(members.inviteNotice
-                            ? { inviteNotice: inviteNoticeView(members, members.inviteNotice) }
-                            : {})}
-                        invites={members.invites.map((invite) => inviteRow(members, invite))}
-                        loading={members.loading}
-                        manage={members.manage}
-                        members={members.members.map((member) => ({
-                            id: member.id,
-                            ...(member.userId === null ? {} : { userId: member.userId }),
-                            name: member.name ?? "Someone who hasn't signed in yet",
-                            roleId: member.roleId,
-                            joined: `Joined ${new Date(member.joinedAt).toLocaleDateString([], {
-                                month: "short",
-                                day: "numeric",
-                            })}`,
-                            self: member.self,
-                            saving: member.saving,
-                            ...(member.refusal ? { refusal: member.refusal.message } : {}),
-                        }))}
-                        onDelete={(confirm) => membersShown.serverDelete(confirm)}
-                        onInviteNoticeDismiss={() => membersShown.inviteNoticeDismiss()}
-                        onInviteEmailChange={(value) => membersShown.inviteEmailUpdate(value)}
-                        onInviteEmailCreate={(roleId) => membersShown.inviteEmailCreate(roleId)}
-                        onInviteLinkCreate={(roleId) => membersShown.inviteLinkCreate(roleId)}
-                        onInviteResend={(inviteId) => membersShown.inviteResend(inviteId)}
-                        onInviteRevoke={(inviteId) => membersShown.inviteRevoke(inviteId)}
-                        onLeave={() => membersShown.serverLeave()}
-                        {...(host?.happyCloud &&
-                        host.session?.userProfile &&
-                        props.onUserProfileOpen
-                            ? {
-                                  onProfileOpen: (userId: string) =>
-                                      props.onUserProfileOpen?.(host.id, userId),
-                              }
-                            : {})}
-                        onRemove={(memberId) => membersShown.memberRemove(memberId)}
-                        onRoleChange={(memberId, roleId) =>
-                            membersShown.memberRoleUpdate(memberId, roleId)
-                        }
-                        owner={members.roleId === "owner"}
-                        roles={members.roles}
-                        serverName={members.serverName}
-                    />
-                ) : (
-                    <Banner tone="neutral" title="No members here">
-                        Members belong to a Happy Cloud server. Open one to see who is on it.
-                    </Banner>
-                )
-            ) : section === "secrets" && happyCloud ? (
-                <AppClusterSecretSettings
-                    snapshot={clusterSecrets}
-                    store={clusterSecretsStore}
-                    {...(unavailable === undefined ? {} : { unavailable })}
-                />
             ) : section === "secrets" ? (
                 <HappyAgentSecretSettings
                     loading={secrets.loading}
@@ -1776,7 +1392,7 @@ export function AppHappyAgentSettingsView(props: AppHappyAgentSettingsViewProps)
                     onTitleShimmerChange={(enabled) =>
                         titleShimmerStore.titleShimmerUpdate(enabled)
                     }
-                    {...(!happyCloud && props.projectsVisibility && host
+                    {...(props.projectsVisibility && host
                         ? {
                               projectsHidden: projectsVisibilityConnection(
                                   projectsVisibility,
@@ -1948,8 +1564,6 @@ function stateReplacer(_key: string, value: unknown): unknown {
  * itself and is shown rather than asked for, so it is plain what a save changes.
  */
 const INSTRUCTIONS_PATH = "~/Happy/Config/AGENTS.md";
-/** Happy Cloud lets only owners change its global documents, and no agent. */
-const OWNERS_ONLY = "Only owners can change this. Agents can't.";
 const SECURITY_POLICY_PATH = "~/Happy/Config/SECURITY.md";
 
 const noSubscribe = () => () => undefined;
@@ -2152,7 +1766,6 @@ function usageOpenSubscribe(
 }
 
 const INSTRUCTIONS_UNAVAILABLE: HappyAgentInstructionsSnapshot = {
-    access: "unknown",
     stored: { type: "unloaded" },
     draft: "",
     dirty: false,
@@ -2182,25 +1795,6 @@ function documentLoading(
     return (
         store !== undefined && snapshot.stored.type !== "ready" && snapshot.stored.type !== "error"
     );
-}
-
-/**
- * Happy Cloud's keys and sign-ins are listed and added under AI providers, so
- * the cards here keep only the keys of the team's own providers.
- */
-function providerRows(
-    providers: readonly HappyAgentProviderEntry[],
-    settings: HappyAgentSettingsSnapshot,
-    selection: { readonly providerId: string; readonly modelId: string } | undefined,
-    aiProviders: boolean,
-): readonly HappyAgentProviderRow[] {
-    return providers.map((entry) => {
-        const provider: HappyAgentProviderEntry =
-            aiProviders && !entry.custom
-                ? (({ credentials: _credentials, ...rest }) => rest)(entry)
-                : entry;
-        return providerRow(provider, settings, selection);
-    });
 }
 
 function providerRow(
@@ -2262,143 +1856,7 @@ function providerRow(
     };
 }
 
-const CLOUD_VENDOR_NAMES: Readonly<Record<string, string>> = {
-    openai: "OpenAI",
-    anthropic: "Anthropic",
-    codex: "ChatGPT",
-    "claude-code": "Claude",
-    grok: "Grok",
-    bedrock: "Amazon Bedrock",
-};
-
-const CLOUD_KIND_NAMES = {
-    api_key: "API key",
-    aws_keys: "AWS keys",
-    oauth: "Subscription",
-    oauth_token: "Setup token",
-} as const;
-
-function cloudVendorName(vendor: string): string {
-    return CLOUD_VENDOR_NAMES[vendor] ?? vendor;
-}
-
-/** One AI provider connection as Settings lists it. */
-function cloudConnectionRow(
-    connection: HappyAgentCloudConnection,
-): HappyAgentAiProviderConnectionRow {
-    const models = connection.models.length;
-    return {
-        id: connection.id,
-        name: happyAgentCloudConnectionName(connection),
-        group:
-            connection.source === "operator"
-                ? "included"
-                : connection.scope === "team"
-                  ? "team"
-                  : "private",
-        meta: connection.enabled
-            ? [
-                  [...new Set(connection.vendors.map(cloudVendorName))].join(", "),
-                  models === 1 ? "1 model" : `${String(models)} models`,
-              ]
-                  .filter(Boolean)
-                  .join(" · ")
-            : "Add a key or sign in to use it",
-        enabled: connection.enabled,
-        ...(happyAgentCloudConnectionEditable(connection) ? { editable: true } : {}),
-        ...(connection.credentials
-            ? {
-                  credentials: connection.credentials.map((credential) => ({
-                      id: credential.id,
-                      label: credential.label,
-                      meta:
-                          credential.reason === "signin_missing"
-                              ? `${cloudVendorName(credential.vendor)} · Sign in again`
-                              : `${cloudVendorName(credential.vendor)} · ${CLOUD_KIND_NAMES[credential.kind]}`,
-                      enabled: credential.enabled,
-                      state: credential.state,
-                      ...(credential.coolingUntil === null
-                          ? {}
-                          : {
-                                coolingUntil: new Date(credential.coolingUntil).toLocaleTimeString(
-                                    [],
-                                    { hour: "numeric", minute: "2-digit" },
-                                ),
-                            }),
-                  })),
-              }
-            : {}),
-    };
-}
-
-/** The edit dialog's props from the AI providers store, while its connection is listed. */
-function providerEditProps(
-    snapshot: HappyAgentCloudProvidersSnapshot,
-    store: HappyAgentCloudProvidersStore,
-): HappyAgentProviderEditDialogProps | undefined {
-    const edit = snapshot.edit;
-    const connection = edit
-        ? snapshot.connections.find((candidate) => candidate.id === edit.connectionId)
-        : undefined;
-    if (!edit || !connection) return undefined;
-    return {
-        name: connection.name,
-        credentials: (connection.credentials ?? []).map((credential) => ({
-            id: credential.id,
-            label: credential.label,
-            meta: `${cloudVendorName(credential.vendor)} · ${CLOUD_KIND_NAMES[credential.kind]}`,
-            replaceable: happyAgentCloudCredentialReplaceable(credential),
-        })),
-        saving: edit.phase === "busy",
-        ...(edit.error ? { error: edit.error } : {}),
-        onSave: (changes) => store.editSave(changes),
-        onClose: () => store.editClose(),
-    };
-}
-
-/** The add dialog's props from the AI providers store. */
-export function providerAddProps(
-    snapshot: HappyAgentCloudProvidersSnapshot,
-    store: HappyAgentCloudProvidersStore,
-    externalLinkOpen: ((url: string) => void) | undefined,
-): HappyAgentProviderAddDialogProps {
-    const add = snapshot.add!;
-    return {
-        flow: add.flow,
-        to: add.to,
-        destinationChoice:
-            snapshot.privateAllowed &&
-            snapshot.teamAllowed &&
-            !happyAgentCloudProviderAddTeamOnly(add.flow),
-        keyVendors: snapshot.teamAllowed
-            ? ["openai", "anthropic", "grok", "bedrock"]
-            : ["openai", "anthropic", "grok"],
-        teamOnly: happyAgentCloudProviderAddTeamOnly(add.flow),
-        phase: add.phase,
-        ...(add.signIn ? { signIn: add.signIn } : {}),
-        ...(add.done === undefined ? {} : { done: add.done }),
-        ...(add.error ? { error: add.error } : {}),
-        teamRoutingEditable: snapshot.teamAllowed,
-        chatgptAvailable: snapshot.signIns.has("codex"),
-        claudeAvailable: snapshot.signIns.has("claude"),
-        setupTokenAvailable: snapshot.setupToken,
-        onFlowSelect: (flow) => store.addFlowSelect(flow),
-        onBack: () => store.addBack(),
-        onClose: () => store.addClose(),
-        onDestinationChange: (to) => store.addDestinationUpdate(to),
-        onApiKeySubmit: (secret, region) => store.apiKeySubmit(secret, region),
-        onAwsKeysSubmit: (input) => store.awsKeysSubmit(input),
-        onSetupTokenSubmit: (token) => store.setupTokenSubmit(token),
-        onSignInStart: () => store.signInStart(),
-        onSignInCodeSubmit: (code) => store.signInCodeSubmit(code),
-        ...(externalLinkOpen ? { onExternalOpen: externalLinkOpen } : {}),
-    };
-}
-
-/**
- * The team's own provider being added or edited, over whichever surface
- * opened it: Settings › Inference, or onboarding's AI step.
- */
+/** The team's own provider being added or edited, in Settings › Inference. */
 export function AppCustomProviderDialog(props: {
     readonly snapshot: HappyAgentProvidersSnapshot;
     readonly store: HappyAgentProvidersStore;
@@ -2482,39 +1940,6 @@ function secretRows(secrets: readonly HappyAgentSecret[]): readonly HappyAgentSe
     }));
 }
 
-/** What Import lists: each found credential with its pick or how its import ended. */
-function credentialImportRows(
-    snapshot: HappyAgentCredentialImportSnapshot,
-): HappyAgentCredentialImportRow[] {
-    return snapshot.found.map((entry): HappyAgentCredentialImportRow => {
-        const base = {
-            id: entry.id,
-            vendorName: entry.vendorName,
-            label: entry.label,
-            source: entry.source,
-            ...(entry.account === undefined ? {} : { account: entry.account }),
-        };
-        if (entry.use.kind === "unsupported")
-            return { ...base, use: "unsupported", reason: entry.use.reason };
-        const picked = snapshot.picked.get(entry.id);
-        const result = snapshot.results.get(entry.id);
-        return {
-            ...base,
-            use: "import",
-            subscription: entry.use.subscription,
-            ...(entry.masked === undefined ? {} : { masked: entry.masked }),
-            ...(picked === undefined ? {} : { picked }),
-            ...(result === undefined
-                ? {}
-                : {
-                      result: result.ok
-                          ? { ok: true, duplicate: result.duplicate }
-                          : { ok: false, message: result.message },
-                  }),
-        };
-    });
-}
-
 /** The service named beside a provider, unless its own name already says it. */
 function providerTypeName(provider: HappyAgentProviderEntry): { typeName?: string } {
     const typeName = happyAgentProviderServiceName(
@@ -2522,129 +1947,4 @@ function providerTypeName(provider: HappyAgentProviderEntry): { typeName?: strin
         providerAccountName(provider.id, provider.name),
     );
     return typeName === undefined ? {} : { typeName };
-}
-
-/** A role's name, or its ID when the team's roles don't list it. */
-function roleNameOf(members: HappyAgentMembersSnapshot, roleId: string): string {
-    return members.roles.find((role) => role.id === roleId)?.name ?? roleId;
-}
-
-/** "Expires in 3 days", "Expires in 5 hours" or "Expires soon". */
-function expiresText(expiresAt: number): string {
-    const hours = Math.floor((expiresAt - Date.now()) / 3_600_000);
-    if (hours >= 48) return `Expires in ${String(Math.floor(hours / 24))} days`;
-    if (hours >= 2) return `Expires in ${String(hours)} hours`;
-    return "Expires soon";
-}
-
-/** "Nov 8". */
-function dayText(at: number): string {
-    return new Date(at).toLocaleDateString([], { month: "short", day: "numeric" });
-}
-
-/** "just now", "12 min ago", "5 hours ago", or the day for anything older. */
-function agoText(at: number): string {
-    const minutes = Math.floor((Date.now() - at) / 60_000);
-    if (minutes < 1) return "just now";
-    if (minutes < 60) return `${String(minutes)} min ago`;
-    if (minutes < 120) return "an hour ago";
-    if (minutes < 24 * 60) return `${String(Math.floor(minutes / 60))} hours ago`;
-    return `on ${dayText(at)}`;
-}
-
-/** A member's name by account, or a neutral word for someone no longer listed. */
-function memberNameOf(members: HappyAgentMembersSnapshot, accountId: string): string {
-    return members.members.find((member) => member.id === accountId)?.name ?? "Someone";
-}
-
-/** Whether an email went out too recently for the server to send it again. */
-function inviteResendWaiting(invite: HappyAgentInvite): boolean {
-    // The members store re-reads every few seconds while this is on screen,
-    // and each read renders again, so the wait ends without a timer here.
-    return (
-        invite.lastSentAt !== null &&
-        Date.now() - invite.lastSentAt < HAPPY_AGENT_INVITE_RESEND_COOLDOWN_MS
-    );
-}
-
-function inviteRow(
-    members: HappyAgentMembersSnapshot,
-    invite: HappyAgentInvite,
-): HappyAgentInviteRow {
-    const pending = invite.status === "pending";
-    const waiting = pending && invite.type === "email" && inviteResendWaiting(invite);
-    const uses =
-        invite.type === "email"
-            ? undefined
-            : invite.maxUses !== null
-              ? `Used ${String(invite.uses)} of ${String(invite.maxUses)}`
-              : invite.uses === 0
-                ? undefined
-                : invite.uses === 1
-                  ? "Used once"
-                  : `Used ${String(invite.uses)} times`;
-    const joined =
-        invite.type === "link" && invite.usedBy.length > 0
-            ? `Joined: ${invite.usedBy.map((id) => memberNameOf(members, id)).join(", ")}`
-            : undefined;
-    const progress = ((): readonly (string | undefined)[] => {
-        switch (invite.status) {
-            case "pending":
-                return [
-                    invite.lastSentAt !== null && invite.delivery === "sent"
-                        ? `Sent ${agoText(invite.lastSentAt)}`
-                        : undefined,
-                    waiting ? "Resend in a minute" : undefined,
-                    uses,
-                    joined,
-                    expiresText(invite.expiresAt),
-                ];
-            case "accepted":
-                return [
-                    invite.acceptedBy !== null
-                        ? `Accepted by ${memberNameOf(members, invite.acceptedBy)}`
-                        : "Accepted",
-                    invite.acceptedAt !== null ? dayText(invite.acceptedAt) : undefined,
-                ];
-            case "revoked":
-                return [
-                    invite.revokedAt !== null ? `Revoked ${dayText(invite.revokedAt)}` : undefined,
-                    uses,
-                    joined,
-                ];
-            case "expired":
-                return [`Expired ${dayText(invite.expiresAt)}`, uses, joined];
-            case "exhausted":
-                return [uses, joined];
-        }
-    })();
-    return {
-        id: invite.id,
-        ...(invite.email === null ? {} : { email: invite.email }),
-        status: invite.status,
-        ...(invite.delivery === null ? {} : { delivery: invite.delivery }),
-        detail: [roleNameOf(members, invite.roleId), ...progress]
-            .filter((part) => part !== undefined)
-            .join(" · "),
-        resendWaiting: waiting,
-        saving: invite.saving,
-    };
-}
-
-function inviteNoticeView(
-    members: HappyAgentMembersSnapshot,
-    created: HappyAgentInviteNotice,
-): HappyAgentInviteNoticeView {
-    if (created.type === "refused") return { type: "refused", message: created.error.message };
-    const detail = `${roleNameOf(members, created.roleId)} · ${expiresText(created.expiresAt)}`;
-    return created.type === "link"
-        ? { type: "link", link: created.link, detail }
-        : {
-              type: "email",
-              id: created.id,
-              email: created.email,
-              delivery: created.delivery,
-              detail,
-              saving: created.saving,
-          };
 }

@@ -9,24 +9,18 @@ import {
 } from "./GenUiRenderView";
 import {
     GenUiSecretFormView,
-    type GenUiClusterSecretHost,
     type GenUiSecretFormOpen,
     type GenUiSecretHost,
 } from "./GenUiSecretForms";
 
-export type {
-    GenUiClusterSecretForm,
-    GenUiClusterSecretHost,
-    GenUiSecretForm,
-    GenUiSecretHost,
-} from "./GenUiSecretForms";
+export type { GenUiSecretForm, GenUiSecretHost } from "./GenUiSecretForms";
 
 /* An address that never loads: a picture the version does not hold shows the
    failed placeholder rather than asking the app's own origin for the path. */
 const MISSING_FILE = "data:,";
 
 /* What only the agent that wrote a version can be sent; without one they never run. */
-const ORIGIN_BOUND: ReadonlySet<GenUiActionType> = new Set(["message", "secret", "cluster_secret"]);
+const ORIGIN_BOUND: ReadonlySet<GenUiActionType> = new Set(["message", "secret"]);
 
 function messageOf(reason: unknown): string {
     return reason instanceof Error ? reason.message : String(reason);
@@ -37,10 +31,10 @@ function messageOf(reason: unknown): string {
  * against the other files of the same version, so a picture can never come
  * from another version than the document naming it.
  *
- * It runs the secret forms itself: a `secret` or `cluster_secret` button opens
- * the Settings secret form filled with what the agent suggested, every field
- * editable and every value typed by the person. Saving it is the button's
- * action finishing, and a saved form is never offered again.
+ * It runs the secret form itself: a `secret` button opens the Settings secret
+ * form filled with what the agent suggested, every field editable and every
+ * value typed by the person. Saving it is the button's action finishing, and a
+ * saved form is never offered again.
  */
 export function GenUiArtifact(props: {
     /** The text of the version's `.genui/render.json`. */
@@ -53,21 +47,18 @@ export function GenUiArtifact(props: {
     readonly actionsSupported?: GenUiRenderViewProps["actionsSupported"];
     /** Opens and saves a Happy Agent's `secret` forms; without it they are not served. */
     readonly secrets?: GenUiSecretHost;
-    /** Opens and saves `cluster_secret` forms; without it they are not served. */
-    readonly clusterSecrets?: GenUiClusterSecretHost;
 }) {
     const document = genUiRenderParseText(props.render);
     const [form, setForm] = useState<GenUiSecretFormOpen | null>(null);
     const [settled, setSettled] = useState<ReadonlySet<string>>(new Set());
-    const { source, secrets, clusterSecrets } = props;
+    const { source, secrets } = props;
     const supported =
         props.actionsSupported &&
         new Set(
             [...props.actionsSupported].filter(
                 (type) =>
                     (source?.origin === true || !ORIGIN_BOUND.has(type)) &&
-                    (type !== "secret" || secrets !== undefined) &&
-                    (type !== "cluster_secret" || clusterSecrets !== undefined),
+                    (type !== "secret" || secrets !== undefined),
             ),
         );
     /* Holds the button pressed while its form is open: saved settles it for good, closed lets it go. */
@@ -97,28 +88,6 @@ export function GenUiArtifact(props: {
                     (reason: unknown) =>
                         setForm({
                             type: "secret",
-                            prefill,
-                            opened: { error: messageOf(reason) },
-                            finish,
-                        }),
-                );
-            });
-        }
-        if (action.type === "cluster_secret") {
-            if (!clusterSecrets || !source) return;
-            const prefill = action.secret;
-            return formRun(elementKey, (finish) => {
-                clusterSecrets.formOpen(source, elementKey, prefill.id).then(
-                    (opened) =>
-                        setForm({
-                            type: "cluster_secret",
-                            prefill,
-                            opened: { form: opened },
-                            finish,
-                        }),
-                    (reason: unknown) =>
-                        setForm({
-                            type: "cluster_secret",
                             prefill,
                             opened: { error: messageOf(reason) },
                             finish,

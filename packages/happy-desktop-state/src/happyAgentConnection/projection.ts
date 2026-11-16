@@ -1,9 +1,7 @@
-import { happyAgentPreviewResultRead } from "../happyAgent/happyAgentPreviewsStore.js";
 import { gitSnapshotProject, type GitSnapshotState } from "./gitSnapshotState.js";
 import { mediaLayoutProject, mediaScaleProject } from "./mediaLayoutProject.js";
 import type {
     Agent,
-    AgentCompute,
     AgentActivityResponse,
     AgentContextUsage,
     AgentDraftSnapshot,
@@ -26,8 +24,6 @@ import { happyAgentServiceTierFromWire } from "../happyAgentServiceTier.js";
 import { happyAgentConversationActivityProject } from "../happyAgent/happyAgentConversationAuthors.js";
 import type {
     HappyAgentAnsweredUserInput,
-    HappyAgentCompute,
-    HappyAgentRepositoryBinding,
     HappyAgentSubtaskActivity,
 } from "../happyAgent/happyAgentTypes.js";
 import type { UserProfile } from "./userProfiles.js";
@@ -43,7 +39,6 @@ import type {
     TaskOwner,
     ToolPresentation,
     UserInputRequest,
-    UserMessageFile,
     WorkspaceGroup,
 } from "./types.js";
 import { happyAgentImageUrl } from "../utils/happyAgentImageUrl.js";
@@ -143,76 +138,6 @@ export function modeOf(
     return stored ?? defaultMode(config);
 }
 
-/**
- * The repository the agent attached on Happy Cloud. `agent.repository` is not
- * in happy-agent-client's agent type yet, so the wire field is read here, at
- * that boundary, and carried typed from here on.
- */
-function repositoryProject(agent: object): HappyAgentRepositoryBinding | undefined {
-    const wire = (agent as { readonly repository?: unknown }).repository;
-    if (typeof wire !== "object" || wire === null) return undefined;
-    const repository = wire as Record<string, unknown>;
-    const checkout = (repository.checkout ?? {}) as Record<string, unknown>;
-    const error = checkout.error as { readonly message?: unknown } | string | null | undefined;
-    if (typeof repository.repositoryId !== "string" || typeof repository.branch !== "string")
-        return undefined;
-    const message =
-        typeof error === "string"
-            ? error
-            : typeof error?.message === "string"
-              ? error.message
-              : undefined;
-    return {
-        repositoryId: repository.repositoryId,
-        name: typeof repository.name === "string" ? repository.name : repository.repositoryId,
-        branch: repository.branch,
-        checkout:
-            checkout.status === "ready" || checkout.status === "failed"
-                ? checkout.status
-                : "pending",
-        ...(message ? { error: message } : {}),
-    };
-}
-
-/**
- * The computer binding Happy Cloud sends now, which the protocol package does
- * not name yet: it still types the pool and runner bindings that came before.
- */
-interface HappyCloudComputerCompute {
-    readonly type: "computer";
-    readonly computerId: string;
-    readonly label?: string;
-    readonly status?: "online" | "offline";
-}
-
-/**
- * The cloud's compute binding, as the conversation shows it. A binding this
- * client does not know yet shows nothing rather than failing the session.
- */
-export function computeProject(
-    compute: AgentCompute | HappyCloudComputerCompute,
-): HappyAgentCompute | undefined {
-    switch (compute.type) {
-        case "none":
-            return { kind: "none" };
-        case "pool":
-            // Happy Cloud moved every pool binding onto its computer or to none.
-            // A pool can only come from a server older than that, and names no computer.
-            return { kind: "none" };
-        case "computer":
-        case "runner":
-            // A runner from before computers is that computer, by the same ID.
-            return {
-                kind: "computer",
-                computerId: compute.type === "computer" ? compute.computerId : compute.runnerId,
-                ...(compute.label === undefined ? {} : { label: compute.label }),
-                ...(compute.status === undefined ? {} : { online: compute.status === "online" }),
-            };
-        default:
-            return undefined;
-    }
-}
-
 export function projectSession(input: SessionProjectionInput): SessionState {
     const { agent, config, workspace } = input;
     const mode = modeOf(config, input.draft, input.mode, input.intendedMode);
@@ -276,10 +201,6 @@ export function projectSession(input: SessionProjectionInput): SessionState {
             (input.mode === null && agent.parentAgentId === null),
         ...(agent.title === null ? {} : { title: agent.title }),
         titleStatus: agent.titleStatus,
-        ...((compute) => (compute ? { compute } : {}))(
-            agent.compute === undefined ? undefined : computeProject(agent.compute),
-        ),
-        ...((repository) => (repository ? { repository } : {}))(repositoryProject(agent)),
         effort: mode.effort,
         ...(serviceTier === undefined ? {} : { serviceTier }),
         permissionMode: mode.permissionMode,
@@ -1664,26 +1585,6 @@ function messageText(message: Message): string {
 }
 
 /**
- * The Happy Cloud files one message names. The block is Happy Cloud's addition
- * to the send contract, so the daemon's block type does not list it.
- */
-function userMessageFiles(message: Message): readonly UserMessageFile[] {
-    const files: UserMessageFile[] = [];
-    for (const block of message.content as readonly { readonly type: string }[]) {
-        if (block.type !== "file") continue;
-        const file = block as Partial<Record<keyof UserMessageFile, unknown>>;
-        if (typeof file.attachment !== "string" || typeof file.name !== "string") continue;
-        files.push({
-            attachment: file.attachment,
-            name: file.name,
-            ...(typeof file.mimeType === "string" ? { mimeType: file.mimeType } : {}),
-            ...(typeof file.size === "number" ? { size: file.size } : {}),
-        });
-    }
-    return files;
-}
-
-/**
  * The sender stamped on a message, placed relative to the agent reading it. A
  * message with no stamp was typed by the owner and has no sending agent at all.
  */
@@ -1712,7 +1613,6 @@ function messageElementsProject(
     const base = { groupId: runId, runId, createdAt: message.createdAt };
     if (message.role === "user") {
         const senderAgent = senderAgentOf(message, reader);
-        const files = userMessageFiles(message);
         const text = messageText(message);
         return [
             {
@@ -1737,13 +1637,7 @@ function messageElementsProject(
                     message.status === "pending" && message.delivery === "steer"
                         ? "pending_steering"
                         : "sent",
-                // A file-only message carries its files' names as its text, the
-                // send contract's fallback; the chips already say it.
-                text:
-                    files.length > 0 && text === files.map((file) => `[file:${file.name}]`).join("")
-                        ? ""
-                        : text,
-                ...(files.length === 0 ? {} : { files }),
+                text,
                 attachments: message.content
                     .filter(
                         (block): block is Extract<MessageBlock, { type: "image" }> =>
@@ -1824,10 +1718,6 @@ function messageElementsProject(
                 complete: runStatus !== "running",
             });
         } else if (block.type === "tool_call") {
-            const preview =
-                block.status === "completed"
-                    ? happyAgentPreviewResultRead(block.name, block.result)
-                    : undefined;
             const presentation =
                 block.presentation === undefined
                     ? undefined
@@ -1843,14 +1733,8 @@ function messageElementsProject(
                 arguments: block.arguments ?? {},
                 argumentsComplete: true,
                 status: projectToolStatus(block.status, runStatus),
-                ...(block.result === undefined || preview
-                    ? {}
-                    : { result: stringify(block.result) }),
-                ...(preview
-                    ? { presentation: { kind: "preview" as const, ...preview } }
-                    : presentation === undefined
-                      ? {}
-                      : { presentation }),
+                ...(block.result === undefined ? {} : { result: stringify(block.result) }),
+                ...(presentation === undefined ? {} : { presentation }),
                 // Only a reviewed call carries elevation, and only the granted
                 // one is worth carrying: "not elevated" is the ordinary case
                 // every unreviewed call is already in.

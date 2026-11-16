@@ -26,8 +26,6 @@ export interface HappyAgentUsageSettingsProps {
     history?: HappyAgentDailyUsage;
     /** Now, in milliseconds: resets and ages are told from it. Absent, no age is told. */
     currentTime?: number;
-    /** The reader's role may not see the team's usage, so there is nothing to show. */
-    forbidden?: boolean;
 }
 
 /** Usage joined to the authoritative provider catalog by its stable routing ID. */
@@ -102,14 +100,6 @@ export function HappyAgentUsageSettings(props: HappyAgentUsageSettingsProps) {
             (accountTokens.get(provider.providerId) ?? 0) > 0,
     );
     const yearTokens = year.reduce((sum, day) => sum + day.tokens, 0);
-    if (props.forbidden)
-        return (
-            <EmptyState
-                description="Ask a team owner or admin if you need to see what the team has spent."
-                icon="lock"
-                title="Your role doesn't include team usage"
-            />
-        );
     return (
         <>
             {year.length > 0 && yearTokens > 0 ? (

@@ -36,7 +36,6 @@ import {
     type IconName,
 } from "happy-desktop-ui";
 import { APP_SHORTCUTS } from "./appShortcuts";
-import { happyAgentSettingsCategoryAvailable } from "./happyAgentSettingsCategoryAvailable";
 
 /**
  * What the command palette offers, derived from the snapshots the window is
@@ -100,8 +99,6 @@ export type CommandPaletteCommand =
     | { readonly kind: "workspaceOpen"; readonly happyAgentId: string; readonly groupId: string }
     | { readonly kind: "surfaceOpen"; readonly happyAgentId: string; readonly surfaceId: string }
     | { readonly kind: "artifactOpen"; readonly happyAgentId: string; readonly artifactId: string }
-    /** A person's profile on a Happy Cloud server. */
-    | { readonly kind: "userProfileOpen"; readonly happyAgentId: string; readonly userId: string }
     /** A folder or file in a vault, opened in its vault as its own row there would open it. */
     | {
           readonly kind: "vaultItemOpen";
@@ -271,7 +268,6 @@ export type CommandPaletteTab =
  * actions depend only on the addressed workspace and machine.
  */
 export interface CommandPaletteContext {
-    readonly happyCloud?: boolean;
     /** The machine whose work the palette lists: the one the address names. */
     readonly happyAgentId: string;
     readonly projects: readonly HappyAgentProjectGroup[];
@@ -1308,14 +1304,9 @@ function settingsSectionRows(input: CommandPaletteInput): Ranked[] {
         rows.push({ rank, updatedAt: 0, row });
     }
     for (const jump of SETTINGS_JUMPS) {
-        if (!happyAgentSettingsCategoryAvailable(jump.section, input.happyCloud === true)) continue;
         // The section the row leads to is searchable too: "general" has to
         // reach the rows that live under General, not only the page itself.
-        const keywords =
-            input.happyCloud && jump.section === "account"
-                ? "profile name email photo happy account"
-                : jump.keywords;
-        const rank = rowRank(query, jump.title, jump.sectionLabel, keywords);
+        const rank = rowRank(query, jump.title, jump.sectionLabel, jump.keywords);
         if (rank === undefined) continue;
         rows.push({
             rank,
@@ -1578,7 +1569,7 @@ const AGENT_KIND_LABEL = {
  * window holds is its own row; other work opens in the workspace the Happy
  * Agent names, and is left out when it names none, as a message is. Anything
  * archived, which the palette lists apart, is left out too, and so is what
- * the desktop has nowhere to open: a skill, or a person outside Happy Cloud.
+ * the desktop has nowhere to open: a skill, or a person.
  */
 function remoteRow(
     hit: HappyAgentSearchHit,
@@ -1699,26 +1690,9 @@ function remoteRow(
                 },
             };
         }
-        // A person opens their profile, which only Happy Cloud has.
+        // The desktop has no page of its own for a person or a skill, so
+        // neither is offered.
         case "user":
-            if (!input.happyCloud) return undefined;
-            return {
-                row: {
-                    kind: "command",
-                    id: hit.key,
-                    title: hit.name,
-                    meta: "Person",
-                    glyph: {
-                        kind: "avatar",
-                        initials: initialsOf(hit.name),
-                        ...(hit.imageUrl === undefined
-                            ? { placeholderSeed: hit.userId }
-                            : { imageUrl: hit.imageUrl }),
-                    },
-                    command: { kind: "userProfileOpen", happyAgentId, userId: hit.userId },
-                },
-            };
-        // The desktop has no page of its own for a skill, so none is offered.
         case "skill":
             return undefined;
         case "artifact": {

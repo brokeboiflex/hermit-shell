@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 import { Readable } from "node:stream";
 import type { HappyAgentDaemonClient } from "./happyAgentDaemonClient";
-import { happyCloudServerNameOf } from "../shared/happyCloud";
 
 /** The scheme every artifact site is served under, and only inside its own partition. */
 export const artifactSiteScheme = "happy-artifact";
@@ -31,10 +30,8 @@ export interface ArtifactSiteHandle {
      * Opens sites backed by one Happy Agent connection. The returned function
      * reads the version's manifest and names the address its entry is served
      * at; every file the page asks for afterwards is read through `client`.
-     * Without one, only a Happy Cloud connection's sites open, as on a
-     * computer where no Happy Agent runs.
      */
-    register(client?: ArtifactSiteClient): {
+    register(client: ArtifactSiteClient): {
         readonly open: (
             artifactId: string,
             version: number,
@@ -66,7 +63,7 @@ type ArtifactSiteSource =
 
 /** One numbered version published as an origin of its own. */
 interface ArtifactSite {
-    readonly client: ArtifactSiteClient | undefined;
+    readonly client: ArtifactSiteClient;
     readonly connectionId?: string;
     readonly source: ArtifactSiteSource;
     readonly version: number;
@@ -230,31 +227,22 @@ function artifactSiteUrl(host: string, path: string): string {
  * storage, and one version's, out of reach of every other.
  *
  * Only a version's manifest is ever served, path for path. Main reads every
- * file from Happy Agent with the daemon credential, or from a Happy Cloud
- * server with the person's access token, and neither leaves this process: the
+ * file from Happy Agent with the daemon credential, and it never leaves this process: the
  * guest is answered bytes and never a cookie, a token, or an address it could
  * take somewhere else.
  */
 export function artifactSitesCreate(
     options: {
         readonly codeModuleRead?: () => Promise<Uint8Array>;
-        /**
-         * Reads a Happy Cloud connection's sites from its server directly.
-         * The host Happy Agent does not know that connection, so without this
-         * one is not served at all.
-         */
-        readonly happyCloud?: (connectionId: string) => ArtifactSiteClient;
     } = {},
 ): ArtifactSiteHandle {
-    /** Who a site's files are read through: Happy Agent, one of its connections, or Happy Cloud. */
+    /** Who a site's files are read through: Happy Agent, or one of its connections. */
     const readerOf = (
-        client: ArtifactSiteClient | undefined,
+        client: ArtifactSiteClient,
         connectionId: string | undefined,
     ): ArtifactSiteClient | undefined => {
         if (connectionId === undefined) return client;
-        if (happyCloudServerNameOf(connectionId) !== undefined)
-            return options.happyCloud?.(connectionId);
-        return client?.connection?.(connectionId);
+        return client.connection?.(connectionId);
     };
     // Only installed, trusted bytes are exposed here, never a guest-selected path.
     // The same module serves local and remote artifact sites without reaching

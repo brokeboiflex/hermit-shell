@@ -23,8 +23,7 @@ import { ComponentPage, FullScreenSpecimen } from "../kit";
 import releaseRender from "../assets/genui/11-release.render.json?raw";
 import galleryRender from "../assets/genui/05-gallery-grid.render.json?raw";
 import agentSecretRender from "../assets/genui/blueprint/agent-secret-requests.render.json?raw";
-import secretRender from "../assets/genui/blueprint/secret-requests.render.json?raw";
-import type { GenUiClusterSecretHost, GenUiSecretHost } from "../../src/genUi/GenUiArtifact";
+import type { GenUiSecretHost } from "../../src/genUi/GenUiArtifact";
 
 /** The component plan this page documents. The selector and the page header read the same value. */
 export const componentNumber = "P-044";
@@ -56,7 +55,6 @@ const files: ReadonlyMap<string, string> = new Map(
 
 const RELEASE_ID = "genui-release" as HappyAgentArtifactId;
 const GALLERY_ID = "genui-gallery" as HappyAgentArtifactId;
-const SECRETS_ID = "genui-secrets" as HappyAgentArtifactId;
 const AGENT_SECRETS_ID = "genui-agent-secrets" as HappyAgentArtifactId;
 
 const COMPOSER: ComposerSnapshot = {
@@ -218,39 +216,6 @@ function genUiViewer(
 }
 
 /*
- * The cluster as a `cluster_secret` form sees it: the reader may add team and
- * personal secrets, the GitHub token the second button names exists, and a
- * save takes a moment, the way the action route answers.
- */
-const clusterSecrets: GenUiClusterSecretHost = {
-    formOpen: async (_source, _element, secretId) => ({
-        owners: ["team", "me"],
-        secret:
-            secretId === undefined
-                ? undefined
-                : {
-                      id: secretId,
-                      name: "GitHub billing",
-                      description: "Token for slopus/billing",
-                      owner: "team",
-                      access: { use: true, manage: true, attach: true },
-                      uses: ["git"],
-                      version: "v-1",
-                      updatedAt: "Oct 2, 2026",
-                      type: "git_credential",
-                      public: {
-                          server: "github.com",
-                          method: { kind: "token", username: "x-access-token" },
-                          repos: ["slopus/billing"],
-                          operations: ["read", "write"],
-                      },
-                  },
-        create: () => new Promise((resolve) => setTimeout(resolve, 600)),
-        update: () => new Promise((resolve) => setTimeout(resolve, 600)),
-    }),
-};
-
-/*
  * A Happy Agent as a `secret` form sees it: the OpenAI secret the second
  * button names is stored with two variables, the Stripe one does not exist.
  */
@@ -396,31 +361,6 @@ export function GenUiArtifactDesktopPage() {
                         }}
                         labels={labels}
                         viewer={genUiViewer(GALLERY_ID, "Trip photos", galleryRender)}
-                    />
-                </DesktopWindow>
-            </FullScreenSpecimen>
-
-            <FullScreenSpecimen
-                detail="A cluster_secret button opens the Settings secret form filled with what the agent suggested; every field stays editable and the values are typed here, never by the agent. With an id it opens that secret's own form instead. A saved form marks its button done for good."
-                label="Viewer · Secret request"
-                number="03"
-                screen="03-genui-secret-request-1440x1000"
-                window={WINDOW}
-            >
-                <DesktopWindow>
-                    <HappyAgentArtifactViewer
-                        {...viewerHandlers}
-                        genUi={{
-                            actionsSupported: new Set<GenUiAction["type"]>([
-                                "open",
-                                "copy",
-                                "cluster_secret",
-                            ]),
-                            onAction: noop,
-                            clusterSecrets,
-                        }}
-                        labels={labels}
-                        viewer={genUiViewer(SECRETS_ID, "Billing keys", secretRender)}
                     />
                 </DesktopWindow>
             </FullScreenSpecimen>

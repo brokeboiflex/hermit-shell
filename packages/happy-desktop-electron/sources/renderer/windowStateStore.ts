@@ -44,16 +44,13 @@ export function surfaceWindowStateStoreCreate(input: {
     readonly windowState: HappyAgentWindowStore;
     readonly sidebarVisibility: HappyAgentSidebarVisibilityStore;
     readonly happyAgents: HappyAgentDirectoryStore;
-    /** The rail carries an add button, so it shows beside a single Happy Agent too. */
-    readonly railAdd: boolean;
 }): HappyAgentWindowStore {
     let railedFrom: HappyAgentWindowSnapshot | undefined;
     let railed: HappyAgentWindowSnapshot | undefined;
     const compute = (): HappyAgentWindowSnapshot => {
         const window = input.windowState.get();
         const rail =
-            (input.happyAgents.get().happyAgents.length > 1 || input.railAdd) &&
-            !input.sidebarVisibility.get().hidden;
+            input.happyAgents.get().happyAgents.length > 1 && !input.sidebarVisibility.get().hidden;
         if (!rail) return window;
         if (railedFrom !== window || !railed) {
             railedFrom = window;

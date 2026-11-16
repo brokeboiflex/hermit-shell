@@ -3,7 +3,6 @@ import { happyAgentPanelChatOpen, type HappyAgentPanelChatHandle } from "./happy
 import type { HappyAgentDeviceBridgesStore } from "./happyAgentDeviceBridgesStore.js";
 import type { HappyAgentDeviceBridgeSupportStore } from "./happyAgentDeviceBridgeSupportStore.js";
 import type { HappyAgentToolMediaDocumentStore } from "./happyAgentToolMediaDocumentStore.js";
-import type { HappyAgentPreviewsStore } from "./happyAgentPreviewsStore.js";
 import type { HappyAgentGlobalSkill } from "./happyAgentGlobalSkillsStore.js";
 import { HappyAgentApiError } from "@slopus/happy-agent-client";
 import { createStore } from "zustand/vanilla";
@@ -152,8 +151,6 @@ import type {
     HappyAgentProjectSettingsState,
     HappyAgentProjectId,
     HappyAgentQueuedMessage,
-    HappyAgentCompute,
-    HappyAgentRepositoryBinding,
     HappyAgentContextGauge,
     HappyAgentOpenInTarget,
     HappyAgentFileActions,
@@ -175,7 +172,6 @@ import type {
     HappyAgentUserInputAnswers,
     HappyAgentWorkingPhase,
     HappyAgentWorktreeId,
-    HappyCloudFileBlock,
 } from "./happyAgentTypes.js";
 
 /** Desktop-owned commands appended after the selected agent's ordered catalog. */
@@ -338,10 +334,6 @@ export interface HappyAgentConversationSnapshot {
     readonly usageError?: string;
     /** Room left in the context window, when the model declares one. */
     readonly contextGauge?: HappyAgentContextGauge;
-    /** Where its tools run, on a Happy Cloud server; absent on a Happy Agent. */
-    readonly compute?: HappyAgentCompute;
-    /** The repository its agent attached, on a Happy Cloud server. */
-    readonly repository?: HappyAgentRepositoryBinding;
     readonly activityPanelOpen: boolean;
     /** The transcript image opened full size, if any. */
     readonly openImage?: HappyAgentOpenImage;
@@ -1517,8 +1509,6 @@ export interface HappyAgentVoiceSession {
 export interface HappyAgentWorkspaceStore {
     get(): HappyAgentWorkspaceSnapshot;
     subscribe(listener: () => void): () => void;
-    /** The connection's cloud preview surface, when supported. */
-    previews(): HappyAgentPreviewsStore | undefined;
 
     /**
      * The workspace's right-hand tool panel. It is a store of its own, not part of
@@ -1780,13 +1770,6 @@ export interface HappyAgentWorkspaceStore {
      * and saying so is what lets the surface fall back to downloading it.
      */
     attachmentFileOpen(source: string, kind: HappyAgentFileTabKind): boolean;
-    /**
-     * The bytes of a file the open Happy Cloud conversation names, by attachment
-     * ID; undefined where files are not kept by the server. A failure is also
-     * put up as `fileOpenFailure`, under the file's name, until that file
-     * arrives or the failure is dismissed.
-     */
-    attachmentDownload(attachment: string, name: string): Promise<Blob> | undefined;
     /**
      * Opens one workspace file in the panel's viewer, beside the conversation
      * that named it. This is what a link in a message and the file a tool call
@@ -2465,7 +2448,6 @@ export function happyAgentWorkspaceStoreCreate(
     let chiefOfStaffWait: (() => void) | undefined;
     let unsubscribeList: (() => void) | undefined;
     let unsubscribeWorkspaceFiles: (() => void) | undefined;
-    let unsubscribeComputeRunners: (() => void) | undefined;
     let unsubscribeModels: (() => void) | undefined;
     /** True while the drafts re-derive from a catalog the daemon changed, which nobody chose. */
     let draftsCatalogApplying = false;
@@ -2838,12 +2820,6 @@ export function happyAgentWorkspaceStoreCreate(
     let workspaceFileTreeLoadsActive = 0;
     /** Directories that changed while their read was in flight; each reads again after it. */
     let workspaceFilesRefreshPending = new Set<string>();
-    /**
-     * Whether the open conversation has somewhere to list files from, as last
-     * seen on its chat; absent on a Happy Agent, which states no compute, and
-     * until the conversation's chat arrives.
-     */
-    let workspaceFilesCompute: "none" | "offline" | "attached" | undefined;
     let groupComposer: ComposerStore | undefined;
     /** How the addressed group's first session will be configured. */
     let groupDraft: HappyAgentSessionDraftStore | undefined;
@@ -3226,8 +3202,6 @@ export function happyAgentWorkspaceStoreCreate(
             usageLoading: chat.usageLoading,
             ...(chat.usageError !== undefined ? { usageError: chat.usageError } : {}),
             ...(chat.contextGauge ? { contextGauge: chat.contextGauge } : {}),
-            ...(chat.compute ? { compute: chat.compute } : {}),
-            ...(chat.repository ? { repository: chat.repository } : {}),
             activityPanelOpen: chat.activityPanelOpen,
             ...(chat.openImage ? { openImage: chat.openImage } : {}),
             ...(chat.menus ? { menus: chat.menus } : pendingMenus ? { menus: pendingMenus } : {}),
@@ -4930,7 +4904,6 @@ export function happyAgentWorkspaceStoreCreate(
         unsubscribeChat = undefined;
         chatStore = undefined;
         chatArrival = undefined;
-        workspaceFilesCompute = undefined;
         handle?.[Symbol.dispose]();
         handle = undefined;
     };
@@ -5169,25 +5142,8 @@ export function happyAgentWorkspaceStoreCreate(
         sessionId: HappyAgentSessionId | undefined,
         text: string,
         attachments: readonly ComposerAttachment[],
-    ): Promise<{ readonly text: string; readonly files: readonly HappyCloudFileBlock[] }> => {
+    ): Promise<{ readonly text: string }> => {
         happyAgentComposerAttachmentsValidate(attachments);
-        const upload = client.attachmentUpload;
-        if (upload) {
-            // A Happy Cloud conversation keeps its files itself: each goes to
-            // the server and the message names it, so nothing is copied into a
-            // checkout and the text stays as it was written.
-            const files: HappyCloudFileBlock[] = [];
-            for (const attachment of attachments) {
-                if (attachment.kind !== "workspaceFile") continue;
-                if (sessionId === undefined)
-                    throw new UserError(
-                        "Files can be attached only in a Happy Cloud chat that already exists.",
-                        "attachment_unsupported",
-                    );
-                files.push(await upload(sessionId, attachment));
-            }
-            return { text: happyAgentCommentsTextAppend(text, attachments), files };
-        }
         const paths: string[] = [];
         for (const attachment of attachments) {
             if (attachment.kind !== "workspaceFile") continue;
@@ -5205,7 +5161,6 @@ export function happyAgentWorkspaceStoreCreate(
                 happyAgentCommentsTextAppend(text, attachments),
                 paths,
             ),
-            files: [],
         };
     };
 
@@ -5469,61 +5424,51 @@ export function happyAgentWorkspaceStoreCreate(
                                     );
                                     if (refusal) throw new Error(refusal);
                                     const images = await happyAgentImageInputsOf(event.attachments);
-                                    const { text, files } = await attachmentsPlace(
+                                    const { text } = await attachmentsPlace(
                                         group,
                                         conversationId,
                                         event.text,
                                         event.attachments,
                                     );
                                     const steering = store.get().runStatus === "running";
-                                    await store.messageSend(
-                                        text,
-                                        images,
-                                        () => {
-                                            // Refused after it left the composer,
-                                            // as a send racing the start of a drain
-                                            // is: the words come back, unless
-                                            // something newer has been written.
-                                            const returnedComposer =
-                                                (openId === conversationId
-                                                    ? composer
-                                                    : undefined) ??
-                                                composerSubmissions.get(conversationId)?.composer ??
-                                                created;
-                                            const returnedDraft = returnedComposer.getState();
-                                            if (
-                                                returnedDraft.text.length > 0 ||
-                                                returnedDraft.attachments.length > 0 ||
-                                                returnedDraft.submission.status === "pending" ||
-                                                returnedDraft.voiceDraft
-                                            )
-                                                return;
-                                            returnedComposer.getState().composerInput({
-                                                type: "submissionReturned",
-                                                text: event.text,
-                                                attachments: event.attachments.map(
-                                                    happyAgentComposerAttachmentPreviewRenew,
-                                                ),
-                                            });
-                                            if (returnedComposer.getState().text !== event.text)
-                                                return;
-                                            attachmentsRemember(
-                                                conversationAttachments,
-                                                conversationId,
-                                                returnedComposer,
-                                            );
-                                            void withAddressedChat(
-                                                conversationId,
-                                                (returnedStore) =>
-                                                    returnedStore.draftSet(
-                                                        event.text,
-                                                        nextDraftUpdatedAt(),
-                                                        draftOrigin,
-                                                    ),
-                                            ).catch(() => undefined);
-                                        },
-                                        files,
-                                    );
+                                    await store.messageSend(text, images, () => {
+                                        // Refused after it left the composer,
+                                        // as a send racing the start of a drain
+                                        // is: the words come back, unless
+                                        // something newer has been written.
+                                        const returnedComposer =
+                                            (openId === conversationId ? composer : undefined) ??
+                                            composerSubmissions.get(conversationId)?.composer ??
+                                            created;
+                                        const returnedDraft = returnedComposer.getState();
+                                        if (
+                                            returnedDraft.text.length > 0 ||
+                                            returnedDraft.attachments.length > 0 ||
+                                            returnedDraft.submission.status === "pending" ||
+                                            returnedDraft.voiceDraft
+                                        )
+                                            return;
+                                        returnedComposer.getState().composerInput({
+                                            type: "submissionReturned",
+                                            text: event.text,
+                                            attachments: event.attachments.map(
+                                                happyAgentComposerAttachmentPreviewRenew,
+                                            ),
+                                        });
+                                        if (returnedComposer.getState().text !== event.text) return;
+                                        attachmentsRemember(
+                                            conversationAttachments,
+                                            conversationId,
+                                            returnedComposer,
+                                        );
+                                        void withAddressedChat(conversationId, (returnedStore) =>
+                                            returnedStore.draftSet(
+                                                event.text,
+                                                nextDraftUpdatedAt(),
+                                                draftOrigin,
+                                            ),
+                                        ).catch(() => undefined);
+                                    });
                                     // Keep the persisted draft until every attachment
                                     // has arrived and this conversation accepts the send.
                                     // A draft edited during the upload owns its own text.
@@ -5727,11 +5672,9 @@ export function happyAgentWorkspaceStoreCreate(
                 };
                 unsubscribeChat = acquired.store.subscribe(() => {
                     reconcileComposer();
-                    workspaceFilesComputeReconcile(acquired.store.get().compute);
                     recompute();
                 });
                 reconcileComposer();
-                workspaceFilesComputeReconcile(acquired.store.get().compute);
                 recompute();
             },
             (error: unknown) => {
@@ -6297,15 +6240,13 @@ export function happyAgentWorkspaceStoreCreate(
         // names an unnamed bot from.
         try {
             const images = await happyAgentImageInputsOf(message.attachments);
-            const { text, files } = await attachmentsPlace(
+            const { text } = await attachmentsPlace(
                 location.groupId,
                 location.sessionId,
                 message.text,
                 message.attachments,
             );
-            await withAddressedChat(location.sessionId, (store) =>
-                store.messageSend(text, images, undefined, files),
-            );
+            await withAddressedChat(location.sessionId, (store) => store.messageSend(text, images));
             activityRecord({
                 kind: "messageSent",
                 // A bot made from here is always the reader's own, never a system bot.
@@ -6785,26 +6726,11 @@ export function happyAgentWorkspaceStoreCreate(
     }
 
     /**
-     * The compute the addressed conversation states, when its chat has arrived.
-     * The chat still held while navigation moves to another conversation says
-     * nothing about the new one.
-     */
-    const addressedComputeOf = (): HappyAgentCompute | undefined => {
-        const chat = chatStore?.get();
-        return chat !== undefined && chat.sessionId === address.conversationId
-            ? chat.compute
-            : undefined;
-    };
-
-    /**
      * Opens the all-files tree at its root once per group. Switching sessions in
      * one checkout reuses every branch already materialized; switching checkouts
      * retires in-flight pages and starts with one root read. A root already
      * listed is still walked for open folders, because which ones stand open can
      * change while the panel shows only the changes.
-     *
-     * A Happy Cloud conversation with no compute has no folder to list, so it is
-     * not asked; its compute attaching is what reads the root.
      */
     const workspaceFilesEnsure = (groupId: HappyAgentGroupId): void => {
         const root = workspaceFiles?.directories.get("");
@@ -6819,71 +6745,9 @@ export function happyAgentWorkspaceStoreCreate(
             workspaceFilesGroupId = groupId;
             workspaceFilesReset();
         }
-        if (addressedComputeOf()?.kind === "none") {
-            if (workspaceFiles?.unavailable !== "noCompute") {
-                workspaceFilesReset("noCompute");
-                recompute();
-            }
-            return;
-        }
         if (workspaceFiles?.unavailable !== undefined)
             workspaceFiles = { directories: workspaceFiles.directories };
         workspaceFilesDirectoryEnsure(groupId, "");
-    };
-
-    /**
-     * Follows the open conversation's compute into its checkout's tree. Losing
-     * compute leaves nothing to list; gaining it, or its machine coming online,
-     * reads the root and every folder standing open again, so the files appear
-     * without the reader reopening the panel. A Happy Agent states no compute,
-     * so its tree never passes through here.
-     */
-    const workspaceFilesComputeReconcile = (compute: HappyAgentCompute | undefined): void => {
-        if (compute === undefined) return;
-        const next =
-            compute.kind === "none" ? "none" : compute.online === false ? "offline" : "attached";
-        const previous = workspaceFilesCompute;
-        if (next === previous) return;
-        workspaceFilesCompute = next;
-        const groupId = addressedGroupId;
-        if (groupId === undefined || workspaceFilesGroupId !== groupId || !workspaceFiles) return;
-        if (next === "none") {
-            if (workspaceFiles.unavailable === "noCompute") return;
-            workspaceFilesReset("noCompute");
-            recompute();
-            return;
-        }
-        // Bound to a machine that is still coming up is worth asking once; a
-        // machine that went away keeps what was listed until it is back.
-        if (next === "offline" && previous !== "none") return;
-        const root = workspaceFiles.directories.get("");
-        if (workspaceFiles.unavailable !== undefined || root === undefined || root.error) {
-            // Open folders are read once the root lists them again.
-            workspaceFilesReset();
-            workspaceFilesDirectoryEnsure(groupId, "");
-            recompute();
-            return;
-        }
-        // A listing read before the machine went away may have moved on since.
-        if (previous !== undefined) workspaceFilesTreeInvalidate(groupId, null);
-    };
-
-    /**
-     * A machine coming online does not restate the compute of the agents it
-     * serves, so a tree waiting on an offline machine asks again whenever any
-     * runner changes. Nothing else listens: the hint names no agent.
-     */
-    const workspaceFilesRunnersChanged = (): void => {
-        const groupId = workspaceFilesGroupId;
-        if (
-            groupId === undefined ||
-            groupId !== addressedGroupId ||
-            workspaceFiles?.unavailable !== "computeOffline"
-        )
-            return;
-        workspaceFilesReset();
-        workspaceFilesDirectoryEnsure(groupId, "");
-        recompute();
     };
 
     /**
@@ -7118,7 +6982,6 @@ export function happyAgentWorkspaceStoreCreate(
         // The tree already listed is where removals are counted from.
         subtasksRemovedApply();
         unsubscribeWorkspaceFiles = client.workspaceFilesSubscribe(workspaceFilesChanged);
-        unsubscribeComputeRunners = client.computeRunnersSubscribe(workspaceFilesRunnersChanged);
         // The addressed conversation survives losing every subscriber (the URL
         // still names it), so remounting re-acquires it rather than opening
         // nothing.
@@ -7157,8 +7020,6 @@ export function happyAgentWorkspaceStoreCreate(
         unsubscribeList = undefined;
         unsubscribeWorkspaceFiles?.();
         unsubscribeWorkspaceFiles = undefined;
-        unsubscribeComputeRunners?.();
-        unsubscribeComputeRunners = undefined;
         unsubscribeModels?.();
         unsubscribeModels = undefined;
         fileDocumentsReconcileOnStart = true;
@@ -7513,7 +7374,6 @@ export function happyAgentWorkspaceStoreCreate(
 
     return {
         get: () => snapshotStore.getState(),
-        previews: () => client.previews(),
         panel,
         changeTiers,
         commandShortcuts,
@@ -8289,30 +8149,6 @@ export function happyAgentWorkspaceStoreCreate(
         fileOpen: (groupId, path, kind, selection) =>
             fileTabOpen(groupId, path, kind, false, "main", selection),
         filePreprocess: (groupId, path, kind) => filePreprocessEnqueue(groupId, path, kind),
-        attachmentDownload: (attachment, name) => {
-            const download =
-                openId === undefined ? undefined : client.attachmentDownload?.(openId, attachment);
-            return download?.then(
-                (blob) => {
-                    // The file arrived, so an earlier failure to fetch it no longer holds.
-                    if (!disposed && fileOpenFailure?.path === name) {
-                        fileOpenFailure = undefined;
-                        recompute();
-                    }
-                    return blob;
-                },
-                (error: unknown) => {
-                    if (!disposed) {
-                        fileOpenFailure = {
-                            path: name,
-                            message: happyAgentUserError(error).message,
-                        };
-                        recompute();
-                    }
-                    throw error;
-                },
-            );
-        },
         attachmentFileOpen: (source, kind) => {
             const resolved = groupPathResolve(source);
             if (!resolved) return false;

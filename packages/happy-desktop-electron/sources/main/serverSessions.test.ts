@@ -33,8 +33,6 @@ function serverCreate(
         readonly exchangeGate?: Promise<void>;
         /** The servers issued tokens name in `aud`. */
         readonly audience?: readonly string[];
-        /** Issues no refresh token, as Happy Cloud's account pass. */
-        readonly noRefresh?: boolean;
     } = {},
 ) {
     let issued = 0;
@@ -68,7 +66,7 @@ function serverCreate(
                 access_token: access(issued, options.audience),
                 token_type: "Bearer",
                 expires_in: options.expiresIn ?? 3600,
-                ...(options.noRefresh ? {} : { refresh_token: `refresh-${String(issued)}` }),
+                refresh_token: `refresh-${String(issued)}`,
             });
         }
         return new Response("not found", { status: 404 });
@@ -143,7 +141,7 @@ it("signs in through the browser and keeps the tokens only in memory", async () 
 
 it("refuses a connection the host does not list as a server added by address", async () => {
     const context = sessionsCreate(serverCreate());
-    await expect(context.sessions.signInBegin("cloud")).rejects.toMatchObject({
+    await expect(context.sessions.signInBegin("unlisted")).rejects.toMatchObject({
         code: "not_found",
     });
     expect(context.opened).toEqual([]);
@@ -394,130 +392,4 @@ it("keeps no token that names another server, and refuses a token URL on another
         code: "sign_in_unavailable",
     });
     expect(stealing.opened).toEqual([]);
-});
-
-const ACCOUNTS = "https://accounts.example.com/";
-const CLOUD_SERVER = "https://acme.example.com/";
-
-function cloudCreate(server: ReturnType<typeof serverCreate>) {
-    return sessionsCreate(server, {
-        direct: {
-            servers: () => new Map([["cloud-acme", CLOUD_SERVER]]),
-            account: {
-                connectionId: "account",
-                serverUrl: ACCOUNTS,
-                method: {
-                    type: "oauth",
-                    id: "happy-cloud",
-                    name: "Happy Cloud",
-                    authorizationUrl: "https://login.example.com/authorize",
-                    tokenUrl: "https://login.example.com/token",
-                    clientId: "happy",
-                    resource: ACCOUNTS,
-                },
-            },
-        },
-    });
-}
-
-it("lets Happy Cloud's account pass expire without ever refreshing it", async () => {
-    vi.useFakeTimers();
-    const server = serverCreate({ audience: [ACCOUNTS], noRefresh: true });
-    const context = cloudCreate(server);
-    const { attemptId } = await context.sessions.signInBegin("account");
-    const finished = context.sessions.signInFinish(attemptId);
-    context.sessions.callbackReceive(callbackOf(context));
-    await finished;
-    expect(context.sessions.credential("account")?.accessToken).toBe(access(1, [ACCOUNTS]));
-    // The pass is never handed to the transport nor listed.
-    expect(context.sessions.tokens()).toEqual({});
-    expect(await context.sessions.refresh("account", "another")).toBeUndefined();
-    await vi.advanceTimersByTimeAsync(3600_000 + 1_000);
-    expect(context.sessions.credential("account")).toBeUndefined();
-    expect(server.tokenRequests.filter((form) => form.grant_type === "refresh_token")).toEqual([]);
-});
-
-it("ends Happy Cloud's account pass when the accounts service refuses it", async () => {
-    const server = serverCreate({ audience: [ACCOUNTS], noRefresh: true });
-    const context = cloudCreate(server);
-    const { attemptId } = await context.sessions.signInBegin("account");
-    const finished = context.sessions.signInFinish(attemptId);
-    context.sessions.callbackReceive(callbackOf(context));
-    await finished;
-    expect(await context.sessions.refresh("account", access(1, [ACCOUNTS]))).toBeUndefined();
-    expect(context.sessions.credential("account")).toBeUndefined();
-    expect(server.tokenRequests.filter((form) => form.grant_type === "refresh_token")).toEqual([]);
-});
-
-it("holds a Happy Cloud server's issued tokens and refreshes them without the account", async () => {
-    const server = serverCreate({ audience: [CLOUD_SERVER] });
-    const context = cloudCreate(server);
-    expect(() =>
-        context.sessions.directSignIn("cloud-acme", {
-            accessToken: "elsewhere",
-            expiresAt: null,
-            refreshToken: null,
-            refreshUrl: null,
-            clientId: "happy",
-            serverUrl: "https://other.example.com/",
-        }),
-    ).toThrow("This sign-in is for a different server.");
-    context.sessions.directSignIn("cloud-acme", {
-        accessToken: "issued",
-        expiresAt: Date.now() + 900_000,
-        refreshToken: "refresh-issued",
-        refreshUrl: "https://login.example.com/token",
-        clientId: "happy",
-        resource: CLOUD_SERVER,
-        serverUrl: CLOUD_SERVER,
-    });
-    expect(context.sessions.get()).toEqual([{ connectionId: "cloud-acme", state: "signedIn" }]);
-    expect(context.sessions.tokens()).toEqual({
-        "cloud-acme": { accessToken: "issued", serverUrl: CLOUD_SERVER },
-    });
-    expect((await context.sessions.refresh("cloud-acme", "issued"))?.accessToken).toBe(
-        access(1, [CLOUD_SERVER]),
-    );
-    expect(server.tokenRequests).toEqual([
-        expect.objectContaining({
-            grant_type: "refresh_token",
-            refresh_token: "refresh-issued",
-            resource: CLOUD_SERVER,
-        }),
-    ]);
-});
-
-it("keeps a Happy Cloud sign-in when the host reports a roster miss for it", () => {
-    const context = cloudCreate(serverCreate());
-    context.sessions.directSignIn("cloud-acme", {
-        accessToken: "issued",
-        expiresAt: Date.now() + 900_000,
-        refreshToken: null,
-        refreshUrl: null,
-        clientId: "happy",
-        resource: CLOUD_SERVER,
-        serverUrl: CLOUD_SERVER,
-    });
-    context.sessions.serverMoved("cloud-acme", CLOUD_SERVER);
-    expect(context.sessions.get()).toEqual([{ connectionId: "cloud-acme", state: "signedIn" }]);
-    expect(context.sessions.tokens()).toEqual({
-        "cloud-acme": { accessToken: "issued", serverUrl: CLOUD_SERVER },
-    });
-});
-
-it("holds Happy Cloud's account pass issued without a browser", () => {
-    const context = cloudCreate(serverCreate());
-    context.sessions.directSignIn("account", {
-        accessToken: "pass",
-        expiresAt: Date.now() + 3600_000,
-        refreshToken: null,
-        refreshUrl: null,
-        clientId: "happy",
-        resource: ACCOUNTS,
-        serverUrl: ACCOUNTS,
-    });
-    expect(context.sessions.credential("account")?.accessToken).toBe("pass");
-    // The pass is never listed, nor handed to the transport.
-    expect(context.sessions.get()).toEqual([{ connectionId: "cloud-acme", state: "signedOut" }]);
-    expect(context.sessions.tokens()).toEqual({});
 });

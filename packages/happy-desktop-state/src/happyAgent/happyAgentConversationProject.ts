@@ -580,9 +580,7 @@ function userMessageOmit(
     return happyAgentInboundMessageOmit({
         notification: element.source === "notification",
         opaqueAgent:
-            element.text.trim().length === 0 &&
-            userMessageAttachments(element, input).length === 0 &&
-            (element.files?.length ?? 0) === 0,
+            element.text.trim().length === 0 && userMessageAttachments(element, input).length === 0,
     });
 }
 
@@ -706,31 +704,15 @@ function happyAgentConnectGroupProject(
                         text: element.text,
                         createdAt: element.createdAt,
                         author: profileAuthor(element.profile, element.identity),
-                        attachments: [
-                            ...userMessageAttachments(element, input).map(
-                                (attachment, index): ConversationAttachment => ({
-                                    kind: "inlineImage",
-                                    id: `${element.id}:image:${String(index)}`,
-                                    mediaType: attachment.mediaType,
-                                    data: attachment.data,
-                                    ...inlineImageSize(attachment.data),
-                                }),
-                            ),
-                            // A Happy Cloud file shows as its card: name and size.
-                            ...(element.files ?? []).map(
-                                (file, index): ConversationAttachment => ({
-                                    kind: "linked",
-                                    id: `${element.id}:file:${String(index)}`,
-                                    attachmentKind: "file",
-                                    name: file.name,
-                                    source: file.attachment,
-                                    ...(file.mimeType === undefined
-                                        ? {}
-                                        : { mediaType: file.mimeType }),
-                                    ...(file.size === undefined ? {} : { bytes: file.size }),
-                                }),
-                            ),
-                        ],
+                        attachments: userMessageAttachments(element, input).map(
+                            (attachment, index): ConversationAttachment => ({
+                                kind: "inlineImage",
+                                id: `${element.id}:image:${String(index)}`,
+                                mediaType: attachment.mediaType,
+                                data: attachment.data,
+                                ...inlineImageSize(attachment.data),
+                            }),
+                        ),
                     }),
                 });
                 break;
@@ -1178,7 +1160,6 @@ function happyAgentConnectGroupProject(
                 (entry.activity.tool.presentation?.type === "fileDiff" ||
                     entry.activity.tool.presentation?.type === "media" ||
                     entry.activity.tool.presentation?.type === "artifact" ||
-                    entry.activity.tool.presentation?.type === "preview" ||
                     entry.activity.tool.presentation?.type === "page")) ||
             (entry.kind === "notice" && !noticeInformational(entry)),
     );
@@ -1442,14 +1423,6 @@ function presentationProject(
     agents: HappyAgentConversationInput["agentIdentities"],
 ): ConversationActivityPresentation | undefined {
     switch (presentation.kind) {
-        case "preview":
-            return {
-                type: "preview",
-                previewId: presentation.previewId,
-                agentId: presentation.agentId,
-                port: presentation.port,
-                url: presentation.url,
-            };
         case "agent_spawn": {
             // The agent it made, as the window knows it now.
             const agent =

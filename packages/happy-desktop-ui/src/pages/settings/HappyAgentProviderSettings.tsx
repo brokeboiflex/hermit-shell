@@ -48,12 +48,12 @@ export interface HappyAgentProviderKeyRow {
     readonly saving?: boolean;
 }
 
-/** The keys a Happy Cloud team keeps for one of its own providers. */
+/** The keys a team keeps for one of its own providers. */
 export interface HappyAgentProviderKeys {
     readonly list: readonly HappyAgentProviderKeyRow[];
     /** Whether a key can be added here. */
     readonly addable: boolean;
-    /** Whose key answers now: the team's, Happy Cloud's, or nobody's. */
+    /** Whose key answers now: the team's, the server operator's, or nobody's. */
     readonly source: "tenant" | "operator" | null;
 }
 
@@ -76,7 +76,7 @@ export interface HappyAgentProviderRow {
     readonly models: readonly HappyAgentProviderModelRow[];
     /** Service tiers the provider offers, already labelled. */
     readonly serviceTiers: readonly string[];
-    /** The keys of one of a Happy Cloud team's own providers. */
+    /** The keys of one of a team's own providers. */
     readonly keys?: HappyAgentProviderKeys;
     /** A provider the team added itself, with the protocol it speaks. */
     readonly custom?: { readonly protocol: HappyAgentCustomProviderProtocolId };
@@ -315,13 +315,13 @@ export function HappyAgentProviderSettings(props: HappyAgentProviderSettingsProp
 }
 
 /**
- * What the reader has to do before a provider's models work. On a Happy Cloud
- * server a provider that takes a key and has none waits for one, rather than
- * for a sign-in on some machine.
+ * What the reader has to do before a provider's models work. On a team server
+ * a provider that takes a key and has none waits for one, rather than for a
+ * sign-in on some machine.
  */
 function providerHint(provider: HappyAgentProviderRow): string | undefined {
     if (provider.custom && !happyAgentCustomProviderProtocolOffered(provider.custom.protocol))
-        return `Happy Cloud doesn’t serve ${HAPPY_AGENT_CUSTOM_PROVIDER_PROTOCOL_LABELS[provider.custom.protocol]} yet, so this provider offers no models.`;
+        return `This server doesn’t serve ${HAPPY_AGENT_CUSTOM_PROVIDER_PROTOCOL_LABELS[provider.custom.protocol]} yet, so this provider offers no models.`;
     if (provider.keys?.addable && provider.keys.source === null)
         return "Add a team API key to use its models.";
     if (provider.keys) return undefined;
@@ -353,7 +353,7 @@ function keyMeta(key: HappyAgentProviderKeyRow): string {
 }
 
 /**
- * A provider's team keys on a Happy Cloud server, and the form that adds one.
+ * A provider's team keys on a team server, and the form that adds one.
  * The draft lives here only while the form is open: the key goes straight to
  * the server and is never shown again.
  */
@@ -396,7 +396,7 @@ function HappyAgentProviderKeyList(props: {
         >
             {props.keys.source === "operator" && props.keys.list.length === 0 ? (
                 <span className="happy-agent-provider__keys-note">
-                    Happy Cloud provides this one. Add a team key to use your own account.
+                    This server provides this one. Add a team key to use your own account.
                 </span>
             ) : null}
             {props.keys.list.map((key) => (

@@ -24,7 +24,7 @@ export const HAPPY_AGENT_CUSTOM_PROVIDER_PROTOCOL_LABELS: Record<
     anthropic_messages: "Anthropic Messages",
 };
 
-/** The protocols Happy Cloud serves today; the others are stored but offer nothing. */
+/** The protocols the server serves today; the others are stored but offer nothing. */
 const OFFERED: ReadonlySet<HappyAgentCustomProviderProtocolId> = new Set(["openai_responses"]);
 
 export function happyAgentCustomProviderProtocolOffered(
@@ -338,7 +338,7 @@ function HappyAgentCustomProviderForm(props: HappyAgentCustomProviderDialogProps
                     hint={
                         OFFERED.has(draft.protocol)
                             ? "How Happy talks to the endpoint."
-                            : "Happy Cloud doesn’t serve this protocol yet, so the provider offers no models."
+                            : "This server doesn’t serve this protocol yet, so the provider offers no models."
                     }
                     label="Protocol"
                     onValueChange={(protocol) =>

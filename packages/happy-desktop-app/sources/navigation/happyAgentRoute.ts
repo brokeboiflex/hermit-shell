@@ -69,9 +69,7 @@ export type HappyAgentRoute =
           readonly chat?: { readonly groupId: string; readonly chatId: string };
       }
     /** Where a new task is made, on the machine it will live on, as a bot is. */
-    | { readonly kind: "taskCreate"; readonly happyAgentId: string }
-    /** One person's profile on a Happy Cloud server. */
-    | { readonly kind: "userProfile"; readonly happyAgentId: string; readonly userId: string };
+    | { readonly kind: "taskCreate"; readonly happyAgentId: string };
 
 /** The place a window opens on before it has been anywhere. */
 export const HAPPY_AGENT_ROUTE_HOME: HappyAgentRoute = { kind: "home" };
@@ -128,8 +126,6 @@ export function happyAgentRoutePath(route: HappyAgentRoute): string {
         }
         case "taskCreate":
             return `/tasks/new/${part(route.happyAgentId)}`;
-        case "userProfile":
-            return `/people/${part(route.happyAgentId)}/${part(route.userId)}`;
     }
 }
 
@@ -225,10 +221,6 @@ export function happyAgentRoutePathParse(pathname: string): HappyAgentRoute | un
             return second === undefined
                 ? { kind: "plugins", happyAgentId: first }
                 : { kind: "plugin", happyAgentId: first, pluginId: second };
-        case "people":
-            return first !== undefined && second !== undefined && segments.length === 3
-                ? { kind: "userProfile", happyAgentId: first, userId: second }
-                : undefined;
         case "settings":
             if (first === undefined) return { kind: "settings" };
             return segments.length === 2 ? { kind: "settingsSection", section: first } : undefined;
@@ -374,13 +366,6 @@ export function happyAgentRouteParse(value: unknown): HappyAgentRoute | undefine
         case "taskCreate": {
             const happyAgentId = fieldOf(record, "happyAgentId");
             return happyAgentId ? { kind: "taskCreate", happyAgentId } : undefined;
-        }
-        case "userProfile": {
-            const happyAgentId = fieldOf(record, "happyAgentId");
-            const userId = fieldOf(record, "userId");
-            return happyAgentId && userId
-                ? { kind: "userProfile", happyAgentId, userId }
-                : undefined;
         }
         default:
             return undefined;

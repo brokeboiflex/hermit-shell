@@ -67,16 +67,6 @@
                     "document": "compiled/10-choices.render.json",
                     "width": 390,
                     "chosen": "choices.1"
-                },
-                {
-                    "document": "compiled/14-cluster-secret.render.json",
-                    "width": 390,
-                    "host": "happy_agent"
-                },
-                {
-                    "document": "compiled/14-cluster-secret.render.json",
-                    "width": 390,
-                    "host": "cluster"
                 }
             ],
             "expect": "same height per document"

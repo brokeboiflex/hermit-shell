@@ -43,10 +43,7 @@ import type {
     HappyAgentBackgroundProcess,
     HappyAgentGoal,
     HappyAgentImageInput,
-    HappyCloudFileBlock,
     HappyAgentMenusSnapshot,
-    HappyAgentCompute,
-    HappyAgentRepositoryBinding,
     HappyAgentContextGauge,
     HappyAgentModel,
     HappyAgentModelCatalog,
@@ -632,10 +629,6 @@ export interface HappyAgentChatSnapshot {
     readonly ready: boolean;
     readonly archived: boolean;
     readonly title?: string;
-    /** Where its tools run, on a Happy Cloud server; absent on a Happy Agent. */
-    readonly compute?: HappyAgentCompute;
-    /** The repository its agent attached, on a Happy Cloud server. */
-    readonly repository?: HappyAgentRepositoryBinding;
     readonly cwd?: string;
     readonly draft?: string;
     readonly draftUpdatedAt?: number;
@@ -724,8 +717,6 @@ export interface HappyAgentChatStore {
         text: string,
         images?: readonly HappyAgentImageInput[],
         refused?: (error: UserError) => void,
-        /** Files already uploaded to this Happy Cloud conversation. */
-        files?: readonly HappyCloudFileBlock[],
     ): Promise<void>;
     /** Exact-text human confirmation from voice. Never routes text into a pending question. */
     voiceMessageSendConfirmed(
@@ -1183,8 +1174,6 @@ export function happyAgentChatStoreCreate(
             ready: connected !== undefined && connected.historyLoading !== true,
             archived: connected?.archived ?? false,
             ...(connected?.title === undefined ? {} : { title: connected.title }),
-            ...(connected?.compute === undefined ? {} : { compute: connected.compute }),
-            ...(connected?.repository === undefined ? {} : { repository: connected.repository }),
             ...(connected?.cwd === undefined ? {} : { cwd: connected.cwd }),
             ...(connected?.draft === undefined ? {} : { draft: connected.draft }),
             ...(connected?.draftUpdatedAt === undefined
@@ -1556,14 +1545,14 @@ export function happyAgentChatStoreCreate(
                 });
                 output({ type: "messageSent", sessionId, steered });
             }),
-        messageSend: (text, images, refused, files) =>
+        messageSend: (text, images, refused) =>
             rejecting(async () => {
                 if (!arrived()) await arrivalWait();
                 const pendingQuestion = store.getState().pendingUserInputs[0];
                 const steered = runStatus === "running";
                 const mutationId = deps.connectActions.sendMessage(
                     sessionId,
-                    (images && images.length > 0) || (files && files.length > 0)
+                    images && images.length > 0
                         ? {
                               text,
                               content: [
@@ -1573,7 +1562,6 @@ export function happyAgentChatStoreCreate(
                                       mediaType: image.mediaType,
                                       data: image.data,
                                   })),
-                                  ...(files ?? []).map((file) => ({ ...file })),
                               ],
                           }
                         : text,

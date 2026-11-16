@@ -3,7 +3,6 @@ import {
     buildIdentityArgument,
     debugMetricsArgument,
     doNotTrackArgument,
-    happyCloudArgument,
     desktopIpc,
     mediaPreviewArgument,
     liveWindowArgument,
@@ -22,7 +21,6 @@ import {
     type DesktopMediaPreview,
     type DesktopRuntimeSnapshot,
     type DesktopStartRequest,
-    type DesktopCredentialImportItem,
     type DesktopSystem,
     type DesktopWindowState,
     type HappyDesktopBridge,
@@ -76,46 +74,6 @@ const bridge: HappyDesktopBridge = {
     liveMicrophoneStart: (input) => ipcRenderer.invoke(desktopIpc.liveMicrophoneStart, input),
     liveMicrophoneRevoke: () => ipcRenderer.invoke(desktopIpc.liveMicrophoneRevoke),
     ...(identity ? { buildIdentity: identity } : {}),
-    ...(process.argv.includes(happyCloudArgument)
-        ? {
-              happyCloud: {
-                  serversList: () => ipcRenderer.invoke(desktopIpc.happyCloudServersList),
-                  availability: (name: string) =>
-                      ipcRenderer.invoke(desktopIpc.happyCloudAvailability, name),
-                  serverCreate: (name: string) =>
-                      ipcRenderer.invoke(desktopIpc.happyCloudServerCreate, name),
-                  serverJoin: (name: string, code: string) =>
-                      ipcRenderer.invoke(desktopIpc.happyCloudServerJoin, name, code),
-                  serverConnect: (serverId: string) =>
-                      ipcRenderer.invoke(desktopIpc.happyCloudServerConnect, serverId),
-                  imageRead: (serverId: string) =>
-                      ipcRenderer.invoke(desktopIpc.happyCloudImageRead, serverId),
-                  serverRemove: (name: string) =>
-                      ipcRenderer.invoke(desktopIpc.happyCloudServerRemove, name),
-                  serverSignOut: (name: string) =>
-                      ipcRenderer.invoke(desktopIpc.happyCloudServerSignOut, name),
-                  signInsKept: () => ipcRenderer.invoke(desktopIpc.happyCloudSignInsKept),
-                  accountSignOut: () => ipcRenderer.invoke(desktopIpc.happyCloudAccountSignOut),
-                  passwordSignIn: (login: string, password: string) =>
-                      ipcRenderer.invoke(desktopIpc.happyCloudPasswordSignIn, login, password),
-                  emailCodeStart: (email: string) =>
-                      ipcRenderer.invoke(desktopIpc.happyCloudEmailCodeStart, email),
-                  emailCodeVerify: (email: string, code: string) =>
-                      ipcRenderer.invoke(desktopIpc.happyCloudEmailCodeVerify, email, code),
-                  credentialScan: (options?: { readonly shell?: boolean }) =>
-                      ipcRenderer.invoke(desktopIpc.happyCloudCredentialScan, options),
-                  credentialImport: (
-                      connectionId: string,
-                      items: readonly DesktopCredentialImportItem[],
-                  ) =>
-                      ipcRenderer.invoke(
-                          desktopIpc.happyCloudCredentialImport,
-                          connectionId,
-                          items,
-                      ),
-              },
-          }
-        : {}),
     system: systemRead(),
     doNotTrack: process.argv.includes(doNotTrackArgument),
     debugMetricsEnabled,

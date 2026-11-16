@@ -131,11 +131,10 @@ export class DesktopRuntime implements AsyncDisposable {
                     ...(options.debug ? { debug: options.debug } : {}),
                 }));
         // Only a computer someone asked to run a Happy Agent starts one. Until
-        // then the runtime is off, and Happy Cloud works without it.
+        // then the runtime is off.
         if (!settings) {
             this.snapshotValue = {
                 phase: "off",
-                ...(this.rendererHttpUrl ? { directHttpUrl: this.rendererHttpUrl } : {}),
                 targets: this.targets(),
                 update: idleUpdate,
             };

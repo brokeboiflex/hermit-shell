@@ -39,10 +39,6 @@ import {
 } from "./happyAgentSessionListStore.js";
 import type { HappyAgentHostServices } from "./happyAgentHostServices.js";
 import {
-    happyAgentAttachmentPlacementCreate,
-    type HappyAgentAttachmentPlacement,
-} from "./happyAgentAttachmentPlacement.js";
-import {
     happyAgentChangedFileProject,
     happyAgentModelCatalogProject,
     happyAgentTextDecodeBase64,
@@ -68,7 +64,6 @@ import {
     happyAgentTaskSettingsStoreCreate,
     type HappyAgentTaskSettingsStore,
 } from "./happyAgentTaskSettingsStore.js";
-import { happyAgentCloudTeamUsageAllowed } from "./happyAgentCloudTeamUsage.js";
 import {
     happyAgentSurfaceSettingsStoreCreate,
     type HappyAgentSurfaceSettingsStore,
@@ -85,7 +80,6 @@ import {
 } from "./happyAgentInboxStore.js";
 import {
     happyAgentInstructionsStoreCreate,
-    happyAgentPolicyAccessRead,
     type HappyAgentInstructionsStore,
 } from "./happyAgentInstructionsStore.js";
 import {
@@ -96,10 +90,6 @@ import {
     happyAgentSecretsStoreCreate,
     type HappyAgentSecretsStore,
 } from "./happyAgentSecretsStore.js";
-import {
-    happyAgentClusterSecretsStoreCreate,
-    type HappyAgentClusterSecretsStore,
-} from "./happyAgentClusterSecretsStore.js";
 import {
     happyAgentGlobalSkillsStoreCreate,
     type HappyAgentGlobalSkillsStore,
@@ -121,62 +111,15 @@ import {
     type HappyAgentProvidersStore,
 } from "./happyAgentProvidersStore.js";
 import {
-    happyAgentCredentialImportStoreCreate,
-    type HappyAgentCredentialImportHost,
-    type HappyAgentCredentialImportStore,
-} from "./happyAgentCredentialImportStore.js";
-import {
-    happyAgentCloudProvidersStoreCreate,
-    type HappyAgentCloudProvidersStore,
-} from "./happyAgentCloudProvidersStore.js";
-import type { HappyAgentCloudProvidersApi } from "./happyAgentCloudProviders.js";
-import {
-    happyAgentRepositoriesStoreCreate,
-    type HappyAgentRepositoriesStore,
-} from "./happyAgentRepositoriesStore.js";
-import {
-    happyAgentPaymentsStoreCreate,
-    type HappyAgentPaymentsStore,
-} from "./happyAgentPaymentsStore.js";
-import {
-    happyAgentOnboardingSettingsStoreCreate,
-    type HappyAgentOnboardingSettingsStore,
-} from "./happyAgentOnboardingSettingsStore.js";
-import {
-    happyAgentGenUiClusterActionsCreate,
     happyAgentGenUiDaemonActionsCreate,
     type HappyAgentGenUiActions,
 } from "./happyAgentGenUiActions.js";
 import { happyAgentDaemonPluginsStoreCreate } from "./happyAgentDaemonPluginsStore.js";
-import {
-    happyAgentPluginsStoreCreate,
-    type HappyAgentPluginsStore,
-} from "./happyAgentPluginsStore.js";
-import {
-    happyAgentComputeStoreCreate,
-    type HappyAgentComputeStore,
-} from "./happyAgentComputeStore.js";
-import {
-    happyAgentPreviewsStoreCreate,
-    type HappyAgentPreviewsStore,
-} from "./happyAgentPreviewsStore.js";
+import type { HappyAgentPluginsStore } from "./happyAgentPluginsStore.js";
 import {
     happyAgentDailyUsageStoreCreate,
     type HappyAgentDailyUsageStore,
 } from "./happyAgentDailyUsageStore.js";
-import {
-    happyAgentMembersStoreCreate,
-    type HappyAgentMembersStore,
-} from "./happyAgentMembersStore.js";
-import type { HappyCloudRequest } from "./happyAgentProviderCredentials.js";
-import {
-    happyAgentUserProfileStoreCreate,
-    type HappyAgentUserProfileStore,
-} from "./happyAgentUserProfileStore.js";
-import {
-    happyAgentCheckoutsStoreCreate,
-    type HappyAgentCheckoutsStore,
-} from "./happyAgentCheckoutsStore.js";
 import {
     happyAgentVoiceSettingsStoreCreate,
     type HappyAgentVoiceSettingsStore,
@@ -281,29 +224,8 @@ export interface HappyAgentWorkspaceClient {
      */
     providers(): HappyAgentProvidersStore;
     /**
-     * Settings › Inference › Import: copies credentials found on this computer
-     * to the server. Only a Happy Cloud server reached from a desktop shell
-     * has one; elsewhere this is undefined.
-     */
-    credentialImport(): HappyAgentCredentialImportStore | undefined;
-    /**
-     * Settings › AI providers on Happy Cloud: what conversations run on, and
-     * adding keys and sign-ins to it. Undefined anywhere but Happy Cloud.
-     */
-    cloudProviders(): HappyAgentCloudProvidersStore | undefined;
-    /** Settings › Repositories on Happy Cloud; undefined anywhere else. */
-    repositories(): HappyAgentRepositoriesStore | undefined;
-    /** Settings › Onboarding on Happy Cloud; undefined anywhere else. */
-    onboardingSettings(): HappyAgentOnboardingSettingsStore | undefined;
-    /**
-     * Settings › Payments on Happy Cloud; undefined anywhere else, and while
-     * the server's health does not say it takes payments.
-     */
-    payments(): HappyAgentPaymentsStore | undefined;
-    /**
-     * The plugins this connection's server offers and what it installed: a
-     * Happy Cloud team's installations, or this Happy Agent's own. Undefined
-     * while the server's health does not say it serves plugins.
+     * The plugins this Happy Agent offers and what it installed. Undefined
+     * while its health does not say it serves plugins.
      */
     plugins(): HappyAgentPluginsStore | undefined;
     /**
@@ -311,29 +233,8 @@ export interface HappyAgentWorkspaceClient {
      * such as secret forms. Undefined while its health does not say it serves them.
      */
     genUiActions(): HappyAgentGenUiActions | undefined;
-    /** Settings › Compute on Happy Cloud: its machines and join requests; undefined anywhere else. */
-    compute(): HappyAgentComputeStore | undefined;
-    /** Cloud development previews; undefined on ordinary Happy Agent connections. */
-    previews(): HappyAgentPreviewsStore | undefined;
     /** Settings › Usage's year of daily token totals; undefined where it cannot be read. */
     dailyUsage(): HappyAgentDailyUsageStore | undefined;
-    /**
-     * Settings › Members: who is on a Happy Cloud server, their roles and
-     * invites. Undefined anywhere but a Happy Cloud server.
-     */
-    members(): HappyAgentMembersStore | undefined;
-    /**
-     * One member's profile on Happy Cloud: who they are, what they used, and
-     * their latest tasks. Materialized per member on first access and kept;
-     * undefined anywhere but Happy Cloud.
-     */
-    userProfile(userId: string): HappyAgentUserProfileStore | undefined;
-    /**
-     * The repositories one cloud agent has checked out, with what each changed.
-     * Materialized per agent on first access and kept; undefined anywhere but
-     * Happy Cloud.
-     */
-    checkouts(agentId: string): HappyAgentCheckoutsStore | undefined;
     /**
      * The voice controller and prompt this machine's calls start with, as the
      * Voice settings read and change them. Materialized on first access and
@@ -354,8 +255,6 @@ export interface HappyAgentWorkspaceClient {
     securityPolicy(): HappyAgentSecurityPolicyStore;
     /** Global write-only environment bundles, materialized while Settings reads them. */
     secrets(): HappyAgentSecretsStore;
-    /** Settings › Secrets on Happy Cloud: the typed secret catalog; undefined anywhere else. */
-    clusterSecrets(): HappyAgentClusterSecretsStore | undefined;
     /**
      * Enabled, ready global skills, which a composer offers before any agent
      * exists to answer for its own catalog. Materialized on first access.
@@ -493,13 +392,6 @@ export interface HappyAgentWorkspaceClient {
         content: string,
     ): Promise<{ readonly path: string }>;
     /**
-     * Uploads one file to an agent's Happy Cloud conversation and answers the
-     * block its message names it with. Present exactly on a Happy Cloud
-     * connection, whose files never go into a checkout.
-     */
-    readonly attachmentUpload?: HappyAgentAttachmentPlacement["attachmentUpload"];
-    readonly attachmentDownload?: HappyAgentAttachmentPlacement["attachmentDownload"];
-    /**
      * Registers one folder on this Happy Agent's machine as a project and resolves with
      * the identity Happy Agent gave it. Nothing is started in it: a project is a folder
      * Happy Agent knows about, and a conversation in it is a separate decision.
@@ -566,24 +458,8 @@ export interface HappyAgentWorkspaceClientDeps {
      */
     readonly mobileConnector?: HappyAgentMobileConnectorStore;
     readonly client: HappyAgentClient;
-    /** Happy Cloud's team key routes over this connection's transport. */
+    /** The team key routes over this connection's transport. */
     readonly providerCredentials?: HappyAgentProviderCredentialsApi;
-    /** The desktop shell's credential import, for a Happy Cloud server. */
-    readonly credentialImportHost?: HappyAgentCredentialImportHost;
-    /**
-     * Happy Cloud's provider routes, on every Happy Cloud connection, in the
-     * desktop and on the web. Its connections replace the configuration's
-     * providers in the model pickers.
-     */
-    readonly cloudProviders?: HappyAgentCloudProvidersApi;
-    /** Happy Cloud's own routes, on every Happy Cloud connection, in the desktop and on the web. */
-    readonly cloudRequest?: HappyCloudRequest;
-    /** A Happy Cloud server's own routes, and how this window drops the server. */
-    readonly cloudServer?: {
-        readonly serverName: string;
-        readonly request: HappyCloudRequest;
-        readonly serverForget: () => Promise<void>;
-    };
     readonly cloudHost: HappyAgentCloudHost;
     readonly connection: HappyAgentConnection;
     readonly hostServices: HappyAgentHostServices;
@@ -671,16 +547,10 @@ export async function happyAgentWorkspaceFileTreeRead(
             limit: 500,
         });
     } catch (error) {
-        // A Happy Cloud server answers `no_compute` while the conversation has
-        // nowhere to run and `runner_unavailable` while its machine is offline,
-        // and a server without the route answers `501`. None is a read that
-        // failed, so none is reported as one.
-        if (error instanceof HappyAgentApiError) {
-            if (error.code === "no_compute") return { kind: "unavailable", reason: "noCompute" };
-            if (error.code === "runner_unavailable")
-                return { kind: "unavailable", reason: "computeOffline" };
-            if (error.status === 501) return { kind: "unavailable", reason: "unsupported" };
-        }
+        // A server without the route answers `501`, which is not a read that
+        // failed, so it is not reported as one.
+        if (error instanceof HappyAgentApiError && error.status === 501)
+            return { kind: "unavailable", reason: "unsupported" };
         throw error;
     }
     const entries = page.entries.flatMap((entry) => {
@@ -760,17 +630,11 @@ export function happyAgentWorkspaceClientCreate(
             return config === undefined ? undefined : happyAgentModelCatalogProject(config);
         },
         sync: deps.connection.sync,
-        ...(deps.cloudProviders ? { connectionsRead: deps.cloudProviders.connectionsRead } : {}),
         ...(deps.modelPreferencePersistence
             ? { preferencePersistence: deps.modelPreferencePersistence }
             : {}),
     });
     const memory = happyAgentWorkspaceMemoryStoreCreate(deps.workspaceMemoryPersistence);
-    // Happy Cloud's own routes are present exactly on a Happy Cloud connection.
-    const attachmentPlacement = happyAgentAttachmentPlacementCreate(
-        deps.hostServices,
-        deps.cloudRequest,
-    );
     let sessionListStore: HappyAgentSessionListStore | undefined;
     /** Surface chat workspaces, which the Surfaces learn and the conversation list accepts. */
     const surfaceChatGroups = happyAgentSurfaceChatGroupsCreate();
@@ -789,26 +653,15 @@ export function happyAgentWorkspaceClientCreate(
     let teamsStore: HappyAgentTeamsStore | undefined;
     let profileStore: HappyAgentProfileStore | undefined;
     let providersStore: HappyAgentProvidersStore | undefined;
-    let credentialImportStore: HappyAgentCredentialImportStore | undefined;
-    let cloudProvidersStore: HappyAgentCloudProvidersStore | undefined;
-    let repositoriesStore: HappyAgentRepositoriesStore | undefined;
-    let onboardingSettingsStore: HappyAgentOnboardingSettingsStore | undefined;
-    let paymentsStore: HappyAgentPaymentsStore | undefined;
     let pluginsStore: HappyAgentPluginsStore | undefined;
     let genUiActions: HappyAgentGenUiActions | undefined;
-    let computeStore: HappyAgentComputeStore | undefined;
-    let previewsStore: HappyAgentPreviewsStore | undefined;
     let dailyUsageStore: HappyAgentDailyUsageStore | undefined;
-    let membersStore: HappyAgentMembersStore | undefined;
-    const userProfileStores = new Map<string, HappyAgentUserProfileStore>();
-    const checkoutStores = new Map<string, HappyAgentCheckoutsStore>();
     let voiceSettingsStore: HappyAgentVoiceSettingsStore | undefined;
     let taskSettingsStore: HappyAgentTaskSettingsStore | undefined;
     let surfaceSettingsStore: HappyAgentSurfaceSettingsStore | undefined;
     let instructionsStore: HappyAgentInstructionsStore | undefined;
     let securityPolicyStore: HappyAgentSecurityPolicyStore | undefined;
     let secretsStore: HappyAgentSecretsStore | undefined;
-    let clusterSecretsStore: HappyAgentClusterSecretsStore | undefined;
     let globalSkillsStore: HappyAgentGlobalSkillsStore | undefined;
     let artifacts: HappyAgentArtifacts | undefined;
     let feed: HappyAgentFeed | undefined;
@@ -991,15 +844,9 @@ export function happyAgentWorkspaceClientCreate(
         },
         attachmentSourcePath: (file) => deps.hostServices.attachmentSourcePath(file),
         attachmentSourceReachable: (groupId, sourcePath) =>
-            attachmentPlacement.attachmentSourceReachable(groupId, sourcePath),
+            deps.hostServices.attachmentSourceReachable(groupId, sourcePath),
         attachmentWrite: (groupId, name, content) =>
-            attachmentPlacement.attachmentWrite(groupId, name, content),
-        ...(attachmentPlacement.attachmentUpload
-            ? { attachmentUpload: attachmentPlacement.attachmentUpload }
-            : {}),
-        ...(attachmentPlacement.attachmentDownload
-            ? { attachmentDownload: attachmentPlacement.attachmentDownload }
-            : {}),
+            deps.hostServices.attachmentWrite(groupId, name, content),
         async projectAdd(path) {
             // Registration is the daemon's own decision, so it goes directly
             // through the connection actions: the daemon validates the folder,
@@ -1139,11 +986,7 @@ export function happyAgentWorkspaceClientCreate(
             if (disposed) throw new Error("The Happy Agent client is disposed.");
             const source = deps.providerUsageSource;
             if (!source) return undefined;
-            const request = deps.cloudRequest;
-            providerUsageStore ??= happyAgentProviderUsageStoreCreate({
-                source,
-                ...(request ? { allowed: () => happyAgentCloudTeamUsageAllowed(request) } : {}),
-            });
+            providerUsageStore ??= happyAgentProviderUsageStoreCreate({ source });
             return providerUsageStore;
         },
         happyIntegration() {
@@ -1194,94 +1037,22 @@ export function happyAgentWorkspaceClientCreate(
             });
             return providersStore;
         },
-        credentialImport() {
-            if (disposed) throw new Error("The Happy Agent client is disposed.");
-            if (!deps.credentialImportHost || !deps.providerCredentials) return undefined;
-            credentialImportStore ??= happyAgentCredentialImportStoreCreate({
-                host: deps.credentialImportHost,
-                credentials: deps.providerCredentials,
-            });
-            return credentialImportStore;
-        },
-        cloudProviders() {
-            if (disposed) throw new Error("The Happy Agent client is disposed.");
-            const api = deps.cloudProviders;
-            if (!api) return undefined;
-            cloudProvidersStore ??= happyAgentCloudProvidersStoreCreate({
-                api,
-                sync: deps.connection.sync,
-            });
-            return cloudProvidersStore;
-        },
-        repositories() {
-            if (disposed) throw new Error("The Happy Agent client is disposed.");
-            const request = deps.cloudRequest;
-            if (!request) return undefined;
-            repositoriesStore ??= happyAgentRepositoriesStoreCreate({ request });
-            return repositoriesStore;
-        },
-        onboardingSettings() {
-            if (disposed) throw new Error("The Happy Agent client is disposed.");
-            const request = deps.cloudRequest;
-            if (!request) return undefined;
-            onboardingSettingsStore ??= happyAgentOnboardingSettingsStoreCreate({
-                request,
-                sync: deps.connection.sync,
-            });
-            return onboardingSettingsStore;
-        },
-        payments() {
-            if (disposed) throw new Error("The Happy Agent client is disposed.");
-            const request = deps.cloudRequest;
-            if (!request) return undefined;
-            if (!happyAgentHealthCapability(deps.connection.sync.health(), "payments"))
-                return undefined;
-            paymentsStore ??= happyAgentPaymentsStoreCreate({
-                request,
-                sync: deps.connection.sync,
-            });
-            return paymentsStore;
-        },
         plugins() {
             if (disposed) throw new Error("The Happy Agent client is disposed.");
             if (!happyAgentHealthCapability(deps.connection.sync.health(), "plugins"))
                 return undefined;
-            const request = deps.cloudRequest;
-            pluginsStore ??= request
-                ? happyAgentPluginsStoreCreate({
-                      request,
-                      endpoint: deps.client.endpoint,
-                      sync: deps.connection.sync,
-                  })
-                : happyAgentDaemonPluginsStoreCreate({
-                      client: deps.client,
-                      sync: deps.connection.sync,
-                  });
+            pluginsStore ??= happyAgentDaemonPluginsStoreCreate({
+                client: deps.client,
+                sync: deps.connection.sync,
+            });
             return pluginsStore;
         },
         genUiActions() {
             if (disposed) throw new Error("The Happy Agent client is disposed.");
             if (!happyAgentHealthCapability(deps.connection.sync.health(), "artifactSecretActions"))
                 return undefined;
-            const request = deps.cloudRequest;
-            genUiActions ??= request
-                ? happyAgentGenUiClusterActionsCreate({ request })
-                : happyAgentGenUiDaemonActionsCreate({ client: deps.client });
+            genUiActions ??= happyAgentGenUiDaemonActionsCreate({ client: deps.client });
             return genUiActions;
-        },
-        compute() {
-            if (disposed) throw new Error("The Happy Agent client is disposed.");
-            const request = deps.cloudRequest;
-            if (!request) return undefined;
-            computeStore ??= happyAgentComputeStoreCreate({ request, sync: deps.connection.sync });
-            return computeStore;
-        },
-        previews() {
-            if (disposed) throw new Error("The Happy Agent client is disposed.");
-            const request = deps.cloudRequest;
-            if (!request) return undefined;
-            previewsStore ??= happyAgentPreviewsStoreCreate({ request });
-            return previewsStore;
         },
         dailyUsage() {
             if (disposed) throw new Error("The Happy Agent client is disposed.");
@@ -1289,49 +1060,6 @@ export function happyAgentWorkspaceClientCreate(
             if (!read) return undefined;
             dailyUsageStore ??= happyAgentDailyUsageStoreCreate({ read });
             return dailyUsageStore;
-        },
-        members() {
-            if (disposed) throw new Error("The Happy Agent client is disposed.");
-            const cloud = deps.cloudServer;
-            if (!cloud) return undefined;
-            membersStore ??= happyAgentMembersStoreCreate({
-                serverName: cloud.serverName,
-                request: cloud.request,
-                selfUserId: async () => (await deps.client.getProfile()).profile.userId ?? null,
-                serverForget: cloud.serverForget,
-            });
-            return membersStore;
-        },
-        userProfile(userId) {
-            if (disposed) throw new Error("The Happy Agent client is disposed.");
-            const request = deps.cloudRequest;
-            if (!request) return undefined;
-            let store = userProfileStores.get(userId);
-            if (!store) {
-                store = happyAgentUserProfileStoreCreate({
-                    userId,
-                    request,
-                    endpoint: deps.client.endpoint,
-                });
-                userProfileStores.set(userId, store);
-            }
-            return store;
-        },
-        checkouts(agentId) {
-            if (disposed) throw new Error("The Happy Agent client is disposed.");
-            const request = deps.cloudRequest;
-            if (!request) return undefined;
-            let store = checkoutStores.get(agentId);
-            if (!store) {
-                store = happyAgentCheckoutsStoreCreate({
-                    agentId,
-                    request,
-                    endpoint: deps.client.endpoint,
-                    sync: deps.connection.sync,
-                });
-                checkoutStores.set(agentId, store);
-            }
-            return store;
         },
         taskSettings() {
             if (disposed) throw new Error("The Happy Agent client is disposed.");
@@ -1356,22 +1084,12 @@ export function happyAgentWorkspaceClientCreate(
         },
         instructions() {
             if (disposed) throw new Error("The Happy Agent client is disposed.");
-            instructionsStore ??= happyAgentInstructionsStoreCreate({
-                client: deps.client,
-                ...(deps.cloudRequest
-                    ? { access: happyAgentPolicyAccessRead(deps.cloudRequest) }
-                    : {}),
-            });
+            instructionsStore ??= happyAgentInstructionsStoreCreate({ client: deps.client });
             return instructionsStore;
         },
         securityPolicy() {
             if (disposed) throw new Error("The Happy Agent client is disposed.");
-            securityPolicyStore ??= happyAgentSecurityPolicyStoreCreate({
-                client: deps.client,
-                ...(deps.cloudRequest
-                    ? { access: happyAgentPolicyAccessRead(deps.cloudRequest) }
-                    : {}),
-            });
+            securityPolicyStore ??= happyAgentSecurityPolicyStoreCreate({ client: deps.client });
             return securityPolicyStore;
         },
         secrets() {
@@ -1381,16 +1099,6 @@ export function happyAgentWorkspaceClientCreate(
                 sync: deps.connection.sync,
             });
             return secretsStore;
-        },
-        clusterSecrets() {
-            if (disposed) throw new Error("The Happy Agent client is disposed.");
-            const request = deps.cloudRequest;
-            if (!request) return undefined;
-            clusterSecretsStore ??= happyAgentClusterSecretsStoreCreate({
-                client: deps.client,
-                request,
-            });
-            return clusterSecretsStore;
         },
         globalSkills() {
             if (disposed) throw new Error("The Happy Agent client is disposed.");
@@ -1539,30 +1247,10 @@ export function happyAgentWorkspaceClientCreate(
             profileStore = undefined;
             providersStore?.[Symbol.dispose]();
             providersStore = undefined;
-            credentialImportStore?.[Symbol.dispose]();
-            credentialImportStore = undefined;
-            cloudProvidersStore?.[Symbol.dispose]();
-            cloudProvidersStore = undefined;
-            repositoriesStore?.[Symbol.dispose]();
-            repositoriesStore = undefined;
-            onboardingSettingsStore?.[Symbol.dispose]();
-            onboardingSettingsStore = undefined;
-            paymentsStore?.[Symbol.dispose]();
-            paymentsStore = undefined;
             pluginsStore?.[Symbol.dispose]();
             pluginsStore = undefined;
-            computeStore?.[Symbol.dispose]();
-            computeStore = undefined;
-            previewsStore?.[Symbol.dispose]();
-            previewsStore = undefined;
             dailyUsageStore?.[Symbol.dispose]();
             dailyUsageStore = undefined;
-            membersStore?.[Symbol.dispose]();
-            membersStore = undefined;
-            for (const store of userProfileStores.values()) store[Symbol.dispose]();
-            userProfileStores.clear();
-            for (const store of checkoutStores.values()) store[Symbol.dispose]();
-            checkoutStores.clear();
             voiceSettingsStore?.[Symbol.dispose]();
             voiceSettingsStore = undefined;
             taskSettingsStore?.[Symbol.dispose]();
@@ -1575,8 +1263,6 @@ export function happyAgentWorkspaceClientCreate(
             securityPolicyStore = undefined;
             secretsStore?.[Symbol.dispose]();
             secretsStore = undefined;
-            clusterSecretsStore?.[Symbol.dispose]();
-            clusterSecretsStore = undefined;
             globalSkillsStore?.[Symbol.dispose]();
             globalSkillsStore = undefined;
             artifacts?.[Symbol.dispose]();

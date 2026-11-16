@@ -1,7 +1,5 @@
 import type { ConversationToolCall } from "happy-desktop-state";
 import { AgentActivityRow } from "../../src/AgentActivityRow";
-import { InlinePage } from "../../src/InlinePage";
-import { Icon } from "../../src/Icon";
 import { ComponentPage, Specimen } from "../kit";
 import { agentSpawnNamedRows, agentSpawnRows } from "./agentSpawnFixtures";
 import type { MessageReferences } from "../../src/messageReferences";
@@ -49,37 +47,6 @@ export function AgentActivityRowPage() {
             summary="One glanceable row per piece of agent activity — a tool call, a reasoning block, or a shell run — with a status dot, verb, subject, and an expandable detail body."
             title="AgentActivityRow"
         >
-            <Specimen
-                detail="Fresh launch per open · stable controls while opening · deleted and offline states"
-                label="Cloud development previews"
-                number="previews"
-                stage="surface"
-            >
-                <div style={{ display: "flex", flexDirection: "column", gap: 12, width: 720 }}>
-                    {[
-                        { status: undefined, disabled: false },
-                        { status: "Opening…", disabled: true },
-                        { status: "Machine offline", disabled: false },
-                        { status: "Machine needs an update", disabled: false },
-                        { status: "No compute attached", disabled: false },
-                        { status: "Preview no longer available", disabled: true },
-                        { status: "Could not open preview", disabled: false },
-                    ].map((state, index) => (
-                        <InlinePage
-                            geometry={{ placement: "title", collapsed: true, statusLine: true }}
-                            glyph={<Icon name="globe" size={16} />}
-                            key={index}
-                            onHeightChange={() => undefined}
-                            onOpenSide={() => undefined}
-                            openAriaLabel="Open preview on port 3000"
-                            openDisabled={state.disabled}
-                            openLabel="Open preview"
-                            {...(state.status === undefined ? {} : { status: state.status })}
-                            title="Port 3000"
-                        />
-                    ))}
-                </div>
-            </Specimen>
             <Specimen
                 detail="Typed catalog names only · unresolved, running, success, failure, stopped, approval, and another provider · focused production treatment"
                 label="Model-aware sub-agent spawning"

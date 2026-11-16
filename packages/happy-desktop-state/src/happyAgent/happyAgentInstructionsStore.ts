@@ -1,8 +1,7 @@
 import { createStore } from "zustand/vanilla";
 import type { Loadable } from "../conversation/loadable.js";
-import { HappyAgentApiError, type HappyAgentClient } from "@slopus/happy-agent-client";
+import type { HappyAgentClient } from "@slopus/happy-agent-client";
 import type { UserError } from "../types.js";
-import type { HappyCloudRequest } from "./happyAgentProviderCredentials.js";
 import { happyAgentUserError } from "./happyAgentSupport.js";
 
 /**
@@ -13,23 +12,7 @@ import { happyAgentUserError } from "./happyAgentSupport.js";
  */
 export const HAPPY_AGENT_INSTRUCTIONS_MAX_BYTES = 256 * 1024;
 
-/**
- * What this reader may do with a document. `read` is a Happy Cloud member who
- * is not an owner; `unserved` is a Happy Cloud server without the documents'
- * routes at all; `unknown` is a server that has not said yet. A server whose
- * catalog does not list `policy.edit` is `edit`: its routes decide, as they did
- * before it said who may change the documents.
- */
-export type HappyAgentGlobalDocumentAccess = "unknown" | "edit" | "read" | "unserved";
-
-/**
- * What a Happy Cloud permission catalog says about the documents: `unlisted`
- * is a server from before `policy.edit`, where the routes alone decide.
- */
-export type HappyAgentPolicyAccess = "edit" | "read" | "unlisted";
-
 export interface HappyAgentGlobalDocumentSnapshot {
-    readonly access: HappyAgentGlobalDocumentAccess;
     /** The document as this Happy Agent last confirmed it. */
     readonly stored: Loadable<string>;
     /** What the editor holds. It follows `stored` until someone types. */
@@ -65,21 +48,17 @@ export interface HappyAgentGlobalDocumentStore {
 
 export interface HappyAgentInstructionsStoreDeps {
     readonly client: Pick<HappyAgentClient, "getInstructions" | "putInstructions">;
-    readonly access?: () => Promise<HappyAgentPolicyAccess>;
 }
 
 export type HappyAgentInstructionsSnapshot = HappyAgentGlobalDocumentSnapshot;
 export type HappyAgentInstructionsStore = HappyAgentGlobalDocumentStore;
 
 interface HappyAgentGlobalDocumentStoreDeps {
-    /** Asked before each read; without it the reader may always edit. */
-    readonly access?: () => Promise<HappyAgentPolicyAccess>;
     readonly read: (signal?: AbortSignal) => Promise<string>;
     readonly write: (value: string) => Promise<string>;
 }
 
 const EMPTY: HappyAgentGlobalDocumentSnapshot = {
-    access: "edit",
     stored: { type: "unloaded" },
     draft: "",
     dirty: false,
@@ -92,43 +71,10 @@ function byteLength(text: string): number {
     return new TextEncoder().encode(text).length;
 }
 
-/**
- * Happy Cloud lets only owners change the global documents, and says so in
- * its permission catalog: every caller finds `policy.edit` listed there, and
- * owners find it granted. A server that does not list it still has the
- * documents, guarded by its routes alone.
- */
-export function happyAgentPolicyAccessRead(
-    request: HappyCloudRequest,
-): () => Promise<HappyAgentPolicyAccess> {
-    return async () => {
-        const answer = await request("GET", "v0/permissions");
-        const permissions =
-            typeof answer === "object" && answer !== null
-                ? (answer as { permissions?: unknown; granted?: unknown })
-                : {};
-        const listed =
-            Array.isArray(permissions.permissions) &&
-            permissions.permissions.some(
-                (permission: unknown) =>
-                    typeof permission === "object" &&
-                    permission !== null &&
-                    (permission as { id?: unknown }).id === POLICY_EDIT,
-            );
-        if (!listed) return "unlisted";
-        return Array.isArray(permissions.granted) && permissions.granted.includes(POLICY_EDIT)
-            ? "edit"
-            : "read";
-    };
-}
-
-const POLICY_EDIT = "policy.edit";
-
 export function happyAgentInstructionsStoreCreate(
     deps: HappyAgentInstructionsStoreDeps,
 ): HappyAgentInstructionsStore {
     return happyAgentGlobalDocumentStoreCreate({
-        ...(deps.access ? { access: deps.access } : {}),
         read: async (signal) => (await deps.client.getInstructions({ signal })).instructions,
         write: async (value) => (await deps.client.putInstructions(value)).instructions,
     });
@@ -137,9 +83,7 @@ export function happyAgentInstructionsStoreCreate(
 export function happyAgentGlobalDocumentStoreCreate(
     deps: HappyAgentGlobalDocumentStoreDeps,
 ): HappyAgentGlobalDocumentStore {
-    const store = createStore<HappyAgentGlobalDocumentSnapshot>()(() =>
-        deps.access ? { ...EMPTY, access: "unknown" } : EMPTY,
-    );
+    const store = createStore<HappyAgentGlobalDocumentSnapshot>()(() => EMPTY);
     const listeners = new Set<() => void>();
     let disposed = false;
     let controller: AbortController | undefined;
@@ -165,12 +109,11 @@ export function happyAgentGlobalDocumentStoreCreate(
      * losing it would be the one unrecoverable thing this surface could do — so
      * the confirmed text only takes the draft over when there is nothing to lose.
      */
-    const settle = (confirmed: string, access: HappyAgentGlobalDocumentAccess): void => {
+    const settle = (confirmed: string): void => {
         const state = store.getState();
         const draft = state.dirty ? state.draft : confirmed;
         store.setState(
             {
-                access,
                 stored: { type: "ready", value: confirmed },
                 draft,
                 dirty: draft !== confirmed,
@@ -193,34 +136,11 @@ export function happyAgentGlobalDocumentStoreCreate(
         if (before.type === "unloaded") store.setState({ stored: { type: "loading" } }, false);
         const currentController = new AbortController();
         controller = currentController;
-        const access = deps.access;
-        void (async () => {
-            const allowed = access ? await access() : "edit";
-            try {
-                return {
-                    allowed: allowed === "read" ? ("read" as const) : ("edit" as const),
-                    confirmed: await deps.read(currentController.signal),
-                };
-            } catch (error) {
-                // Only a server without the routes leaves the documents out; it
-                // is not asked again while watched.
-                if (
-                    allowed === "unlisted" &&
-                    error instanceof HappyAgentApiError &&
-                    error.status === 404
-                )
-                    return undefined;
-                throw error;
-            }
-        })().then(
-            (answer) => {
+        void deps.read(currentController.signal).then(
+            (confirmed) => {
                 if (disposed || controller !== currentController) return;
                 controller = undefined;
-                if (!answer) {
-                    store.setState({ ...EMPTY, access: "unserved" }, true);
-                    return;
-                }
-                settle(answer.confirmed, answer.allowed);
+                settle(confirmed);
                 schedule();
             },
             (error: unknown) => {
@@ -301,7 +221,6 @@ export function happyAgentGlobalDocumentStoreCreate(
                     const draft = current.draft === sent ? confirmed : current.draft;
                     store.setState(
                         {
-                            access: current.access,
                             stored: { type: "ready", value: confirmed },
                             draft,
                             dirty: draft !== confirmed,

@@ -84,8 +84,8 @@ function dayRead(value: unknown): HappyAgentDailyUsageDay | undefined {
 
 /**
  * `GET /v0/usage/daily` as the client models it: `{ since, days: [{ date,
- * byProvider: { providerId: { modelId: counts } } }] }`, the same from a Happy
- * Agent and from Happy Cloud. A server that has recorded nothing answers no
+ * byProvider: { providerId: { modelId: counts } } }] }`, the same from every
+ * server. A server that has recorded nothing answers no
  * `since`, which reads as no history at all.
  */
 export function happyAgentDailyUsageRead(answer: unknown): HappyAgentDailyUsage | undefined {

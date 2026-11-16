@@ -4,10 +4,6 @@ import {
     happyAgentMobileConnectorStoreUnfollowed,
     type AppearanceStore,
     type ExperimentsStore,
-    type HappyAgentCloudProvidersStore,
-    type HappyAgentPaymentsStore,
-    type HappyAgentProvidersStore,
-    type HappyAgentPluginsStore,
     type HappyAgentClockStore,
     type HappyAgentOnboardingStore,
     type HappyAgentProfileStore,
@@ -15,14 +11,12 @@ import {
     type WelcomeStore,
 } from "happy-desktop-state";
 import {
-    CloudOnboardingScreen,
     LocalOnboardingScreen,
     ProfileSetupScreen,
     WelcomeScreen,
     type LocalOnboardingView,
 } from "happy-desktop-ui";
 import { happyAgentWelcomeSlides } from "../onboarding/happyAgentWelcomeSlides";
-import { AppCloudOnboarding } from "./AppCloudOnboarding";
 import { appMobileRelayFromOnboarding, useAppMobilePairingOptions } from "./AppMobilePairing";
 
 export function HappyAgentOnboardingBoundary(props: {
@@ -42,11 +36,6 @@ export function HappyAgentOnboardingBoundary(props: {
     readonly experiments?: ExperimentsStore;
     readonly onRetry: () => void;
     readonly onExternalOpen?: (url: string) => void;
-    /** A Happy Cloud server's AI connections, plugins and payments, for its gates. */
-    readonly cloudProviders?: () => HappyAgentCloudProvidersStore | undefined;
-    readonly plugins?: () => HappyAgentPluginsStore | undefined;
-    readonly payments?: () => HappyAgentPaymentsStore | undefined;
-    readonly providers?: () => HappyAgentProvidersStore;
     readonly children: ReactNode;
 }) {
     const snapshot = useSyncExternalStore(props.store.subscribe, props.store.get, props.store.get);
@@ -111,47 +100,7 @@ export function HappyAgentOnboardingBoundary(props: {
         online: () => online,
         ...(online ? {} : { unavailable: "Happy can't reach this Happy Agent right now." }),
     });
-    // A server with onboarding gates decides every step; the reader is in once
-    // none is left on screen.
-    if (snapshot.flow) {
-        if (snapshot.finale)
-            return (
-                <CloudOnboardingScreen
-                    action={{
-                        label: "Go to Happy",
-                        autoFocus: true,
-                        onSelect: props.store.finaleDismiss,
-                    }}
-                    appearance={appearance.mode}
-                    currentStep=""
-                    steps={[]}
-                    view={{ kind: "finished", botName: snapshot.finale.botName }}
-                    {...(props.serverLabel ? { serverLabel: props.serverLabel } : {})}
-                    {...(props.onExternalOpen ? { onExternalOpen: props.onExternalOpen } : {})}
-                />
-            );
-        if (!snapshot.flow.current) return props.children;
-        return (
-            <AppCloudOnboarding
-                appearance={appearance.mode}
-                placeholderSeed={props.placeholderSeed}
-                profile={props.profile}
-                profileSnapshot={profile}
-                snapshot={snapshot}
-                store={props.store}
-                {...(props.cloudProviders ? { cloudProviders: props.cloudProviders } : {})}
-                {...(props.plugins ? { plugins: props.plugins } : {})}
-                {...(props.payments ? { payments: props.payments } : {})}
-                {...(props.providers ? { providers: props.providers } : {})}
-                {...(props.serverLabel ? { serverLabel: props.serverLabel } : {})}
-                {...(props.onExternalOpen ? { onExternalOpen: props.onExternalOpen } : {})}
-            />
-        );
-    }
-    // A Happy Cloud member is in once their profile is saved. The server's own
-    // setup, naming its Chief of Staff, happens in that bot's chat.
-    if (!snapshot.state || snapshot.state.completed || snapshot.state.member?.completed)
-        return props.children;
+    if (!snapshot.state || snapshot.state.completed) return props.children;
     if (!welcome.welcomeAcknowledged)
         return (
             <WelcomeScreen
@@ -171,10 +120,8 @@ export function HappyAgentOnboardingBoundary(props: {
         return (
             <ProfileSetupScreen
                 appearance={appearance.mode}
-                // A Happy Cloud server is not online until this profile exists,
-                // and its profile route answers regardless, so the button
-                // waits only on the profile itself; a save that can't reach
-                // the server says so under the field.
+                // The button waits only on the profile itself; a save that
+                // can't reach the server says so under the field.
                 busy={profile.saving}
                 loading={profile.loading}
                 name={profile.name}

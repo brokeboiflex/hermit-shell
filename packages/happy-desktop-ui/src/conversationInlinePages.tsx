@@ -7,7 +7,6 @@ import {
     type HappyAgentArtifactType,
     type HappyAgentArtifactLive,
     type HappyAgentInlineArtifactsSnapshot,
-    type HappyAgentPreviewsSnapshot,
 } from "happy-desktop-state";
 import { Icon } from "./Icon";
 import type { InlinePageProps } from "./InlinePage";
@@ -25,11 +24,6 @@ import { ArtifactTypeGlyph } from "./pages/artifacts/artifactPresentation";
  * and where an artifact opens beside the conversation.
  */
 export interface ConversationInlinePages {
-    /** Cloud previews are opened by the owner, which mints a fresh launch URL. */
-    readonly previews?: {
-        readonly states: HappyAgentPreviewsSnapshot;
-        previewOpen(previewId: string): void;
-    };
     /** The artifacts the transcript shows, as the owner's store holds them. */
     readonly artifacts: HappyAgentInlineArtifactsSnapshot;
     /** Asks the owner's store for these artifacts; it never publishes in this call. */
@@ -140,50 +134,6 @@ export function conversationInlinePage(
 ): ConversationInlinePage | undefined {
     if (entry.kind !== "agentActivity" || entry.activity.kind !== "tool") return undefined;
     const presentation = entry.activity.tool.presentation;
-    if (presentation?.type === "preview") {
-        const state = pages.previews?.states.get(presentation.previewId);
-        const status =
-            state?.type === "opening"
-                ? "Opening…"
-                : state?.type === "missing"
-                  ? "Preview no longer available"
-                  : state?.type === "error"
-                    ? state.error.code === "popup_blocked"
-                        ? "Allow pop-ups for Happy"
-                        : "Could not open preview"
-                    : state?.type === "available"
-                      ? state.status === "node_offline"
-                          ? "Machine offline"
-                          : state.status === "node_upgrade_required"
-                            ? "Machine needs an update"
-                            : state.status === "no_compute"
-                              ? "No compute attached"
-                              : undefined
-                      : undefined;
-        const geometry: InlinePageGeometry = {
-            placement: "title",
-            collapsed: true,
-            statusLine: true,
-        };
-        return {
-            geometry,
-            props: {
-                title: `Port ${String(presentation.port)}`,
-                glyph: <Icon name="globe" size={16} />,
-                geometry,
-                openLabel: "Open preview",
-                openAriaLabel: `Open preview on port ${String(presentation.port)}`,
-                openDisabled: state?.type === "opening" || state?.type === "missing",
-                ...(pages.previews
-                    ? { onOpenSide: () => pages.previews?.previewOpen(presentation.previewId) }
-                    : {}),
-                ...(status === undefined ? {} : { status }),
-                ...(state?.type === "error" ? { statusDescription: state.error.message } : {}),
-                onHeightChange: (next) => local.heightSet(rowKey, next),
-                "data-testid": "conversation-preview",
-            },
-        };
-    }
     if (presentation?.type === "artifact") {
         const artifactId = presentation.artifactId;
         const held = pages.artifacts.get(artifactId);

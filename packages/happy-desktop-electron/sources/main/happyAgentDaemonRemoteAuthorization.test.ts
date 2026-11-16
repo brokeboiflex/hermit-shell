@@ -220,44 +220,6 @@ it("sends no token once the roster names another address for the connection, or 
     expect(calls.moved).toEqual([`team ${SERVER}`, `team ${SERVER}`, `team ${SERVER}`]);
 });
 
-it("leaves a Happy Cloud sign-in alone: it is never in the roster, and its token never goes to the host", async () => {
-    const daemon = await daemonStart(() => ({ status: 404, body: {} }));
-    const { remote, calls } = remoteCreate("access-1");
-    const client = new HappyAgentDaemonClient(
-        { socketPath: daemon.socketPath, token: "local" },
-        remote,
-    );
-    await client.rawRequest({ method: "GET", path: "/v0/connections/cloud-acme/api/v0/health" });
-    await client
-        .connection("cloud-acme")
-        .health()
-        .catch(() => undefined);
-    expect(daemon.seen.map((entry) => entry.headers["happy-remote-authorization"])).toEqual([
-        undefined,
-        undefined,
-    ]);
-    expect(calls.moved).toEqual([]);
-});
-
-it("still binds a host connection whose ID looks like Happy Cloud's to the roster", async () => {
-    const daemon = await daemonStart(() => ({ status: 200, body: {} }));
-    daemon.roster.id = "cloud-lab";
-    const { remote, calls } = remoteCreate("access-1");
-    const client = new HappyAgentDaemonClient(
-        { socketPath: daemon.socketPath, token: "local" },
-        remote,
-    );
-    const path = "/v0/connections/cloud-lab/api/v0/health";
-    await client.rawRequest({ method: "GET", path });
-    daemon.roster.url = "https://elsewhere.example.com/";
-    await client.rawRequest({ method: "GET", path });
-    expect(daemon.seen.map((entry) => entry.headers["happy-remote-authorization"])).toEqual([
-        "Bearer access-1",
-        undefined,
-    ]);
-    expect(calls.moved).toEqual([`cloud-lab ${SERVER}`]);
-});
-
 it("does not retry with a refreshed token bound to an address the roster no longer names", async () => {
     const daemon = await daemonStart(() => ({ status: 403, body: SIGN_IN_REQUIRED }));
     const { remote, calls } = remoteCreate("access-1", "access-2");
