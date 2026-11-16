@@ -23,11 +23,6 @@ export type DesktopServerSignInResult<T> =
     | { readonly ok: true; readonly value: T }
     | { readonly ok: false; readonly message: string; readonly code: string };
 
-export interface DesktopCloudAuthConfiguration {
-    readonly environment: "production" | "staging";
-    readonly redirectUri: string;
-}
-
 /** Access granted to a newly created local Happy Agent session. */
 export type DesktopPermissionMode = "auto" | "workspace_write" | "read_only" | "full_access";
 
@@ -921,16 +916,8 @@ export interface HappyDesktopBridge {
     browserTunnelFailureSubscribe?(
         listener: (failure: DesktopBrowserTunnelFailure) => void,
     ): () => void;
-    /** Announces that the shell received a WorkOS OAuth callback. */
-    cloudAuthCallbackSubscribe(listener: () => void): () => void;
-    /** Whether a callback is waiting, without consuming its one-shot URL. */
-    cloudAuthCallbackPending(): Promise<boolean>;
-    /** Takes the most recent unforwarded callback URL, if one has arrived. */
-    cloudAuthCallbackTake(): Promise<string | undefined>;
-    /** Selects the daemon's matching Cloud deployment and callback address. */
-    cloudAuthConfigurationGet(): Promise<DesktopCloudAuthConfiguration>;
-    /** Opens only the HTTPS authorization URL returned by Happy Agent. */
-    cloudAuthOpen(url: string): Promise<void>;
+    /** Opens one HTTPS address in the machine's default browser; anything else is refused. */
+    externalUrlOpen(url: string): Promise<void>;
     /**
      * Team-server sign-in, held by the shell: it reads the server's address
      * from the host Happy Agent, opens its sign-in page in the browser, takes
@@ -1128,11 +1115,7 @@ export const desktopIpc = {
     happyLinkOpenRequested: "happy:happy-link:open-requested",
     browserStatusChanged: "happy:browser:status-changed",
     browserTunnelFailed: "happy:browser:tunnel-failed",
-    cloudAuthCallbackReceived: "happy:cloud-auth:callback-received",
-    cloudAuthCallbackPending: "happy:cloud-auth:callback-pending",
-    cloudAuthCallbackTake: "happy:cloud-auth:callback-take",
-    cloudAuthConfigurationGet: "happy:cloud-auth:configuration-get",
-    cloudAuthOpen: "happy:cloud-auth:open",
+    externalUrlOpen: "happy:external-url:open",
     serverSignInBegin: "happy:server-sign-in:begin",
     serverSignInFinish: "happy:server-sign-in:finish",
     serverSignInCancel: "happy:server-sign-in:cancel",

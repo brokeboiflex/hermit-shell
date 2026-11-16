@@ -23,7 +23,6 @@ import type {
     HappyAgentDrain,
     HappyAgentHost,
     HappyAgentModelPreferencePersistence,
-    HappyAgentCloudHost,
     HappyAgentProjectAddSnapshot,
     HappyAgentProjectGroup,
     HappyAgentSessionListSnapshot,
@@ -95,8 +94,6 @@ export type HappyAgentDirectorySignIn =
 export interface HappyAgentDirectoryEntry {
     readonly id: string;
     readonly remoteId?: string;
-    /** The WorkOS organization this team connection authenticates to, from the roster. */
-    readonly organizationId?: string;
     readonly label: string;
     /** What this Happy Agent's own daemon says it is called and looks like, once known. */
     readonly node?: HappyAgentNodeIdentity;
@@ -159,7 +156,6 @@ export interface HappyAgentDirectoryStore {
 }
 
 export interface HappyAgentDirectoryDeps {
-    readonly cloudHostFor: (id: string) => HappyAgentCloudHost;
     /**
      * Opens a link.happy.page share link a page or message asked to open as a
      * web page: it carries a Happy instance link, which opens in the app on
@@ -636,7 +632,6 @@ export function happyAgentDirectoryStoreCreate(
         happyAgent.reopen = () => connectionOpen(happyAgent, client, hostServicesUrl);
         happyAgent.url = happyAgentHttpUrl;
         happyAgent.connection = happyAgentConnectionOpen({
-            cloudHost: deps.cloudHostFor(happyAgent.entry.id),
             guidedMobileSetup: happyAgent.entry.id === LOCAL_HAPPY_AGENT_ID,
             // The local daemon is the one this app installed and runs solo;
             // only a remote Happy Agent can be a team that needs a profile.
@@ -954,9 +949,6 @@ export function happyAgentDirectoryStoreCreate(
                         entry: {
                             id: item.id,
                             remoteId: item.remoteId,
-                            ...(item.organizationId === undefined
-                                ? {}
-                                : { organizationId: item.organizationId }),
                             ...(item.instanceId === undefined
                                 ? {}
                                 : { instanceId: item.instanceId }),
@@ -986,21 +978,13 @@ export function happyAgentDirectoryStoreCreate(
                     const instanceId = instanceIdRead(remote, item);
                     if (
                         remote.entry.label !== item.name ||
-                        remote.entry.organizationId !== item.organizationId ||
                         remote.entry.instanceId !== instanceId ||
                         remote.entry.serverUrl !== item.url
                     ) {
-                        const {
-                            organizationId: _previous,
-                            serverUrl: _url,
-                            ...entry
-                        } = remote.entry;
+                        const { serverUrl: _url, ...entry } = remote.entry;
                         remote.entry = {
                             ...entry,
                             label: item.name,
-                            ...(item.organizationId === undefined
-                                ? {}
-                                : { organizationId: item.organizationId }),
                             ...(item.url === undefined ? {} : { serverUrl: item.url }),
                             instanceId,
                         };

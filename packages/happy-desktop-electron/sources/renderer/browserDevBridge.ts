@@ -13,11 +13,6 @@ import type {
 } from "../shared/desktopProfiler";
 
 const endpoint = "/__happy_local_happy_agent";
-const cloudAuthCallbackPath = "/cloud-auth/callback";
-let cloudAuthCallback =
-    window.location.pathname === cloudAuthCallbackPath ? window.location.href : undefined;
-if (cloudAuthCallback)
-    window.history.replaceState(null, "", `${window.location.origin}/#/settings/account`);
 
 const unsupportedDebugSnapshot: DesktopDebugSnapshot = {
     daemon: { status: "stopped" },
@@ -85,22 +80,12 @@ export function browserDevBridgeCreate(): HappyDesktopBridge {
         attachmentSourcePath: () => undefined,
         browserOpenSubscribe: () => () => undefined,
         browserStatusSubscribe: () => () => undefined,
-        cloudAuthCallbackSubscribe: () => () => undefined,
-        cloudAuthCallbackPending: async () => cloudAuthCallback !== undefined,
-        cloudAuthCallbackTake: async () => {
-            const callback = cloudAuthCallback;
-            cloudAuthCallback = undefined;
-            return callback;
-        },
-        cloudAuthConfigurationGet: async () => ({
-            environment: "production",
-            redirectUri: new URL(cloudAuthCallbackPath, window.location.origin).href,
-        }),
-        cloudAuthOpen: async (candidate) => {
+        // A browser tab's own new tab stands in for the machine's browser.
+        externalUrlOpen: async (candidate) => {
             const url = new URL(candidate);
             if (url.protocol !== "https:")
-                throw new Error("Happy Agent returned an invalid Cloud authorization URL.");
-            window.location.assign(url.href);
+                throw new Error("Happy opens only HTTPS addresses in the browser.");
+            window.open(url.href, "_blank", "noopener,noreferrer");
         },
         // Browser-local mode has no isolated Electron guest to relay from.
         guestKeySubscribe: () => () => undefined,

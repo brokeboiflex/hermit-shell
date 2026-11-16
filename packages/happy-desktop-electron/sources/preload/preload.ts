@@ -135,15 +135,7 @@ const bridge: HappyDesktopBridge = {
         ipcRenderer.on(desktopIpc.browserTunnelFailed, receive);
         return () => ipcRenderer.removeListener(desktopIpc.browserTunnelFailed, receive);
     },
-    cloudAuthCallbackSubscribe(listener: () => void) {
-        const receive = () => listener();
-        ipcRenderer.on(desktopIpc.cloudAuthCallbackReceived, receive);
-        return () => ipcRenderer.removeListener(desktopIpc.cloudAuthCallbackReceived, receive);
-    },
-    cloudAuthCallbackPending: () => ipcRenderer.invoke(desktopIpc.cloudAuthCallbackPending),
-    cloudAuthCallbackTake: () => ipcRenderer.invoke(desktopIpc.cloudAuthCallbackTake),
-    cloudAuthConfigurationGet: () => ipcRenderer.invoke(desktopIpc.cloudAuthConfigurationGet),
-    cloudAuthOpen: (url) => ipcRenderer.invoke(desktopIpc.cloudAuthOpen, url),
+    externalUrlOpen: (url) => ipcRenderer.invoke(desktopIpc.externalUrlOpen, url),
     serverSignInBegin: (connectionId) =>
         ipcRenderer.invoke(desktopIpc.serverSignInBegin, connectionId),
     serverSignInFinish: (attemptId) => ipcRenderer.invoke(desktopIpc.serverSignInFinish, attemptId),

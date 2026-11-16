@@ -51,12 +51,6 @@ function connectionOpen(
 ): HappyAgentConnectionHandle {
     const handle = happyAgentConnectionOpen({
         client: daemon.client,
-        cloudHost: {
-            cloudAuthCallbackSubscribe: () => () => undefined,
-            cloudAuthCallbackTake: async () => undefined,
-            cloudAuthConfigurationGet: () => new Promise(() => undefined),
-            cloudAuthOpen: async () => undefined,
-        },
         deps: {
             changed: () => undefined,
             conversationOpen: () => undefined,
@@ -223,12 +217,6 @@ it("follows a daemon restarted behind the same endpoint onto its version and mod
     };
     const handle = happyAgentConnectionOpen({
         client: daemon.client,
-        cloudHost: {
-            cloudAuthCallbackSubscribe: () => () => undefined,
-            cloudAuthCallbackTake: async () => undefined,
-            cloudAuthConfigurationGet: () => new Promise(() => undefined),
-            cloudAuthOpen: async () => undefined,
-        },
         deps: {
             changed,
             conversationOpen: () => undefined,

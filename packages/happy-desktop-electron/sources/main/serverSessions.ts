@@ -7,8 +7,8 @@ import {
     type OAuthCredential,
     type OAuthSignIn,
 } from "@slopus/happy-agent-client";
-import { serverOAuthRedirectUri } from "../shared/cloudAuthConfig";
 import {
+    serverOAuthRedirectUri,
     serverUrlNormalize,
     type ServerRemoteCredential,
     type ServerSessionSnapshot,

@@ -115,12 +115,6 @@
         ],
         "protocols": [
             {
-                "name": "Happy Auth",
-                "schemes": [
-                    "happy-auth"
-                ]
-            },
-            {
                 "name": "Happy",
                 "schemes": [
                     "happy"

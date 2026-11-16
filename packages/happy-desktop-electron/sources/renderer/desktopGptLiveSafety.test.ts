@@ -65,12 +65,6 @@ async function fixture(
         ]);
     const handle = happyAgentConnectionOpen({
         client: daemon.client,
-        cloudHost: {
-            cloudAuthCallbackSubscribe: () => () => {},
-            cloudAuthCallbackTake: async () => undefined,
-            cloudAuthConfigurationGet: () => new Promise(() => {}),
-            cloudAuthOpen: async () => {},
-        },
         deps: {
             changed: () => {},
             conversationOpen: (location) =>

@@ -64,7 +64,6 @@ import {
     type DesktopBrowserNetworkMissing,
     type DesktopBrowserStatus,
     type DesktopBrowserTunnelFailure,
-    type DesktopCloudAuthConfiguration,
     type DesktopServerSignInResult,
     type DesktopDebugSnapshot,
     type DesktopGuestKeyEvent,
@@ -127,8 +126,7 @@ import { DesktopDaemonController } from "./desktopDaemonController";
 import { desktopSmokeReportStart } from "./desktopSmokeReport";
 import { doNotTrackEnabled, doNotTrackEnvironment } from "../shared/doNotTrack";
 import { powerSavingInstall } from "./powerSaving";
-import { cloudAuthProductionRedirectUri, serverOAuthRedirectUri } from "../shared/cloudAuthConfig";
-import { cloudAuthCallbackRead } from "./cloudAuthCallback";
+import { serverOAuthRedirectUri } from "../shared/serverRemoteAuthorization";
 import { happyExternalLinkUrl } from "./happyLink";
 
 if (process.platform !== "darwin" && process.platform !== "linux" && process.platform !== "win32") {
@@ -451,20 +449,6 @@ let browserProxyConnectionId: number | undefined;
 let browserProxyOperation = Promise.resolve();
 // In a hidden-window run, showing a window leaves it hidden (hiddenWindows.ts).
 const windowLifecycle = new DesktopWindowLifecycle<BrowserWindow>();
-const cloudAuthConfiguration: DesktopCloudAuthConfiguration = {
-    environment: "production",
-    redirectUri: cloudAuthProductionRedirectUri,
-};
-const cloudAuthProtocol = new URL(cloudAuthConfiguration.redirectUri).protocol.slice(0, -1);
-/**
- * Callbacks the window has not taken yet, oldest first. A short queue rather
- * than one slot, so a second callback arriving before the window reads the
- * first does not erase it; the bound keeps a misbehaving browser from growing
- * it without limit.
- */
-const cloudAuthCallbacks: string[] = [];
-const CLOUD_AUTH_CALLBACKS_MAX = 8;
-
 const serverOAuthRedirect = new URL(serverOAuthRedirectUri);
 /**
  * Team-server sign-ins, in this process's memory only. The window never holds
@@ -486,9 +470,13 @@ serverSessions.subscribe(() => {
 });
 /**
  * `happy://` links the system opened Happy with, oldest first, held until the
- * window takes them: a link can arrive before there is a window at all.
+ * window takes them: a link can arrive before there is a window at all. A
+ * short queue rather than one slot, so a second link arriving before the
+ * window reads the first does not erase it; the bound keeps a misbehaving
+ * browser from growing it without limit.
  */
 const externalHappyLinks: string[] = [];
+const EXTERNAL_HAPPY_LINKS_MAX = 8;
 
 /**
  * Only the exact sign-in address is taken. Every other `happy://` link stays
@@ -534,34 +522,26 @@ function callbackProtocolRegister(protocol: string): void {
           : app.setAsDefaultProtocolClient(protocol);
     if (!registered) console.warn(`Happy could not register the ${protocol}: callback protocol.`);
 }
-callbackProtocolRegister(cloudAuthProtocol);
 callbackProtocolRegister(serverOAuthRedirect.protocol.slice(0, -1));
 
 /**
  * Takes one URL the system opened Happy with, from whichever way it was
- * delivered, and brings the window forward. A WorkOS callback and any other
- * `happy://` link each keep their own queue for the window: a link is read by
- * the window's own grammar, never here. A team server's sign-in callback goes
- * to the sign-in that is waiting for it and never reaches the window. Returns
- * whether it was one of them.
+ * delivered, and brings the window forward. A `happy://` link waits in its
+ * queue for the window: a link is read by the window's own grammar, never
+ * here. A team server's sign-in callback goes to the sign-in that is waiting
+ * for it and never reaches the window. Returns whether it was one of them.
  */
 function systemUrlDeliver(candidate: string): boolean {
-    const cloud = cloudAuthCallbackRead(candidate, cloudAuthConfiguration.redirectUri);
-    const server = cloud ? undefined : serverOAuthCallbackRead(candidate);
-    const link = cloud || server ? undefined : happyExternalLinkUrl(candidate);
+    const server = serverOAuthCallbackRead(candidate);
+    const link = server ? undefined : happyExternalLinkUrl(candidate);
     if (server) serverSessions.callbackReceive(server);
-    const taken = cloud ?? link;
-    if (taken) {
-        const queue = cloud ? cloudAuthCallbacks : externalHappyLinks;
-        queue.push(taken);
-        if (queue.length > CLOUD_AUTH_CALLBACKS_MAX) queue.shift();
+    if (link) {
+        externalHappyLinks.push(link);
+        if (externalHappyLinks.length > EXTERNAL_HAPPY_LINKS_MAX) externalHappyLinks.shift();
     } else if (!server) return false;
     const window = windowLifecycle.get();
     if (!window || window.isDestroyed() || window.webContents.isDestroyed()) return true;
-    if (taken)
-        window.webContents.send(
-            cloud ? desktopIpc.cloudAuthCallbackReceived : desktopIpc.happyLinkExternalReceived,
-        );
+    if (link) window.webContents.send(desktopIpc.happyLinkExternalReceived);
     if (window.isMinimized()) window.restore();
     window.show();
     window.focus();
@@ -1921,10 +1901,6 @@ void app
                 .then(() => daemonController.checkForUpdate())
                 .catch(() => undefined);
         });
-        ipcMain.handle(desktopIpc.cloudAuthCallbackTake, (event) => {
-            desktopDaemonSenderRequire(event.sender);
-            return cloudAuthCallbacks.shift();
-        });
         ipcMain.handle(desktopIpc.serverSignInBegin, (event, connectionId: unknown) => {
             desktopDaemonSenderRequire(event.sender);
             if (typeof connectionId !== "string")
@@ -1949,21 +1925,13 @@ void app
             desktopDaemonSenderRequire(event.sender);
             return externalHappyLinks.shift();
         });
-        ipcMain.handle(desktopIpc.cloudAuthCallbackPending, (event) => {
-            desktopDaemonSenderRequire(event.sender);
-            return cloudAuthCallbacks.length > 0;
-        });
-        ipcMain.handle(desktopIpc.cloudAuthConfigurationGet, (event) => {
-            desktopDaemonSenderRequire(event.sender);
-            return cloudAuthConfiguration;
-        });
-        ipcMain.handle(desktopIpc.cloudAuthOpen, (event, candidate: unknown) => {
+        ipcMain.handle(desktopIpc.externalUrlOpen, (event, candidate: unknown) => {
             desktopDaemonSenderRequire(event.sender);
             if (typeof candidate !== "string")
-                throw new Error("Happy Agent returned an invalid Cloud authorization URL.");
+                throw new Error("Happy was asked to open an invalid web address.");
             const url = new URL(candidate);
             if (url.protocol !== "https:")
-                throw new Error("Happy Agent returned an invalid Cloud authorization URL.");
+                throw new Error("Happy opens only HTTPS addresses in the browser.");
             return shell.openExternal(url.href);
         });
         ipcMain.handle(desktopIpc.daemonGet, (event) => {

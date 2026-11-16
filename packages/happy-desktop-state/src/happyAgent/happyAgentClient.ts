@@ -132,12 +132,6 @@ import {
     happyAgentMobileConnectorStoreCreate,
     type HappyAgentMobileConnectorStore,
 } from "./happyAgentMobileConnectorStore.js";
-import {
-    happyAgentCloudStoreCreate,
-    type HappyAgentCloudHost,
-    type HappyAgentCloudStore,
-} from "./happyAgentCloudStore.js";
-import { happyAgentTeamsStoreCreate, type HappyAgentTeamsStore } from "./happyAgentTeamsStore.js";
 import { happyAgentArtifactsCreate, type HappyAgentArtifacts } from "../artifacts/artifacts.js";
 import {
     happyAgentFeedCreate,
@@ -210,10 +204,6 @@ export interface HappyAgentWorkspaceClient {
     happyIntegration(): HappyAgentIntegrationStore;
     /** Phones paired directly with this Happy Agent, and the pairing that adds one. */
     mobileConnector(): HappyAgentMobileConnectorStore;
-    /** The installation-wide WorkOS account, materialized on first access. */
-    cloud(): HappyAgentCloudStore;
-    /** WorkOS organizations shown as teams, on agents that support the organization API. */
-    teams(): HappyAgentTeamsStore;
     /** The one host-owned identity work is authored as. */
     profile(): HappyAgentProfileStore | undefined;
     /**
@@ -460,7 +450,6 @@ export interface HappyAgentWorkspaceClientDeps {
     readonly client: HappyAgentClient;
     /** The team key routes over this connection's transport. */
     readonly providerCredentials?: HappyAgentProviderCredentialsApi;
-    readonly cloudHost: HappyAgentCloudHost;
     readonly connection: HappyAgentConnection;
     readonly hostServices: HappyAgentHostServices;
     /** Stream-owned read authority for the project/workspace/session catalog. */
@@ -649,8 +638,6 @@ export function happyAgentWorkspaceClientCreate(
             client: deps.client,
             sync: deps.connection.sync,
         }));
-    let cloudStore: HappyAgentCloudStore | undefined;
-    let teamsStore: HappyAgentTeamsStore | undefined;
     let profileStore: HappyAgentProfileStore | undefined;
     let providersStore: HappyAgentProvidersStore | undefined;
     let pluginsStore: HappyAgentPluginsStore | undefined;
@@ -1003,20 +990,6 @@ export function happyAgentWorkspaceClientCreate(
             if (disposed) throw new Error("The Happy Agent client is disposed.");
             return mobileConnectorStore();
         },
-        cloud() {
-            if (disposed) throw new Error("The Happy Agent client is disposed.");
-            cloudStore ??= happyAgentCloudStoreCreate({
-                client: deps.client,
-                sync: deps.connection.sync,
-                host: deps.cloudHost,
-            });
-            return cloudStore;
-        },
-        teams() {
-            if (disposed) throw new Error("The Happy Agent client is disposed.");
-            teamsStore ??= happyAgentTeamsStoreCreate({ client: deps.client });
-            return teamsStore;
-        },
         profile() {
             if (disposed) throw new Error("The Happy Agent client is disposed.");
             if (!deps.profileSource || !deps.profileActions || !deps.profilePhotoCodec)
@@ -1238,11 +1211,7 @@ export function happyAgentWorkspaceClientCreate(
             happyIntegrationStore?.[Symbol.dispose]();
             ownMobileConnectorStore?.[Symbol.dispose]();
             ownMobileConnectorStore = undefined;
-            cloudStore?.[Symbol.dispose]();
-            teamsStore?.[Symbol.dispose]();
             happyIntegrationStore = undefined;
-            cloudStore = undefined;
-            teamsStore = undefined;
             profileStore?.[Symbol.dispose]();
             profileStore = undefined;
             providersStore?.[Symbol.dispose]();

@@ -72,8 +72,6 @@ import type {
     ConversationToolCall,
     HappyAgentClockStore,
     HappyAgentToolMediaDocumentStore,
-    HappyAgentCloudStore,
-    HappyAgentTeamsStore,
     HappyAgentFileLineRange,
     HappyAgentFileTabKind,
     HappyAgentFileTabSnapshot,
@@ -658,10 +656,6 @@ export interface AppHappyAgentSession {
     readonly onboarding?: import("happy-desktop-state").HappyAgentOnboardingStore;
     readonly clock: HappyAgentClockStore;
     readonly connection: HappyAgentConnectionStore;
-    /** This Happy Agent installation's WorkOS account. */
-    readonly cloud?: () => HappyAgentCloudStore;
-    /** WorkOS organizations, available on agents with the Teams API. */
-    readonly teams?: () => HappyAgentTeamsStore;
     /** This Happy Agent's retained connection, reconciliation, and SSE diagnostics. */
     readonly debugLog?: HappyAgentDebugLogStore;
     readonly host: HappyAgentHost;

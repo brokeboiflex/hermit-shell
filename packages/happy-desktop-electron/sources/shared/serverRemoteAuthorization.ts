@@ -6,6 +6,12 @@
  */
 export const SERVER_REMOTE_AUTHORIZATION_HEADER = "happy-remote-authorization";
 
+/**
+ * Where a team server's sign-in returns, on every platform and flavor. It is
+ * sent as `redirect_uri` exactly as written here.
+ */
+export const serverOAuthRedirectUri = "happy://oauth/callback";
+
 const REMOTE_PATH = /^\/v0\/connections\/([a-z][a-z0-9_-]{0,63})\/api(?:[/?]|$)/u;
 
 /**

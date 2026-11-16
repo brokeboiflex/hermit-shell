@@ -10,19 +10,6 @@ export const componentNumber = "C-277";
 /* Real snapshot shapes, trimmed to what fits a specimen. The point of the panel
    is that a value appears exactly as its store holds it, so the fixtures are
    printed the way the app prints them rather than prettified by hand. */
-const cloud = JSON.stringify(
-    {
-        authorizationCompleting: false,
-        authorizationStarting: false,
-        disconnecting: false,
-        environment: "production",
-        status: "connected",
-        user: { email: "steve@korshakov.com", id: "user_01M0VHKVABK55EDXXTTN41FS28" },
-    },
-    null,
-    2,
-);
-
 const profile = JSON.stringify(
     {
         dirty: false,
@@ -51,12 +38,6 @@ const instructions = JSON.stringify(
 );
 
 const documents: readonly HappyAgentStateDocument[] = [
-    {
-        description: "WorkOS account authentication",
-        id: "cloud",
-        label: "Cloud",
-        value: cloud,
-    },
     {
         description: "The identity this machine authors work as",
         id: "profile",

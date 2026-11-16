@@ -434,7 +434,7 @@ const SETTINGS_JUMPS: readonly {
         section: "account",
         sectionLabel: "Account",
         icon: "users",
-        keywords: "profile name email photo happy account connect disconnect workos",
+        keywords: "profile name email photo author identity",
     },
     {
         id: "settings:experimental",

@@ -22,9 +22,6 @@ import {
     type HappyAgentWorkspaceClient,
     type HappyAgentActivity,
     type HappyAgentClockStore,
-    type HappyAgentCloudHost,
-    type HappyAgentCloudStore,
-    type HappyAgentTeamsStore,
     type HappyAgentConnection,
     type HappyAgentConnectionSnapshot,
     type HappyAgentConnectionStore,
@@ -137,8 +134,6 @@ export interface HappyAgentSession {
     readonly welcome: WelcomeStore;
     readonly onboarding: HappyAgentOnboardingStore;
     readonly connection: HappyAgentConnectionStore;
-    readonly cloud: () => HappyAgentCloudStore;
-    readonly teams: () => HappyAgentTeamsStore;
     readonly debugLog: HappyAgentDebugLogStore;
     readonly host: HappyAgentHost;
     readonly models: HappyAgentModelStore;
@@ -373,7 +368,6 @@ export function happyAgentConnectionOpen(input: {
      * machine's own Happy Agent is solo and never asks for one.
      */
     readonly memberProfileRequired: boolean;
-    readonly cloudHost: HappyAgentCloudHost;
     readonly host: HappyAgentHost;
     readonly deps: HappyAgentSessionDeps;
     readonly modelPreferencePersistence: HappyAgentModelPreferencePersistence;
@@ -490,7 +484,6 @@ export function happyAgentConnectionOpen(input: {
         }),
         guidedMobileSetup: input.guidedMobileSetup,
         mobileConnector,
-        cloudHost: input.cloudHost,
         connection: agentConnection,
         hostServices,
         modelPreferencePersistence: input.modelPreferencePersistence,
@@ -529,9 +522,6 @@ export function happyAgentConnectionOpen(input: {
         artifactDocumentInline: (mimeType) =>
             mimeType === "application/pdf" && navigator.pdfViewerEnabled,
     });
-    // Keep account authentication subscribed for this connection's lifetime so
-    // browser callbacks are handled even when Settings is closed or reloading.
-    const cloudStore = client.cloud();
     const profileStore = client.profile();
     const accountKeepWarm: (() => void)[] = [];
     const setup: AppHappyAgentSetup | undefined = profileStore
@@ -608,7 +598,6 @@ export function happyAgentConnectionOpen(input: {
             (modelSnapshot) => {
                 modelsLoading = false;
                 if (disposed) return;
-                accountKeepWarm.push(cloudStore.subscribe(() => undefined));
                 debugEntry({
                     detail: JSON.stringify(
                         {
@@ -634,8 +623,6 @@ export function happyAgentConnectionOpen(input: {
                         }),
                     welcome,
                     onboarding,
-                    cloud: () => cloudStore,
-                    teams: () => client.teams(),
                     connection: sessionConnection.store,
                     debugLog,
                     host: input.host,

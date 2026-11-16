@@ -43,7 +43,6 @@ import {
     projectsVisibilityStoreNoop,
     projectsVisibilityConnection,
     gptLiveStoreNoop,
-    happyAgentCloudStoreNoop,
     happyAgentAvailabilityProject,
     happyAgentIntegrationStoreNoop,
     happyAgentMobileConnectorStoreNoop,
@@ -68,7 +67,6 @@ import {
 import {
     happyAgentComposerModelControlProps,
     GptLiveVoiceSettings,
-    HappyAgentAccountSettings,
     HappyAgentGeneralSettings,
     HappyAgentExperimentalSettings,
     HappyAgentConnectionSettingsSection,
@@ -118,7 +116,7 @@ import {
 export const HAPPY_AGENT_SETTINGS_CATEGORIES: readonly HappyAgentSettingsCategory[] = [
     // Listed in blocks of like things, the everyday ones first and unheaded.
     { icon: "settings", id: "general", label: "General" },
-    // Local author identity and the optional WorkOS account share one category.
+    // The local author identity: the name, email and photo work is authored as.
     { icon: "users", id: "account", label: "Account" },
     // Which of other people's tasks, docs, lists and calendars come to you. Its
     // address stays `sharing`, so links to it keep working.
@@ -354,7 +352,7 @@ const CATEGORY_DESCRIPTIONS: Record<string, string> = {
     general: "Appearance, behavior and new-session defaults",
     sharing: "Which of other people’s tasks, docs, lists and calendars come to you",
     "mobile-access": "Use Happy on your phone with this computer",
-    account: "Your name, photo and Happy account",
+    account: "Your name, email and photo",
     "file-tiers": "Which changed files are listed apart",
     instructions: "Agent guidance and permission review for this machine",
     secrets: "Environment variables for agents",
@@ -558,12 +556,6 @@ export function AppHappyAgentSettingsView(props: AppHappyAgentSettingsViewProps)
         profileStore.get,
         profileStore.get,
     );
-    // The connection keeps both identities synchronized. This category only
-    // observes their already-warm snapshots while it is visible.
-    const cloudStore =
-        (section === "account" || stateOpen ? host?.session?.cloud?.() : undefined) ??
-        happyAgentCloudStoreNoop;
-    const cloud = useSyncExternalStore(cloudStore.subscribe, cloudStore.get, cloudStore.get);
     const happyIntegrationStore =
         (section === "mobile-access" || stateOpen
             ? host?.session?.happyIntegration?.()
@@ -1038,7 +1030,6 @@ export function AppHappyAgentSettingsView(props: AppHappyAgentSettingsViewProps)
                             : {})}
                         documents={stateDocuments({
                             appearance,
-                            cloud,
                             experiments,
                             happyIntegration,
                             instructions,
@@ -1103,67 +1094,50 @@ export function AppHappyAgentSettingsView(props: AppHappyAgentSettingsViewProps)
                     </HappyAgentConnectionSettingsSection>
                 ))
             ) : section === "account" ? (
-                // The local author identity and optional WorkOS connection.
-                <>
-                    <HappyAgentProfileSettings
-                        dirty={profile.dirty}
-                        email={profile.email}
-                        loading={profile.loading}
-                        name={profile.name}
-                        onEmailChange={(value) => profileStore.emailUpdate(value)}
-                        onNameChange={(value) => profileStore.displayNameUpdate(value)}
-                        onRevert={() => profileStore.profileRevert()}
-                        onSave={() => {
-                            if (happyAgentOnline()) void profileStore.profileSave();
-                        }}
-                        saving={profile.saving}
-                        // Photo changes are not held back while the Happy Agent
-                        // looks offline: picking and cropping are local, and a
-                        // send that cannot reach it says so in the dialog.
-                        onPhotoChoose={(file) => void profileStore.photoChoose(file)}
-                        onPhotoCropCancel={() => profileStore.photoCropCancel()}
-                        onPhotoCropConfirm={(region) => void profileStore.photoCropConfirm(region)}
-                        onPhotoRemove={() => void profileStore.photoRemove()}
-                        photoRemoving={profile.photoActivity === "removing"}
-                        photoUploading={profile.photoActivity === "uploading"}
-                        {...(profile.photo === undefined ? {} : { photo: profile.photo })}
-                        // While a crop is open its dialog says why a send failed.
-                        {...(profile.photoCrop
-                            ? {
-                                  photoCrop: {
-                                      source: profile.photoCrop,
-                                      saving: profile.photoActivity === "uploading",
-                                      ...(profile.photoError ? { error: profile.photoError } : {}),
-                                  },
-                              }
-                            : profile.photoError
-                              ? { photoError: profile.photoError }
-                              : {})}
-                        // A team member's first save is what creates them, and
-                        // a photo belongs to someone who already exists.
-                        {...(profile.saved
-                            ? {}
-                            : { photoUnavailable: "Save your name first, then add a photo" })}
-                        {...(profile.error ? { error: profile.error.message } : {})}
-                        {...(profile.saveError ? { saveError: profile.saveError } : {})}
-                        {...(unavailable === undefined ? {} : { unavailable })}
-                    />
-                    <HappyAgentAccountSettings
-                        authorizationCompleting={cloud.authorizationCompleting}
-                        authorizationStarting={cloud.authorizationStarting}
-                        disconnecting={cloud.disconnecting}
-                        onConnect={() => {
-                            if (happyAgentOnline()) cloudStore.cloudAccountConnect();
-                        }}
-                        onDisconnect={() => {
-                            if (happyAgentOnline()) cloudStore.cloudAccountDisconnect();
-                        }}
-                        status={cloud.status}
-                        {...(cloud.error ? { error: cloud.error.message } : {})}
-                        {...(cloud.user ? { email: cloud.user.email } : {})}
-                        {...(unavailable === undefined ? {} : { unavailable })}
-                    />
-                </>
+                // The local author identity.
+                <HappyAgentProfileSettings
+                    dirty={profile.dirty}
+                    email={profile.email}
+                    loading={profile.loading}
+                    name={profile.name}
+                    onEmailChange={(value) => profileStore.emailUpdate(value)}
+                    onNameChange={(value) => profileStore.displayNameUpdate(value)}
+                    onRevert={() => profileStore.profileRevert()}
+                    onSave={() => {
+                        if (happyAgentOnline()) void profileStore.profileSave();
+                    }}
+                    saving={profile.saving}
+                    // Photo changes are not held back while the Happy Agent
+                    // looks offline: picking and cropping are local, and a
+                    // send that cannot reach it says so in the dialog.
+                    onPhotoChoose={(file) => void profileStore.photoChoose(file)}
+                    onPhotoCropCancel={() => profileStore.photoCropCancel()}
+                    onPhotoCropConfirm={(region) => void profileStore.photoCropConfirm(region)}
+                    onPhotoRemove={() => void profileStore.photoRemove()}
+                    photoRemoving={profile.photoActivity === "removing"}
+                    photoUploading={profile.photoActivity === "uploading"}
+                    {...(profile.photo === undefined ? {} : { photo: profile.photo })}
+                    // While a crop is open its dialog says why a send failed.
+                    {...(profile.photoCrop
+                        ? {
+                              photoCrop: {
+                                  source: profile.photoCrop,
+                                  saving: profile.photoActivity === "uploading",
+                                  ...(profile.photoError ? { error: profile.photoError } : {}),
+                              },
+                          }
+                        : profile.photoError
+                          ? { photoError: profile.photoError }
+                          : {})}
+                    // A team member's first save is what creates them, and
+                    // a photo belongs to someone who already exists.
+                    {...(profile.saved
+                        ? {}
+                        : { photoUnavailable: "Save your name first, then add a photo" })}
+                    {...(profile.error ? { error: profile.error.message } : {})}
+                    {...(profile.saveError ? { saveError: profile.saveError } : {})}
+                    {...(unavailable === undefined ? {} : { unavailable })}
+                />
             ) : section === "file-tiers" ? (
                 fileTierSettings(changeTiers, changeTiersStore, unavailable)
             ) : section === "instructions" ? (
@@ -1439,7 +1413,6 @@ export function AppHappyAgentSettingsView(props: AppHappyAgentSettingsViewProps)
 /** Every store snapshot Dev Tools prints, in the order the window reads them. */
 function stateDocuments(snapshots: {
     readonly appearance: unknown;
-    readonly cloud: unknown;
     readonly experiments: unknown;
     readonly happyIntegration: unknown;
     readonly instructions: unknown;
@@ -1454,12 +1427,6 @@ function stateDocuments(snapshots: {
     readonly windowState: unknown;
 }): readonly HappyAgentStateDocument[] {
     return [
-        {
-            description: "WorkOS account authentication",
-            id: "cloud",
-            label: "Cloud",
-            value: stateText(snapshots.cloud),
-        },
         {
             description: "The identity this machine authors work as",
             id: "profile",

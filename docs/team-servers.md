@@ -36,7 +36,7 @@ page in the system browser. The sign-in is for the roster's address: the token
 and refresh URLs must share the authorization URL's origin, and every access
 token, issued or refreshed, must name that address in its JWT `aud`, so a
 server that copied another deployment's sign-in never receives its token. The
-server's `[feature.team.jwt] audience` must therefore be its public base URL. Tailcat and WorkOS are not involved.
+server's `[feature.team.jwt] audience` must therefore be its public base URL. Tailcat is not involved.
 
 The tokens live only in main's memory: no keychain, no file, and never the
 window. Quitting the app ends every sign-in; reloading the window keeps them.

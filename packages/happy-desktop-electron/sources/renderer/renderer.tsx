@@ -86,7 +86,6 @@ import {
     WelcomeScreen,
     ZoomIndicator,
     ConnectionShell,
-    CloudSignInNoticeDialog,
     HappyLinkNoticeDialog,
     ConnectionSurface,
     happyAgentSurfaceBackdropsPreload,
@@ -143,11 +142,6 @@ import { desktopHistoryPersistence } from "./desktopHistory";
 import { desktopConnectionUiCreate, type DesktopConnectionUi } from "./desktopConnectionUi";
 import { desktopConnectionPreferencesCreate } from "./desktopConnectionPreferences";
 import { desktopModelPreferencesCreate } from "./desktopModelPreferences";
-import { desktopCloudAuthRouterCreate, type DesktopCloudAuthEvent } from "./desktopCloudAuthRouter";
-import {
-    desktopCloudSignInNoticeStoreCreate,
-    type DesktopCloudSignInNoticeStore,
-} from "./desktopCloudSignInNoticeStore";
 import { desktopDebugStoreCreate } from "./desktopDebugStore";
 import { desktopRowHeightCheckInstall } from "./desktopRowHeightCheck";
 import { desktopProfilerStoreCreate } from "./desktopProfilerStore";
@@ -195,18 +189,6 @@ function desktopMediaWindowOpen(bridge: HappyDesktopBridge): MediaWindowOpener {
     };
 }
 
-/**
- * Opens one HTTPS address in the machine's own browser.
- *
- * The shell routes every `window.open` from this window into an embedded
- * browser tab, which needs a workspace behind it; a page reached from
- * somewhere with no workspace — the surface a new bot is made on — has
- * nowhere to open. The shell has exactly one door to the machine's browser,
- * the one it opens the account login through, and it accepts any HTTPS
- * address; it is used here for the same act, deliberately, because the shell
- * is a host process and cannot gain a door of its own in a renderer release.
- * Anything that is not HTTPS is refused rather than sent somewhere else.
- */
 declare const __HAPPY_RENDERER_VERSION__: string;
 
 const DESKTOP_OS_NAMES = { linux: "Linux", mac: "macOS", win: "Windows" } as const;
@@ -224,6 +206,15 @@ function desktopBugReportHost(bridge: HappyDesktopBridge): {
     };
 }
 
+/**
+ * Opens one HTTPS address in the machine's own browser.
+ *
+ * The shell routes every `window.open` from this window into an embedded
+ * browser tab, which needs a workspace behind it; a page reached from
+ * somewhere with no workspace — the surface a new bot is made on — has
+ * nowhere to open. The shell's door to the machine's browser accepts only
+ * HTTPS, so anything else is refused here rather than sent somewhere else.
+ */
 function desktopExternalLinkOpen(bridge: HappyDesktopBridge): (url: string) => void {
     return (url) => {
         let parsed: URL;
@@ -233,7 +224,7 @@ function desktopExternalLinkOpen(bridge: HappyDesktopBridge): (url: string) => v
             return;
         }
         if (parsed.protocol !== "https:") return;
-        void bridge.cloudAuthOpen(parsed.href).catch((error: unknown) => {
+        void bridge.externalUrlOpen(parsed.href).catch((error: unknown) => {
             console.error("Could not open the link in the browser.", error);
         });
     };
@@ -1238,24 +1229,6 @@ const zoomSubscribe = (listener: () => void) => {
     });
 };
 
-/** The window's one Happy account sign-in notice, centered over everything else. */
-function DesktopCloudSignInNotice(props: { store: DesktopCloudSignInNoticeStore }): ReactNode {
-    const notice = useSyncExternalStore(props.store.subscribe, props.store.get, props.store.get);
-    if (!notice) return null;
-    return (
-        <CloudSignInNoticeDialog
-            chiefOfStaff={notice.chiefOfStaff}
-            onAccountSettingsOpen={props.store.accountSettingsOpen}
-            onChiefOfStaffAsk={props.store.chiefOfStaffAsk}
-            onClose={props.store.noticeClose}
-            onConnectionOpen={props.store.connectionOpen}
-            onSignIn={props.store.signInStart}
-            onTeamConnect={props.store.teamConnect}
-            onTeamsCheck={props.store.teamsCheck}
-            view={notice.view}
-        />
-    );
-}
 /** Why a Happy link from outside was not opened, centered over everything else. */
 function DesktopHappyLinkNotice(props: { store: HappyLinkInboxStore }): ReactNode {
     const { notice } = useSyncExternalStore(
@@ -1511,16 +1484,6 @@ if (mediaPreviewBridge) {
         // open palette is a question in progress, not a place to come back to.
         const commandPalette = commandPaletteStoreCreate();
         const connectionUis = new Map<string, DesktopConnectionUi>();
-        // Every sign-in that comes back to the window becomes one centered
-        // notice. A callback read before that notice's store exists, such as
-        // the one that launched the app, waits here for it.
-        let signInNotice: DesktopCloudSignInNoticeStore | undefined;
-        const signInEventsEarly: DesktopCloudAuthEvent[] = [];
-        const auth = desktopCloudAuthRouterCreate(desktopBridge, (event) => {
-            if (signInNotice) signInNotice.authEventReceive(event);
-            else signInEventsEarly.push(event);
-        });
-        appDisposers.push(auth.dispose);
         const modelPreferences = new Map<
             string,
             ReturnType<typeof desktopModelPreferencesCreate>
@@ -1570,7 +1533,6 @@ if (mediaPreviewBridge) {
                 : undefined;
         if (serverHost) appDisposers.push(() => serverHost.sessions[Symbol.dispose]());
         const happyAgents = happyAgentDirectoryStoreCreate(desktopBridge, runtimeStore, {
-            cloudHostFor: auth.hostFor,
             // Asked for only after the window is up, by when the inbox is.
             happyLinkReceive: (url) => happyLinkInbox.linkReceive(url),
             ...(serverHost
@@ -1677,17 +1639,6 @@ if (mediaPreviewBridge) {
             sidebarVisibility,
             happyAgents,
         });
-        const notices = desktopCloudSignInNoticeStoreCreate({
-            happyAgents,
-            accountSettingsOpen(id) {
-                happyAgents.happyAgentActivate(id);
-                const history = connectionUis.get(id)?.router.history;
-                if (history && history.location.pathname !== "/settings/account")
-                    history.replace("/settings/account");
-            },
-        });
-        signInNotice = notices;
-        for (const event of signInEventsEarly.splice(0)) notices.authEventReceive(event);
         // The update card outlives the main process's report of the update
         // until this window has reconnected and read the catalog again.
         const agentUpdate = analytics.agentUpdateObserve(
@@ -1902,7 +1853,6 @@ if (mediaPreviewBridge) {
         root.render(
             <DesktopAppearance appearance={appearance} powerSaving={powerSaving}>
                 <DesktopZoomIndicator />
-                <DesktopCloudSignInNotice store={notices} />
                 <DesktopHappyLinkNotice store={happyLinkInbox} />
                 <CodeHighlightWorkers>
                     <DesktopRenderer

@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-    HappyAgentAccountSettings,
     HappyAgentDebugLogPanel,
     HappyAgentDebugSettings,
     HappyAgentFileTierSettings,
@@ -49,7 +48,7 @@ const categories: readonly HappyAgentSettingsCategory[] = [
 
 const usageDescription = "How much of each provider account's plan this machine has spent";
 
-const accountDescription = "Local author identity and Happy account connection";
+const accountDescription = "Your name, email and photo";
 
 const mobileDescription = "This Happy Agent's connection to Happy Mobile";
 
@@ -662,7 +661,7 @@ export function HappyAgentSettingsBlueprintPage() {
             title="Happy Agent settings"
         >
             <FullScreenSpecimen
-                detail="Local Git author identity and a connected WorkOS account"
+                detail="Local Git author identity"
                 label="Happy Agent settings — account"
                 number="01a"
             >
@@ -685,12 +684,6 @@ export function HappyAgentSettingsBlueprintPage() {
                         onPhotoRemove={noop}
                         onRevert={noop}
                         onSave={noop}
-                    />
-                    <HappyAgentAccountSettings
-                        email="steve@example.com"
-                        onConnect={noop}
-                        onDisconnect={noop}
-                        status="connected"
                     />
                 </HappyAgentSettingsShell>
             </FullScreenSpecimen>

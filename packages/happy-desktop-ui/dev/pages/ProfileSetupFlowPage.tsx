@@ -25,7 +25,7 @@ const specimens: readonly Specimen[] = [
     },
     {
         label: "Prefilled",
-        detail: "the name the Happy account sign-in suggested, ready to confirm",
+        detail: "the name the server's sign-in suggested, ready to confirm",
         props: { name: "Steve Korshakov" },
     },
     {

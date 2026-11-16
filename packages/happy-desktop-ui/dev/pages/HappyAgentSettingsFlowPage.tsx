@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import {
     GptLiveSettings,
     GptLiveVoiceSettings,
-    HappyAgentAccountSettings,
     HappyAgentConnectionSettingsSection,
     HappyAgentDebugLogPanel,
     HappyAgentDebugSettings,
@@ -66,7 +65,7 @@ const descriptions: Record<string, string> = {
     general: "Appearance, behavior and new-session defaults",
     sharing: "Which of other people’s tasks, docs, lists and calendars come to you",
     "mobile-access": "Use Happy on your phone with this computer",
-    account: "Your name, photo and Happy account",
+    account: "Your name, email and photo",
     "file-tiers": "Which changed files are listed apart",
     instructions: "Agent guidance and permission review for this machine",
     secrets: "Environment variables for agents",
@@ -221,12 +220,6 @@ export function HappyAgentSettingsFlowPage() {
                     onPhotoRemove={noop}
                     onRevert={noop}
                     onSave={noop}
-                />
-                <HappyAgentAccountSettings
-                    email="steve@example.com"
-                    onConnect={noop}
-                    onDisconnect={noop}
-                    status="connected"
                 />
             </Screen>
             <Screen id="file-tiers" number="05" screen="05-file-tiers">
