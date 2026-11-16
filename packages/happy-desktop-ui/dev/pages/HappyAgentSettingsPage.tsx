@@ -44,15 +44,15 @@ import {
 export const componentNumber = "P-012";
 
 const categories: readonly HappyAgentSettingsCategory[] = [
-    { icon: "settings", id: "general", label: "General", tone: "gray" },
-    { icon: "users", id: "account", label: "Account", tone: "blue" },
-    { icon: "mobile", id: "mobile-access", label: "Mobile access", tone: "green" },
-    { group: "Agents", icon: "doc", id: "instructions", label: "Instructions", tone: "purple" },
-    { group: "Agents", icon: "globe", id: "providers", label: "Inference", tone: "indigo" },
-    { group: "Agents", icon: "zap", id: "usage", label: "Usage", tone: "teal" },
-    { group: "Agents", icon: "lock", id: "secrets", label: "Secrets", tone: "green" },
-    { group: "Advanced", icon: "file-diff", id: "file-tiers", label: "File tiers", tone: "orange" },
-    { group: "Advanced", icon: "code", id: "debug", label: "Dev tools", tone: "gray" },
+    { icon: "settings", id: "general", label: "General" },
+    { icon: "users", id: "account", label: "Account" },
+    { icon: "mobile", id: "mobile-access", label: "Mobile access" },
+    { group: "Agents", icon: "doc", id: "instructions", label: "Instructions" },
+    { group: "Agents", icon: "globe", id: "providers", label: "Inference" },
+    { group: "Agents", icon: "zap", id: "usage", label: "Usage" },
+    { group: "Agents", icon: "lock", id: "secrets", label: "Secrets" },
+    { group: "Advanced", icon: "file-diff", id: "file-tiers", label: "File tiers" },
+    { group: "Advanced", icon: "code", id: "debug", label: "Dev tools" },
 ];
 
 const usageDescription = "How much of each provider account's plan this machine has spent";
@@ -866,7 +866,6 @@ function MembersSpecimen(props: {
                         icon: "users",
                         id: "members",
                         label: "Members",
-                        tone: "orange",
                     },
                 ]}
                 description="Who is on this server and what they may do"
@@ -1161,6 +1160,8 @@ export function HappyAgentSettingsBlueprintPage() {
                             scrollbarVisibility="automatic"
                             avatarsAnimated={false}
                             onAvatarsAnimatedChange={noop}
+                            chatWallpaper="none"
+                            onChatWallpaperChange={noop}
                             titleShimmerEnabled={false}
                         />
                     </HappyAgentSettingsShell>
@@ -1180,7 +1181,6 @@ export function HappyAgentSettingsBlueprintPage() {
                             id: "experimental",
                             label: "Experimental",
                             icon: "zap",
-                            tone: "purple",
                         },
                     ]}
                     title="Experimental"
@@ -2106,6 +2106,8 @@ export function HappyAgentSettingsBlueprintPage() {
                         scrollbarVisibility="automatic"
                         avatarsAnimated={false}
                         onAvatarsAnimatedChange={noop}
+                        chatWallpaper="none"
+                        onChatWallpaperChange={noop}
                         titleShimmerEnabled={false}
                         unavailable="Happy Agent is offline. Showing the last synced defaults."
                         onPreviewUpdatesChange={noop}

@@ -8,11 +8,7 @@ import type { HappyAgentClient } from "@slopus/happy-agent-client";
 import { UserError } from "../types.js";
 import type { HappyAgentHostServices } from "./happyAgentHostServices.js";
 import { happyAgentUserError } from "./happyAgentSupport.js";
-import type {
-    HappyAgentGroupId,
-    HappyAgentSessionId,
-    HappyAgentTerminalId,
-} from "./happyAgentTypes.js";
+import type { HappyAgentGroupId, HappyAgentTerminalId } from "./happyAgentTypes.js";
 
 /**
  * One local terminal as a surface renders it. The grid is the whole visible
@@ -54,7 +50,7 @@ export interface HappyAgentTerminalHandle extends HappyAgentTerminalStore, Dispo
 export interface HappyAgentTerminalDeps {
     /** A saved command to run through the server's shell instead of an interactive prompt. */
     readonly command?: string;
-    readonly client: Pick<HappyAgentClient, "getAgent" | "openTerminal" | "stopTerminal">;
+    readonly client: Pick<HappyAgentClient, "openTerminal" | "stopTerminal">;
     readonly hostServices: Pick<HappyAgentHostServices, "terminalConnect">;
     /**
      * The appearance to start this shell in, read once by whoever opens it. The
@@ -75,8 +71,9 @@ const DEFAULT_COLS = 80;
 const DEFAULT_ROWS = 24;
 
 /**
- * Opens one interactive terminal in a local session's working directory, running
- * the user's own login shell. Creating and stopping the terminal are ordinary
+ * Opens one interactive terminal in a workspace's checkout, running the user's
+ * own login shell. It needs no chat: the daemon scopes terminals to the
+ * workspace, not to a session. Creating and stopping the terminal are ordinary
  * Happy Agent actions; the live screen, input, resize, and reconnect all ride an
  * injected driver over a byte channel this store never inspects.
  *
@@ -89,14 +86,13 @@ const DEFAULT_ROWS = 24;
  */
 export function happyAgentTerminalOpen(
     deps: HappyAgentTerminalDeps,
-    sessionId: HappyAgentSessionId,
+    workspaceId: HappyAgentGroupId,
     cols = DEFAULT_COLS,
     rows = DEFAULT_ROWS,
 ): HappyAgentTerminalHandle {
     let disposed = false;
     let stopRequested = false;
     let terminalId: HappyAgentTerminalId | undefined;
-    let workspaceId: HappyAgentGroupId | undefined;
     let driver: TerminalDriver | undefined;
     let requestedSize = { cols, rows };
     const pendingWrites: string[] = [];
@@ -123,7 +119,7 @@ export function happyAgentTerminalOpen(
         stopRequested = true;
         driver?.close();
         driver = undefined;
-        if (!terminalId || !workspaceId) return;
+        if (!terminalId) return;
         const stopping = terminalId;
         void deps.client.stopTerminal(workspaceId, stopping).catch(() => undefined);
     };
@@ -170,23 +166,16 @@ export function happyAgentTerminalOpen(
     }
 
     void deps.client
-        .getAgent(sessionId)
-        .then(({ agent }) => {
-            workspaceId = agent.workspaceId as HappyAgentGroupId;
-            return deps.client.openTerminal(agent.workspaceId, {
-                cols,
-                rows,
-                colorScheme: deps.colorScheme,
-                ...(deps.command === undefined ? {} : { command: deps.command }),
-            });
+        .openTerminal(workspaceId, {
+            cols,
+            rows,
+            colorScheme: deps.colorScheme,
+            ...(deps.command === undefined ? {} : { command: deps.command }),
         })
         .then(
             ({ terminal }) => {
                 if (disposed || stopRequested) {
-                    if (workspaceId)
-                        void deps.client
-                            .stopTerminal(workspaceId, terminal.id)
-                            .catch(() => undefined);
+                    void deps.client.stopTerminal(workspaceId, terminal.id).catch(() => undefined);
                     return;
                 }
                 terminalId = terminal.id as HappyAgentTerminalId;
@@ -201,7 +190,7 @@ export function happyAgentTerminalOpen(
                 driver = driverCreate({
                     connect: () =>
                         deps.hostServices.terminalConnect(
-                            workspaceId!,
+                            workspaceId,
                             terminal.id as HappyAgentTerminalId,
                         ),
                     // Seeded from the size the PTY was actually given rather than the

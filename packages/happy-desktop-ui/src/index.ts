@@ -354,6 +354,7 @@ export {
 export { type MessageReferences, type MessageReferenceView } from "./messageReferences";
 export { Lightbox, type LightboxProps } from "./Lightbox";
 export { Rail, type RailItem, type RailProps } from "./Rail";
+export { ChatWallpaperPicker, type ChatWallpaperPickerProps } from "./ChatWallpaperPicker";
 export {
     ThemeScope,
     type ScrollbarVisibility,
@@ -436,6 +437,7 @@ export {
     type FileReveal,
     type LinkContextMenuProps,
 } from "./LinkContextMenu";
+export { ContextBreakdown, type ContextBreakdownProps } from "./ContextBreakdown";
 export { ContextMeter, type ContextMeterProps } from "./ContextMeter";
 export { ComputeChip, type ComputeChipCompute, type ComputeChipProps } from "./ComputeChip";
 export {

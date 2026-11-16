@@ -186,6 +186,7 @@ import {
 } from "./desktopProjectsVisibility";
 import { desktopStatusBarPersistence } from "./desktopStatusBar";
 import { desktopAvatarsAnimated } from "./desktopAvatarsAnimated";
+import { desktopChatWallpaper } from "./desktopChatWallpaper";
 import { desktopPowerSavingCreate, type DesktopPowerSaving } from "./desktopPowerSaving";
 import { desktopGptLivePersistence } from "./desktopGptLive";
 import { desktopGptLiveRuntimeCreate } from "./desktopGptLiveRuntime";
@@ -440,6 +441,8 @@ function DesktopAppearance(props: {
     return (
         <ThemeScope
             avatarsAnimated={appearance.avatarsAnimated && !powerSaving}
+            chatWallpaper={appearance.chatWallpaper}
+            chatWallpaperImage={appearance.chatWallpaperImage}
             customTheme={appearance.customTheme}
             mode={appearance.mode}
             scrollbarVisibility={appearance.scrollbarVisibility}
@@ -1603,6 +1606,8 @@ if (mediaPreviewBridge) {
                         : ["system", "dark", "light"],
                 scrollbarVisibility: preferences.initialScrollbarVisibility,
                 avatarsAnimated: desktopAvatarsAnimated.read(),
+                chatWallpaper: desktopChatWallpaper.read(),
+                chatWallpaperImage: desktopChatWallpaper.imageRead(),
             });
             appearanceReceive = (next) =>
                 writer.configReceived({
@@ -1611,11 +1616,21 @@ if (mediaPreviewBridge) {
                     scrollbarVisibility: next.scrollbarVisibility,
                 });
             desktopAppearanceSynchronize(created, desktopBridge);
+            // The picture is large, so it is written only when it changes, not
+            // read back from storage to compare on every appearance change.
+            let wallpaperImageKept = created.get().chatWallpaperImage;
             created.subscribe(() => {
                 const snapshot = created.get();
                 preferences.appearanceChanged(snapshot.mode, snapshot.scrollbarVisibility);
                 if (snapshot.avatarsAnimated !== desktopAvatarsAnimated.read())
                     desktopAvatarsAnimated.write(snapshot.avatarsAnimated);
+                if (snapshot.chatWallpaper !== desktopChatWallpaper.read())
+                    desktopChatWallpaper.write(snapshot.chatWallpaper);
+                if (snapshot.chatWallpaperImage !== wallpaperImageKept) {
+                    wallpaperImageKept = snapshot.chatWallpaperImage;
+                    if (wallpaperImageKept !== undefined)
+                        desktopChatWallpaper.imageWrite(wallpaperImageKept);
+                }
             });
             const store = browserLocal ? undefined : desktopDaemonStoreCreate(desktopBridge);
             return {

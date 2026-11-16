@@ -161,21 +161,18 @@ export function HappyAgentPaymentsSettingsPage() {
                                         icon: "settings",
                                         id: "general",
                                         label: "General",
-                                        tone: "gray",
                                     },
                                     {
                                         group: "Team",
                                         icon: "users",
                                         id: "members",
                                         label: "Members",
-                                        tone: "orange",
                                     },
                                     {
                                         group: "Team",
                                         icon: "zap",
                                         id: "payments",
                                         label: "Payments",
-                                        tone: "green",
                                     },
                                 ]}
                                 description="Credit, the card on file and what agents spend"

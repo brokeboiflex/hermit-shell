@@ -44,18 +44,18 @@ export const componentNumber = "P-012f";
 
 /** Every category the settings window lists, in the app's order. */
 const categories: readonly HappyAgentSettingsCategory[] = [
-    { icon: "settings", id: "general", label: "General", tone: "gray" },
-    { icon: "users", id: "account", label: "Account", tone: "blue" },
-    { icon: "bell", id: "sharing", label: "Notifications", tone: "red" },
-    { icon: "mobile", id: "mobile-access", label: "Mobile access", tone: "green" },
-    { icon: "call", id: "voice", label: "Voice", tone: "orange" },
-    { group: "Agents", icon: "doc", id: "instructions", label: "Instructions", tone: "purple" },
-    { group: "Agents", icon: "globe", id: "providers", label: "Inference", tone: "indigo" },
-    { group: "Agents", icon: "zap", id: "usage", label: "Usage", tone: "teal" },
-    { group: "Agents", icon: "lock", id: "secrets", label: "Secrets", tone: "green" },
-    { group: "Advanced", icon: "file-diff", id: "file-tiers", label: "File tiers", tone: "orange" },
-    { group: "Advanced", icon: "zap", id: "experimental", label: "Experimental", tone: "purple" },
-    { group: "Advanced", icon: "code", id: "debug", label: "Dev tools", tone: "gray" },
+    { icon: "settings", id: "general", label: "General" },
+    { icon: "users", id: "account", label: "Account" },
+    { icon: "bell", id: "sharing", label: "Notifications" },
+    { icon: "mobile", id: "mobile-access", label: "Mobile access" },
+    { icon: "call", id: "voice", label: "Voice" },
+    { group: "Agents", icon: "doc", id: "instructions", label: "Instructions" },
+    { group: "Agents", icon: "globe", id: "providers", label: "Inference" },
+    { group: "Agents", icon: "zap", id: "usage", label: "Usage" },
+    { group: "Agents", icon: "lock", id: "secrets", label: "Secrets" },
+    { group: "Advanced", icon: "file-diff", id: "file-tiers", label: "File tiers" },
+    { group: "Advanced", icon: "zap", id: "experimental", label: "Experimental" },
+    { group: "Advanced", icon: "code", id: "debug", label: "Dev tools" },
 ];
 
 /** The app's category descriptions, keyed like the categories. */
@@ -157,6 +157,8 @@ function General(props: { pickerOpen?: boolean }) {
             scrollbarVisibility="automatic"
             avatarsAnimated={false}
             onAvatarsAnimatedChange={noop}
+            chatWallpaper="none"
+            onChatWallpaperChange={noop}
             titleShimmerEnabled
         />
     );

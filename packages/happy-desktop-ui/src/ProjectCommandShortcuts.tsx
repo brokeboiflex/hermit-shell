@@ -23,9 +23,9 @@ export interface ProjectCommandShortcutsProps {
     readonly onEditorClose: () => void;
 }
 
-/** Pinned project commands and their editor; execution and persistence belong to the caller. */
+/** A workspace's task-file commands and their editor; execution and persistence belong to the caller. */
 export function ProjectCommandShortcuts(props: ProjectCommandShortcutsProps) {
-    const { shortcuts, draft } = props.snapshot;
+    const { shortcuts, draft, problem } = props.snapshot;
     return (
         <section
             className="happy-command-shortcuts"
@@ -45,6 +45,7 @@ export function ProjectCommandShortcuts(props: ProjectCommandShortcutsProps) {
                     variant="ghost"
                 />
             </div>
+            {problem ? <p className="happy-command-shortcuts__problem">{problem}</p> : null}
             {shortcuts.map((shortcut) => (
                 <div className="happy-command-shortcuts__row" key={shortcut.id}>
                     <button
@@ -101,27 +102,33 @@ export function ProjectCommandShortcuts(props: ProjectCommandShortcutsProps) {
                                     <Button onClick={props.onEditorClose} variant="ghost">
                                         Cancel
                                     </Button>
-                                    <Button onClick={props.onSave}>Save shortcut</Button>
+                                    <Button loading={draft.saving} onClick={props.onSave}>
+                                        Save shortcut
+                                    </Button>
                                 </>
                             }
                         >
-                            <TextField
-                                autoFocus
-                                label="Name"
-                                placeholder="Launch app"
-                                value={draft.name}
-                                onValueChange={props.onNameChange}
-                            />
-                            <TextField
-                                label="Command"
-                                placeholder="pnpm dev"
-                                multiline
-                                rows={4}
-                                value={draft.command}
-                                onValueChange={props.onCommandChange}
-                                error={draft.error}
-                                hint="Runs in the active workspace. Output opens in a terminal."
-                            />
+                            <div className="happy-command-shortcuts__form">
+                                <TextField
+                                    autoFocus
+                                    fullWidth
+                                    label="Name"
+                                    placeholder="Launch app"
+                                    value={draft.name}
+                                    onValueChange={props.onNameChange}
+                                />
+                                <TextField
+                                    fullWidth
+                                    label="Command"
+                                    placeholder="pnpm dev"
+                                    multiline
+                                    rows={4}
+                                    value={draft.command}
+                                    onValueChange={props.onCommandChange}
+                                    error={draft.error}
+                                    hint="Saved in .vscode/tasks.json. Runs in the active workspace; output opens in a terminal."
+                                />
+                            </div>
                         </Modal>
                     </ModalOverlay>
                 </WindowOverlay>

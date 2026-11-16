@@ -257,7 +257,7 @@ export async function gymLiveVoiceRun(options: {
         await page.getByRole("switch", { name: "Enable GPT-Live voice" }).click();
         await page.getByRole("combobox", { name: "Voice account" }).selectOption("voice");
         await page.screenshot({ path: join(paths.artifacts, "voice-settings.png") });
-        await page.getByRole("button", { name: "Back", exact: true }).click();
+        await page.getByRole("button", { name: "Back to app", exact: true }).click();
         // Click the actual sidebar target, leaving a unique visible context for the call.
         await page.getByText("voice-context", { exact: true }).first().click();
         await page.screenshot({ path: join(paths.artifacts, "desktop-before-call.png") });

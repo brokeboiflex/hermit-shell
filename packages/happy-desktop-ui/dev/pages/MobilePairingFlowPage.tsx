@@ -30,11 +30,11 @@ export const componentNumber = "P-021";
 const noop = () => undefined;
 
 const categories: readonly HappyAgentSettingsCategory[] = [
-    { icon: "settings", id: "general", label: "General", tone: "gray" },
-    { icon: "users", id: "account", label: "Account", tone: "blue" },
-    { icon: "mobile", id: "mobile-access", label: "Mobile access", tone: "green" },
-    { group: "Agents", icon: "globe", id: "providers", label: "Inference", tone: "indigo" },
-    { group: "Advanced", icon: "code", id: "debug", label: "Dev tools", tone: "gray" },
+    { icon: "settings", id: "general", label: "General" },
+    { icon: "users", id: "account", label: "Account" },
+    { icon: "mobile", id: "mobile-access", label: "Mobile access" },
+    { group: "Agents", icon: "globe", id: "providers", label: "Inference" },
+    { group: "Advanced", icon: "code", id: "debug", label: "Dev tools" },
 ];
 
 /** The window Happy opens at, and the smallest one it allows. */

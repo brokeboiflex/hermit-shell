@@ -87,7 +87,7 @@ import {
     type ConversationInlinePageLocal,
     type ConversationInlinePages,
 } from "./conversationInlinePages";
-import { EmptyState } from "./EmptyState";
+import { ConversationEmptyGreeting } from "./ConversationEmptyGreeting";
 import {
     Message,
     MessageList,
@@ -1130,17 +1130,7 @@ export function ConversationView(props: ConversationViewProps) {
                     data-happy-desktop-ui="conversation-empty"
                     viewportClassName="happy-conversation__empty-viewport"
                 >
-                    {props.emptyContent ?? (
-                        <EmptyState
-                            // A conversation with nothing in it is something small
-                            // about to come out, so that is what it looks like.
-                            animation="hatching-chick"
-                            description="Send a message to start working in this conversation."
-                            icon="chat"
-                            size="panel"
-                            title="Nothing here yet"
-                        />
-                    )}
+                    {props.emptyContent ?? <ConversationEmptyGreeting />}
                     {activityFallback}
                 </ScrollArea>
             ) : (

@@ -197,6 +197,9 @@
     --happy-calendar-event-ink: color-mix(in srgb, var(--text-link) 55%, var(--text));
     --happy-calendar-event-chosen: var(--text-link);
     --happy-calendar-selection: color-mix(in srgb, var(--text-link) 12%, transparent);
+    /* The veil a chat wallpaper sits under, so text keeps its contrast on it.
+       Declared in every theme block so each mixes its own surface. */
+    --happy-chat-wallpaper-veil: color-mix(in srgb, var(--surface) 82%, transparent);
     --happy-calendar-today: var(--text-link);
 
     /* A proposed sidebar change washes its row far down in the change's
@@ -636,6 +639,9 @@
         --happy-calendar-event-ink: color-mix(in srgb, var(--text-link) 55%, var(--text));
         --happy-calendar-event-chosen: var(--text-link);
         --happy-calendar-selection: color-mix(in srgb, var(--text-link) 12%, transparent);
+        /* The veil a chat wallpaper sits under, so text keeps its contrast on it.
+           Declared in every theme block so each mixes its own surface. */
+        --happy-chat-wallpaper-veil: color-mix(in srgb, var(--surface) 82%, transparent);
         --happy-calendar-today: var(--text-link);
 
         /* A proposed sidebar change washes its row far down in the change's
@@ -869,6 +875,9 @@
     --happy-calendar-event-ink: color-mix(in srgb, var(--text-link) 55%, var(--text));
     --happy-calendar-event-chosen: var(--text-link);
     --happy-calendar-selection: color-mix(in srgb, var(--text-link) 12%, transparent);
+    /* The veil a chat wallpaper sits under, so text keeps its contrast on it.
+       Declared in every theme block so each mixes its own surface. */
+    --happy-chat-wallpaper-veil: color-mix(in srgb, var(--surface) 82%, transparent);
     --happy-calendar-today: var(--text-link);
 
     /* A proposed sidebar change washes its row far down in the change's
@@ -1012,6 +1021,11 @@
 /* ThemeScope intentionally has no layout box. */
 .happy-theme-scope {
     display: contents;
+}
+
+/* No chat wallpaper until a ThemeScope declares one (styles/chat-wallpaper.css). */
+:root {
+    --happy-chat-wallpaper-image: none;
 }
 
 .happy-box {

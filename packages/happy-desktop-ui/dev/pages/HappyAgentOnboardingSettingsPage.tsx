@@ -163,21 +163,18 @@ export function HappyAgentOnboardingSettingsPage() {
                                         icon: "settings",
                                         id: "general",
                                         label: "General",
-                                        tone: "gray",
                                     },
                                     {
                                         group: "Team",
                                         icon: "users",
                                         id: "members",
                                         label: "Members",
-                                        tone: "orange",
                                     },
                                     {
                                         group: "Team",
                                         icon: "check-circle",
                                         id: "onboarding",
                                         label: "Onboarding",
-                                        tone: "green",
                                     },
                                 ]}
                                 description="What people are asked for when they first open this server"

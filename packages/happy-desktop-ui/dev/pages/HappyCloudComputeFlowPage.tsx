@@ -17,15 +17,15 @@ export const componentNumber = "P-042";
 
 /** The settings categories a Happy Cloud server lists. */
 const categories: readonly HappyAgentSettingsCategory[] = [
-    { icon: "settings", id: "general", label: "General", tone: "gray" },
-    { icon: "users", id: "account", label: "Account", tone: "blue" },
-    { icon: "bell", id: "sharing", label: "Notifications", tone: "red" },
-    { group: "Agents", icon: "globe", id: "providers", label: "Inference", tone: "indigo" },
-    { group: "Agents", icon: "terminal", id: "compute", label: "Compute", tone: "blue" },
-    { group: "Agents", icon: "zap", id: "usage", label: "Usage", tone: "teal" },
-    { group: "Agents", icon: "lock", id: "secrets", label: "Secrets", tone: "green" },
-    { group: "Team", icon: "users", id: "members", label: "Members", tone: "orange" },
-    { group: "Team", icon: "repository", id: "repositories", label: "Repositories", tone: "gray" },
+    { icon: "settings", id: "general", label: "General" },
+    { icon: "users", id: "account", label: "Account" },
+    { icon: "bell", id: "sharing", label: "Notifications" },
+    { group: "Agents", icon: "globe", id: "providers", label: "Inference" },
+    { group: "Agents", icon: "terminal", id: "compute", label: "Compute" },
+    { group: "Agents", icon: "zap", id: "usage", label: "Usage" },
+    { group: "Agents", icon: "lock", id: "secrets", label: "Secrets" },
+    { group: "Team", icon: "users", id: "members", label: "Members" },
+    { group: "Team", icon: "repository", id: "repositories", label: "Repositories" },
 ];
 
 const noop = () => undefined;

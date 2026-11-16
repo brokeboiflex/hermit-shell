@@ -1,29 +1,35 @@
 import { useState, useSyncExternalStore } from "react";
-import {
-    happyAgentCommandShortcutsStoreCreate,
-    type HappyAgentCommandShortcutId,
-} from "happy-desktop-state";
+import { happyAgentCommandShortcutsStoreOwnedCreate } from "happy-desktop-state";
 import { ProjectCommandShortcuts } from "../../src/ProjectCommandShortcuts";
+
+const TASKS_SAMPLE = `{
+	// Shared with VS Code, Cursor and Zed.
+	"version": "2.0.0",
+	"tasks": [
+		{ "label": "Launch app", "type": "shell", "command": "pnpm dev" },
+		{ "label": "Check types", "type": "shell", "command": "pnpm", "args": ["typecheck"] }
+	]
+}
+`;
 
 export function ProjectCommandShortcutsExample(props: { empty?: boolean; unavailable?: string }) {
     const [store] = useState(() => {
-        const store = happyAgentCommandShortcutsStoreCreate({
-            initial: props.empty
-                ? []
-                : [
-                      {
-                          id: "launch" as HappyAgentCommandShortcutId,
-                          name: "Launch app",
-                          command: "pnpm dev",
-                      },
-                      {
-                          id: "check" as HappyAgentCommandShortcutId,
-                          name: "Check types",
-                          command: "pnpm typecheck",
-                      },
-                  ],
+        // The page is its own checkout: every write is accepted as written.
+        let revision = 0;
+        const owned = happyAgentCommandShortcutsStoreOwnedCreate({
+            output: (event) =>
+                owned.writer.tasksFileWriteSucceeded({
+                    type: "present",
+                    content: event.content,
+                    hash: String((revision += 1)),
+                }),
         });
-        return store;
+        owned.writer.tasksFileRead(
+            props.empty
+                ? { type: "missing" }
+                : { type: "present", content: TASKS_SAMPLE, hash: String(revision) },
+        );
+        return owned.store;
     });
     const snapshot = useSyncExternalStore(store.subscribe, store.get, store.get);
     return (

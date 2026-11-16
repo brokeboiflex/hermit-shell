@@ -5,6 +5,7 @@ import type { HappyAgentDeviceBridgeSupportStore } from "./happyAgentDeviceBridg
 import type { HappyAgentToolMediaDocumentStore } from "./happyAgentToolMediaDocumentStore.js";
 import type { HappyAgentPreviewsStore } from "./happyAgentPreviewsStore.js";
 import type { HappyAgentGlobalSkill } from "./happyAgentGlobalSkillsStore.js";
+import { HappyAgentApiError } from "@slopus/happy-agent-client";
 import { createStore } from "zustand/vanilla";
 import {
     happyAgentBotSubtasks,
@@ -89,8 +90,10 @@ import {
     type HappyAgentChangeTiersStore,
 } from "./happyAgentChangeTiersStore.js";
 import {
-    happyAgentCommandShortcutsStoreCreate,
+    HAPPY_AGENT_COMMAND_SHORTCUTS_PATH,
+    happyAgentCommandShortcutsStoreOwnedCreate,
     type HappyAgentCommandShortcutsStore,
+    type HappyAgentCommandShortcutsWriter,
 } from "./happyAgentCommandShortcutsStore.js";
 import {
     happyAgentPanelStoreCreate,
@@ -1532,8 +1535,11 @@ export interface HappyAgentWorkspaceStore {
      * window reads the host's: every node's Changes is split by those.
      */
     readonly changeTiers: HappyAgentChangeTiersStore;
-    /** Materializes the user's command shortcuts for one project. */
-    commandShortcuts(projectId: HappyAgentProjectId): HappyAgentCommandShortcutsStore;
+    /**
+     * Materializes one checkout's command shortcuts: the tasks in its
+     * `.vscode/tasks.json`, read while shown and written back on every change.
+     */
+    commandShortcuts(groupId: HappyAgentGroupId): HappyAgentCommandShortcutsStore;
     /**
      * The document a presented-file preview shows, read for the host's viewer.
      * Materialized on first access; the preview leases which document it holds.
@@ -2444,7 +2450,7 @@ export function happyAgentWorkspaceStoreCreate(
         return draftUpdatedAt;
     };
     const panel: HappyAgentPanelStore = happyAgentPanelStoreCreate({
-        terminalOpen: (sessionId, command) => client.terminalOpen(sessionId, command),
+        terminalOpen: (groupId, command) => client.terminalOpen(groupId, command),
         chatOpen: (agentId) => happyAgentPanelChatOpen(() => client.chat(agentId)),
         memoryRead: (groupId) => client.memory.groupRead(groupId)?.panel,
         memoryWrite: (groupId, memory) => client.memory.groupPanelWrite(groupId, memory),
@@ -2655,30 +2661,106 @@ export function happyAgentWorkspaceStoreCreate(
             }
         },
     });
-    const commandShortcutsByProject = new Map<
-        HappyAgentProjectId,
-        HappyAgentCommandShortcutsStore
-    >();
-    const commandShortcuts = (projectId: HappyAgentProjectId): HappyAgentCommandShortcutsStore => {
-        let store = commandShortcutsByProject.get(projectId);
-        if (!store) {
-            store = happyAgentCommandShortcutsStoreCreate({
-                initial: viewPreferences.projectShortcuts?.[projectId],
-                output(event) {
-                    const projectShortcuts = { ...viewPreferences.projectShortcuts };
-                    if (event.shortcuts.length === 0) delete projectShortcuts[projectId];
-                    else projectShortcuts[projectId] = event.shortcuts;
-                    viewPreferences = { ...viewPreferences, projectShortcuts };
-                    try {
-                        deps.viewPreferences?.write(viewPreferences);
-                    } catch {
-                        // The commands remain available for this window's lifetime.
-                    }
-                },
-            });
-            commandShortcutsByProject.set(projectId, store);
+    /**
+     * A checkout's shortcuts and how current they are. The file is read only
+     * while something shows them: a change while nothing does marks it stale,
+     * and the next look reads it once.
+     */
+    interface CommandShortcutsEntry {
+        readonly store: HappyAgentCommandShortcutsStore;
+        readonly writer: HappyAgentCommandShortcutsWriter;
+        watchers: number;
+        stale: boolean;
+        /** Bumped by every read and accepted write, so only the newest answer lands. */
+        reads: number;
+    }
+    const commandShortcutsByGroup = new Map<HappyAgentGroupId, CommandShortcutsEntry>();
+    const commandShortcutsRead = (groupId: HappyAgentGroupId): void => {
+        const entry = commandShortcutsByGroup.get(groupId);
+        if (!entry) return;
+        if (entry.watchers === 0) {
+            entry.stale = true;
+            return;
         }
-        return store;
+        entry.stale = false;
+        const read = (entry.reads += 1);
+        client.workspaceFileRead(groupId, HAPPY_AGENT_COMMAND_SHORTCUTS_PATH).then(
+            (file) => {
+                if (read !== entry.reads) return;
+                entry.writer.tasksFileRead({
+                    type: "present",
+                    content: file.content,
+                    hash: file.hash,
+                });
+            },
+            (error: unknown) => {
+                if (read !== entry.reads) return;
+                if (error instanceof HappyAgentApiError && error.status === 404)
+                    entry.writer.tasksFileRead({ type: "missing" });
+                else entry.writer.tasksFileReadFailed(happyAgentUserError(error).message);
+            },
+        );
+    };
+    const commandShortcuts = (groupId: HappyAgentGroupId): HappyAgentCommandShortcutsStore => {
+        const existing = commandShortcutsByGroup.get(groupId);
+        if (existing) return existing.store;
+        const owned = happyAgentCommandShortcutsStoreOwnedCreate({
+            output(event) {
+                const refusal = groupWorkRefusalFind(groupId);
+                if (refusal) {
+                    owned.writer.tasksFileWriteFailed(refusal);
+                    return;
+                }
+                client
+                    .workspaceFileWrite(
+                        groupId,
+                        HAPPY_AGENT_COMMAND_SHORTCUTS_PATH,
+                        event.content,
+                        event.expectedHash,
+                    )
+                    .then(
+                        (written) => {
+                            entry.reads += 1;
+                            owned.writer.tasksFileWriteSucceeded({
+                                type: "present",
+                                content: event.content,
+                                hash: written.hash,
+                            });
+                            // An editor tab open on the file reconciles too.
+                            workspaceFilesChanged({
+                                groupId,
+                                paths: [HAPPY_AGENT_COMMAND_SHORTCUTS_PATH],
+                            });
+                        },
+                        (error: unknown) => {
+                            owned.writer.tasksFileWriteFailed(happyAgentUserError(error).message);
+                            // A refused compare-and-swap means someone else wrote the
+                            // file; what they wrote is what is shown next.
+                            commandShortcutsRead(groupId);
+                        },
+                    );
+            },
+        });
+        const entry: CommandShortcutsEntry = {
+            store: {
+                ...owned.store,
+                subscribe(listener) {
+                    const unsubscribe = owned.store.subscribe(listener);
+                    entry.watchers += 1;
+                    if (entry.watchers === 1 && entry.stale) commandShortcutsRead(groupId);
+                    return () => {
+                        entry.watchers -= 1;
+                        unsubscribe();
+                    };
+                },
+            },
+            writer: owned.writer,
+            watchers: 0,
+            stale: true,
+            reads: 0,
+        };
+        commandShortcutsByGroup.set(groupId, entry);
+        return entry.store;
     };
     let fileTreeExpanded: ReadonlySet<string> = new Set();
     let fileTreeCollapsed: ReadonlySet<string> = new Set();
@@ -4479,6 +4561,8 @@ export function happyAgentWorkspaceStoreCreate(
         workspaceFilesTreeInvalidate(change.groupId, change.paths);
         fileCommentsStale(change.groupId, change.paths);
         reviewReconcile(change.groupId, change.paths);
+        if (affected(HAPPY_AGENT_COMMAND_SHORTCUTS_PATH) || affected(".vscode"))
+            commandShortcutsRead(change.groupId);
         for (const tab of fileTabs) {
             if (tab.groupId !== change.groupId || !affected(tab.path)) continue;
             fileTabLoadedIdentities.delete(tab.id);

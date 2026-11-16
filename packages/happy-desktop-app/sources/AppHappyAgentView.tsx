@@ -8840,17 +8840,14 @@ function HappyAgentWorkspaceSurface(props: HappyAgentWorkspaceSurfaceProps) {
                                     shortcuts={
                                         summaryProject ? (
                                             <AppProjectCommandShortcuts
-                                                key={summaryProject.id}
+                                                key={openGroup.id}
                                                 store={props.workspace.commandShortcuts(
-                                                    summaryProject.id,
+                                                    openGroup.id,
                                                 )}
                                                 unavailable={
                                                     !happyAgentOnline()
                                                         ? "Reconnect to run shortcuts."
-                                                        : (panel.terminalRefusal ??
-                                                          (props.chatId === undefined
-                                                              ? "Open a chat to run shortcuts."
-                                                              : undefined))
+                                                        : panel.terminalRefusal
                                                 }
                                                 onRun={(shortcut) => {
                                                     if (happyAgentOnline())
@@ -12357,6 +12354,7 @@ function HappyAgentPanelBody(props: {
                     ) : props.panel.activeViewId === "usage" ? (
                         props.activity ? (
                             <HappyAgentUsagePanel
+                                contextGauge={props.activity.contextGauge}
                                 error={props.activity.usageError}
                                 loading={props.activity.usageLoading}
                                 placement="panel"

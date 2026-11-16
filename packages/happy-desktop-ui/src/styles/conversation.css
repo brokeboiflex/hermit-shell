@@ -462,3 +462,32 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+.happy-conversation-greeting {
+    box-sizing: border-box;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    padding: 40px 32px;
+    text-align: center;
+}
+
+.happy-conversation-greeting__logo {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+.happy-conversation-greeting__text {
+    margin: 0;
+    color: var(--text);
+    font-family: var(--happy-font-ui);
+    font-size: 28px;
+    font-weight: 500;
+    line-height: 36px;
+}

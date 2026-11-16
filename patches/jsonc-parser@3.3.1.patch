@@ -1,0 +1,12 @@
+diff --git a/package.json b/package.json
+index 6536a20b66c000f3991c470e6f24539e3a822d9e..e5b885a20658554eb9a5443990b0324b6efb391d 100644
+--- a/package.json
++++ b/package.json
+@@ -5,6 +5,7 @@
+   "main": "./lib/umd/main.js",
+   "typings": "./lib/umd/main.d.ts",
+   "module": "./lib/esm/main.js",
++  "sideEffects": false,
+   "author": "Microsoft Corporation",
+   "repository": {
+     "type": "git",

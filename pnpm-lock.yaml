@@ -5,6 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 patchedDependencies:
+  jsonc-parser@3.3.1:
+    hash: dad7ef3811d9695542897805549d74c7e31a4042cb0ee6f913d221781a6ff0c4
+    path: patches/jsonc-parser@3.3.1.patch
   react-dom@19.2.7:
     hash: 14e2cfa7d72d4064e573a384fedfcdcc7589b6d08ab00ac90e41ef11f9496979
     path: patches/react-dom@19.2.7.patch
@@ -307,6 +310,9 @@ importers:
       '@slopus/happy-agent-client':
         specifier: 0.0.172
         version: 0.0.172
+      jsonc-parser:
+        specifier: ^3.3.1
+        version: 3.3.1(patch_hash=dad7ef3811d9695542897805549d74c7e31a4042cb0ee6f913d221781a6ff0c4)
       picomatch:
         specifier: 4.0.5
         version: 4.0.5
@@ -4241,6 +4247,9 @@ packages:
     engines: {node: '>=6'}
     hasBin: true
 
+  jsonc-parser@3.3.1:
+    resolution: {integrity: sha512-HUgH65KyejrUFPvHFPbqOY0rsFip3Bo5wb4ngvdi1EpCYWUQDC5V+Y7mZws+DLkr4M//zQJoanu1SP+87Dv1oQ==}
+
   jsonfile@4.0.0:
     resolution: {integrity: sha512-m6F1R3z8jjlf2imQHS2Qez5sjKWQzbuuhuJ/FKYFRZvPE3PuHcSMVZzfsLhGVOkfd20obL5SWEBew5ShlquNxg==}
 
@@ -5873,7 +5882,6 @@ packages:
       '@vitest/ui': 4.1.10
       happy-dom: '*'
       jsdom: '*'
-      vite: ^6.0.0 || ^7.0.0 || ^8.0.0
     peerDependenciesMeta:
       '@edge-runtime/vm':
         optional: true
@@ -10138,6 +10146,8 @@ snapshots:
     optional: true
 
   json5@2.2.3: {}
+
+  jsonc-parser@3.3.1(patch_hash=dad7ef3811d9695542897805549d74c7e31a4042cb0ee6f913d221781a6ff0c4): {}
 
   jsonfile@4.0.0:
     optionalDependencies:

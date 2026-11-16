@@ -1,0 +1,172 @@
+/*
+ * ContextBreakdown — where the model's context window has gone: what the
+ * conversation has spent, what is still free, and what the daemon holds back
+ * to compact in. One stacked bar, and one row per part beneath it that wears
+ * the same mark as its stretch of the bar, so the bar is read through its rows.
+ *
+ * It is a content block, not a card: whatever carries the reading frames it, so
+ * there is no fill and no border here.
+ */
+.happy-context-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    color: var(--text);
+    font-family: var(--happy-font-ui);
+    font-variant-numeric: tabular-nums lining-nums;
+}
+
+.happy-context-breakdown__heading {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* The name and the share read as one line, so they share a baseline. */
+.happy-context-breakdown__header {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 18px;
+}
+
+.happy-context-breakdown__percent {
+    flex: none;
+}
+
+/* The model's name is the reader's own text and may be any length; it wraps
+   rather than widening the panel or being cut. */
+.happy-context-breakdown__caption {
+    margin: 0;
+    font-size: 12px;
+    line-height: 16px;
+    color: var(--text-secondary);
+    overflow-wrap: anywhere;
+}
+
+/* The gaps between the parts show the surface behind the bar, so each part
+   ends where the next begins without a rule drawn between them. */
+.happy-context-breakdown__bar {
+    display: flex;
+    flex: none;
+    flex-direction: row;
+    gap: 2px;
+    height: 8px;
+    border-radius: var(--happy-radius-pill);
+    overflow: hidden;
+}
+
+/* Each part grows by its own token count, so the bar is the window to scale.
+   The floor keeps a part that exists from thinning out of sight. */
+.happy-context-breakdown__segment {
+    flex: 0 1 0;
+    min-width: 2px;
+    height: 100%;
+    /* The window only ever moves by a report at a time; the ease keeps a jump
+       from reading as a glitch without animating anything on its own. */
+    transition: flex-grow 240ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .happy-context-breakdown__segment {
+        transition: none;
+    }
+}
+
+.happy-context-breakdown__legend {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.happy-context-breakdown__row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    min-height: 20px;
+    font-size: 13px;
+    line-height: 20px;
+}
+
+.happy-context-breakdown__swatch {
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+}
+
+.happy-context-breakdown__label {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/* Held at fixed widths, so the counts and the shares each line up down the
+   rows. Wide enough for the longest count this formats ("~999.9k"). */
+.happy-context-breakdown__tokens {
+    flex: none;
+    width: 56px;
+    text-align: right;
+    color: var(--text-secondary);
+}
+
+.happy-context-breakdown__share {
+    flex: none;
+    width: 40px;
+    text-align: right;
+    font-weight: 600;
+}
+
+/* Spent is the ink of the text until the share is worth colouring, the same
+   restraint the rate-limit bars keep. */
+.happy-context-breakdown__segment[data-part="used"],
+.happy-context-breakdown__swatch[data-part="used"] {
+    background: var(--text);
+}
+
+.happy-context-breakdown__segment[data-part="free"],
+.happy-context-breakdown__swatch[data-part="free"] {
+    background: var(--surface-selected);
+}
+
+/* Held back rather than free: the free tone, struck through, so it reads as
+   room that exists and is not the reader's to spend. */
+.happy-context-breakdown__segment[data-part="buffer"],
+.happy-context-breakdown__swatch[data-part="buffer"] {
+    background:
+        repeating-linear-gradient(
+            135deg,
+            color-mix(in srgb, var(--text-secondary) 64%, transparent) 0 1px,
+            transparent 1px 4px
+        ),
+        var(--surface-selected);
+}
+
+.happy-context-breakdown[data-tone="compact"] .happy-context-breakdown__segment[data-part="used"],
+.happy-context-breakdown[data-tone="compact"] .happy-context-breakdown__swatch[data-part="used"] {
+    background: var(--box-warning-text);
+}
+
+.happy-context-breakdown[data-tone="critical"] .happy-context-breakdown__segment[data-part="used"],
+.happy-context-breakdown[data-tone="critical"] .happy-context-breakdown__swatch[data-part="used"] {
+    background: var(--status-error);
+}
+
+/* The share is text, so it takes the tone as ink rather than as a fill. */
+.happy-context-breakdown[data-tone="compact"] .happy-context-breakdown__percent {
+    color: var(--box-warning-text);
+}
+
+.happy-context-breakdown[data-tone="critical"] .happy-context-breakdown__percent {
+    color: var(--status-error);
+}

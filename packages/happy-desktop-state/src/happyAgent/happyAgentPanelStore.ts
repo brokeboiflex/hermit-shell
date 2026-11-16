@@ -287,7 +287,7 @@ export interface HappyAgentPanelStore {
     artifactTabAttach(tabId: HappyAgentPanelTabId, version: number | undefined): void;
     /**
      * Adds a terminal tab to the open group and selects it. The shell runs in
-     * the open session, so there has to be one; the tab itself belongs to the
+     * the group's checkout, so it needs no open session; the tab belongs to the
      * group and stays put as the reader moves between that group's sessions.
      * Given a page's tab, the terminal takes its place, the way a new tab
      * becomes whatever is opened from it.
@@ -371,9 +371,9 @@ export interface HappyAgentPanelStore {
 }
 
 export interface HappyAgentPanelDeps {
-    /** Opens one terminal in a session; the panel owns the returned lease. */
+    /** Opens one terminal in a group's checkout; the panel owns the returned lease. */
     readonly terminalOpen: (
-        sessionId: HappyAgentSessionId,
+        groupId: HappyAgentGroupId,
         command?: string,
     ) => HappyAgentTerminalHandle;
     /** Reads one conversation for a chat tab; the panel owns the returned lease. */
@@ -695,7 +695,6 @@ export function happyAgentPanelStoreCreate(deps: HappyAgentPanelDeps): HappyAgen
 
     const terminalTabAdd = (
         group: HappyAgentGroupId,
-        session: HappyAgentSessionId,
         command?: { readonly name: string; readonly command: string },
     ): void => {
         const id = `tab_${nextTabNumber}` as HappyAgentPanelTabId;
@@ -709,7 +708,7 @@ export function happyAgentPanelStoreCreate(deps: HappyAgentPanelDeps): HappyAgen
             label,
             groupId: group,
             placement: "panel",
-            terminal: deps.terminalOpen(session, command?.command),
+            terminal: deps.terminalOpen(group, command?.command),
         });
         activeByGroup.set(group, id);
         activeViewId = id;
@@ -1086,8 +1085,8 @@ export function happyAgentPanelStoreCreate(deps: HappyAgentPanelDeps): HappyAgen
             recompute();
         },
         terminalAdd(replacing) {
-            if (disposed || !groupId || !conversationId || terminalRefusal !== undefined) return;
-            terminalTabAdd(groupId, conversationId);
+            if (disposed || !groupId || terminalRefusal !== undefined) return;
+            terminalTabAdd(groupId);
             const replaced = tabs.findIndex(
                 (tab) => tab.id === replacing && tab.kind === "browser" && tab.groupId === groupId,
             );
@@ -1097,15 +1096,8 @@ export function happyAgentPanelStoreCreate(deps: HappyAgentPanelDeps): HappyAgen
             recompute();
         },
         terminalCommandRun(name, command) {
-            if (
-                disposed ||
-                !groupId ||
-                !conversationId ||
-                terminalRefusal !== undefined ||
-                !command.trim()
-            )
-                return;
-            terminalTabAdd(groupId, conversationId, { name, command });
+            if (disposed || !groupId || terminalRefusal !== undefined || !command.trim()) return;
+            terminalTabAdd(groupId, { name, command });
             open = true;
             remember();
             recompute();

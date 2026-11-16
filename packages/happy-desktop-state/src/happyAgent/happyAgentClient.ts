@@ -548,12 +548,12 @@ export interface HappyAgentWorkspaceClient {
     /** Lets a restored chat resume background synchronization when it is acquired again. */
     chatRestore(sessionId: HappyAgentSessionId): void;
     /**
-     * Opens one interactive terminal in a session's working directory. Unlike a
-     * chat store these are not shared or reference-counted: two terminals in the
-     * same session are two separate shells, which is the whole point of being able
+     * Opens one interactive terminal in a workspace's checkout. Unlike a chat
+     * store these are not shared or reference-counted: two terminals in the same
+     * workspace are two separate shells, which is the whole point of being able
      * to open more than one. Disposing the handle stops the remote terminal.
      */
-    terminalOpen(sessionId: HappyAgentSessionId, command?: string): HappyAgentTerminalHandle;
+    terminalOpen(workspaceId: HappyAgentGroupId, command?: string): HappyAgentTerminalHandle;
     [Symbol.dispose](): void;
 }
 
@@ -1502,7 +1502,7 @@ export function happyAgentWorkspaceClientCreate(
             binding.restoring = true;
             chatActivate(binding);
         },
-        terminalOpen(sessionId, command) {
+        terminalOpen(workspaceId, command) {
             if (disposed) throw new Error("The Happy Agent client is disposed.");
             return happyAgentTerminalOpen(
                 {
@@ -1514,7 +1514,7 @@ export function happyAgentWorkspaceClientCreate(
                         ? { driverCreate: deps.terminalDriverCreate }
                         : {}),
                 },
-                sessionId,
+                workspaceId,
             );
         },
         [Symbol.dispose]() {

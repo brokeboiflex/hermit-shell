@@ -63,3 +63,18 @@
     color: var(--text-secondary);
     cursor: default;
 }
+
+.happy-command-shortcuts__form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+}
+
+.happy-command-shortcuts__problem {
+    margin: 0;
+    padding-inline: var(--happy-panel-row-padding);
+    color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 16px;
+}

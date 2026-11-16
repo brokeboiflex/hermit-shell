@@ -1,16 +1,24 @@
 import type { CSSProperties } from "react";
 import {
     happyAgentProviderServiceName,
+    type HappyAgentContextGauge,
     type HappyAgentSessionUsage,
     type HappyAgentUsageGroup,
     type HappyAgentUsageQuota,
     type HappyAgentUsageQuotaWindow,
 } from "happy-desktop-state";
+import { ContextBreakdown } from "./ContextBreakdown";
 import { USAGE_CRITICAL_PERCENT, usagePercentClamp, usageWindowTone } from "./usageTone";
 
 export type HappyAgentUsagePanelProps = {
     /** The projected usage snapshot; omit while the first load is in flight. */
     usage?: HappyAgentSessionUsage;
+    /**
+     * The conversation's context window, drawn above the accounting as a breakdown of where
+     * it has gone. It exists before the first usage reading does, so it is drawn whatever
+     * the usage load is doing.
+     */
+    contextGauge?: HappyAgentContextGauge;
     /** True while a load/poll is in flight (shows a subtle loading affordance). */
     loading?: boolean;
     /** Displayable error from a failed load; replaces the body when set. */
@@ -133,11 +141,15 @@ function QuotaRow(props: { quota: HappyAgentUsageQuota }) {
 
 /**
  * HappyAgentUsagePanel — presentational token/cost accounting for a session (`/usage`).
- * Renders per-model token+cost groups, a session total, an approximate
- * context-window occupancy line, and any provider rate-limit windows. Purely
+ * Renders where the context window has gone, per-model token+cost groups, a
+ * session total, and any provider rate-limit windows. Purely
  * driven by a `HappyAgentSessionUsage` snapshot plus loading/error flags, so the owning
  * surface fetches (and polls while visible) and passes the result down. Holds no
  * state and starts no work of its own.
+ *
+ * The context window is a `ContextBreakdown` when the surface knows the window
+ * (`contextGauge`). A model that declares no window has nothing to break down,
+ * so its occupancy stays the one line under the table.
  *
  * It is a content block rather than a card: the reading is named and framed by
  * the side-panel tab or other surface that carries it, so it neither repeats
@@ -149,7 +161,7 @@ function QuotaRow(props: { quota: HappyAgentUsageQuota }) {
  * recognisably the same reading rather than two unrelated charts.
  */
 export function HappyAgentUsagePanel(props: HappyAgentUsagePanelProps) {
-    const { usage } = props;
+    const { contextGauge, usage } = props;
     const panel = props.placement === "panel";
     const content = (
         <section
@@ -160,6 +172,17 @@ export function HappyAgentUsagePanel(props: HappyAgentUsagePanelProps) {
             data-testid={props["data-testid"]}
             style={props.style}
         >
+            {contextGauge ? (
+                <ContextBreakdown
+                    approximate={contextGauge.approximate}
+                    className="happy-agent-usage__context-breakdown"
+                    compactTokens={contextGauge.compactTokens}
+                    measured={contextGauge.measured}
+                    model={usage?.context?.modelId}
+                    totalTokens={contextGauge.totalTokens}
+                    usedTokens={contextGauge.usedTokens}
+                />
+            ) : null}
             {props.error !== undefined ? (
                 <p
                     className="happy-agent-usage__error"
@@ -223,7 +246,7 @@ export function HappyAgentUsagePanel(props: HappyAgentUsagePanelProps) {
                         <p className="happy-agent-usage__empty">No model usage yet.</p>
                     )}
 
-                    {usage.context ? (
+                    {usage.context && contextGauge === undefined ? (
                         <p
                             className="happy-agent-usage__context"
                             data-happy-desktop-ui="happy-agent-usage-context"

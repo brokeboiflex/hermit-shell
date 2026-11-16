@@ -1,0 +1,127 @@
+/*
+ * Chat wallpaper — what the person chose to sit behind every chat (`ThemeScope`'s
+ * `chatWallpaper`, which declares `--happy-chat-wallpaper-image` beside
+ * `data-chat-wallpaper`). It is painted once, on the conversation section. The
+ * section does not scroll: the transcript moves over a picture that holds
+ * still, and scrolling never repaints it. It is paint only and changes no box.
+ *
+ * A coding-monogram pattern is a 480px tile of faint neutral ink on
+ * transparency, laid over the surface from the section's top-left corner, so
+ * widening the window adds pattern without moving any. The person's own
+ * picture covers the section under a veil of the surface's own colour, so
+ * prose, tool rows, and the composer keep their contrast in every appearance.
+ */
+
+.happy-theme-scope[data-chat-wallpaper] .happy-conversation {
+    background:
+        var(--happy-chat-wallpaper-image) 0 0 / 480px 480px repeat,
+        var(--surface);
+}
+
+.happy-theme-scope[data-chat-wallpaper="custom"] .happy-conversation {
+    background:
+        linear-gradient(var(--happy-chat-wallpaper-veil), var(--happy-chat-wallpaper-veil)),
+        var(--happy-chat-wallpaper-image) center / cover no-repeat,
+        var(--surface);
+}
+
+/* The dock is seamless with the transcript, so with a wallpaper the picture
+   runs on under the composer rather than stopping at a band of plain surface. */
+.happy-theme-scope[data-chat-wallpaper] .happy-conversation .happy-conversation__dock,
+.happy-theme-scope[data-chat-wallpaper] .happy-conversation .happy-composer-dock {
+    background: transparent;
+}
+
+/*
+ * C-350 ChatWallpaperPicker — the choice of wallpaper: a row of swatches, then
+ * the way to bring a picture of one's own. Each swatch is painted as a chat
+ * would be, so what is picked is what the chat will look like in the current
+ * appearance; a pattern's tile is shown at a quarter of its size so a few of
+ * its marks fit. Selection and focus are rings inside and outside the swatch's own
+ * edge: neither moves or resizes anything.
+ */
+
+.happy-chat-wallpaper-picker {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.happy-chat-wallpaper-picker__choices {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.happy-chat-wallpaper-picker__choice {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: var(--happy-font-ui);
+    font-size: 12px;
+    font-synthesis: none;
+    font-weight: 500;
+    line-height: 16px;
+    cursor: pointer;
+    appearance: none;
+}
+
+.happy-chat-wallpaper-picker__choice:disabled {
+    cursor: not-allowed;
+    opacity: 0.48;
+}
+
+.happy-chat-wallpaper-picker__choice[aria-checked="true"] {
+    color: var(--text);
+}
+
+.happy-chat-wallpaper-picker__choice:focus-visible {
+    outline: none;
+}
+
+.happy-chat-wallpaper-picker__swatch {
+    box-sizing: border-box;
+    width: 72px;
+    height: 48px;
+    border: 1px solid var(--divider);
+    border-radius: var(--happy-radius-window);
+    background: var(--surface);
+}
+
+/* Two coats of the tile: at a quarter of its size its faint ink would vanish. */
+.happy-chat-wallpaper-picker__swatch[data-wallpaper] {
+    background:
+        var(--happy-chat-wallpaper-image) 0 0 / 120px 120px repeat,
+        var(--happy-chat-wallpaper-image) 0 0 / 120px 120px repeat,
+        var(--surface);
+}
+
+.happy-chat-wallpaper-picker__swatch[data-wallpaper="custom"] {
+    background:
+        linear-gradient(var(--happy-chat-wallpaper-veil), var(--happy-chat-wallpaper-veil)),
+        var(--happy-chat-wallpaper-image) center / cover no-repeat,
+        var(--surface);
+}
+
+/* The chosen swatch wears the accent inside its own edge… */
+.happy-chat-wallpaper-picker__choice[aria-checked="true"] .happy-chat-wallpaper-picker__swatch {
+    border-color: var(--radio-active);
+    box-shadow: inset 0 0 0 1px var(--radio-active);
+}
+
+/* …and keyboard focus stands outside it, so the two never hide each other. */
+.happy-chat-wallpaper-picker__choice:focus-visible .happy-chat-wallpaper-picker__swatch {
+    outline: 2px solid var(--radio-active);
+    outline-offset: 2px;
+}
+
+.happy-chat-wallpaper-picker__file {
+    display: none;
+}

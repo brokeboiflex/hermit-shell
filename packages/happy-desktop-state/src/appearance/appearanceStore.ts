@@ -1,3 +1,4 @@
+import type { ChatWallpaper } from "./chatWallpaper.js";
 import {
     customThemeEmpty,
     customThemeEqual,
@@ -7,7 +8,8 @@ import {
 
 /**
  * The appearance surface: the selected and resolved theme, the window's
- * scrollbar visibility behavior, and whether avatar placeholders move.
+ * scrollbar visibility behavior, whether avatar placeholders move, and the
+ * picture behind every chat.
  *
  * It exists because appearance is product state, not React state: every
  * workspace renders one `ThemeScope` from it instead of carrying a separate
@@ -38,6 +40,13 @@ export interface AppearanceSnapshot {
      * turned off.
      */
     readonly avatarsAnimated: boolean;
+    /**
+     * The picture behind every chat, kept by this window; `none` until one is
+     * picked. `custom` is chosen only while `chatWallpaperImage` is present.
+     */
+    readonly chatWallpaper: ChatWallpaper;
+    /** The person's own picture, as an image URL; kept after another wallpaper is chosen. */
+    readonly chatWallpaperImage?: string;
 }
 
 export interface AppearanceStore {
@@ -55,6 +64,10 @@ export interface AppearanceStore {
     appearanceSelect(mode: ThemeMode): void;
     scrollbarVisibilitySelect(visibility: ScrollbarVisibility): void;
     avatarsAnimatedUpdate(animated: boolean): void;
+    /** Chooses a wallpaper; `custom` only once a picture of the person's own exists. */
+    chatWallpaperSelect(wallpaper: ChatWallpaper): void;
+    /** Keeps a picture of the person's own, as an image URL, and chooses it. */
+    chatWallpaperImageUpdate(image: string): void;
     [Symbol.dispose](): void;
 }
 
@@ -80,6 +93,10 @@ export interface AppearanceStoreOptions {
     readonly scrollbarVisibility?: ScrollbarVisibility;
     /** Initial Animated avatars; defaults to on. */
     readonly avatarsAnimated?: boolean;
+    /** Initial chat wallpaper; defaults to none. */
+    readonly chatWallpaper?: ChatWallpaper;
+    /** The person's own picture kept from before, as an image URL. */
+    readonly chatWallpaperImage?: string;
     /**
      * Injected platform appearance source. Supplying it keeps this store free of
      * a `window` dependency in tests and in any non-browser host.
@@ -133,6 +150,11 @@ export function appearanceStoreOwnedCreate(options: AppearanceStoreOptions = {})
     let customTheme = options.customTheme ?? customThemeEmpty;
     let scrollbarVisibility: ScrollbarVisibility = options.scrollbarVisibility ?? "automatic";
     let avatarsAnimated = options.avatarsAnimated ?? true;
+    let chatWallpaperImage = options.chatWallpaperImage;
+    let chatWallpaper: ChatWallpaper =
+        options.chatWallpaper === "custom" && chatWallpaperImage === undefined
+            ? "none"
+            : (options.chatWallpaper ?? "none");
     const paletteResolve = (): ThemePalette =>
         mode === "system" ? systemAppearance() : mode === "custom" ? customTheme.base : mode;
     const resolve = (): AppearanceSnapshot => {
@@ -144,6 +166,8 @@ export function appearanceStoreOwnedCreate(options: AppearanceStoreOptions = {})
             customTheme,
             scrollbarVisibility,
             avatarsAnimated,
+            chatWallpaper,
+            ...(chatWallpaperImage === undefined ? {} : { chatWallpaperImage }),
         };
     };
     let snapshot = resolve();
@@ -157,7 +181,9 @@ export function appearanceStoreOwnedCreate(options: AppearanceStoreOptions = {})
             snapshot.palette === next.palette &&
             snapshot.customTheme === next.customTheme &&
             snapshot.scrollbarVisibility === next.scrollbarVisibility &&
-            snapshot.avatarsAnimated === next.avatarsAnimated
+            snapshot.avatarsAnimated === next.avatarsAnimated &&
+            snapshot.chatWallpaper === next.chatWallpaper &&
+            snapshot.chatWallpaperImage === next.chatWallpaperImage
         )
             return;
         snapshot = next;
@@ -221,6 +247,17 @@ export function appearanceStoreOwnedCreate(options: AppearanceStoreOptions = {})
         avatarsAnimatedUpdate(animated) {
             if (avatarsAnimated === animated) return;
             avatarsAnimated = animated;
+            publish();
+        },
+        chatWallpaperSelect(next) {
+            if (chatWallpaper === next) return;
+            if (next === "custom" && chatWallpaperImage === undefined) return;
+            chatWallpaper = next;
+            publish();
+        },
+        chatWallpaperImageUpdate(image) {
+            chatWallpaperImage = image;
+            chatWallpaper = "custom";
             publish();
         },
         [Symbol.dispose]() {

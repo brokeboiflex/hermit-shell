@@ -44,7 +44,7 @@ it("renders the default-off opt-in and preserves switch identity and focus when 
     const section = view.$('[data-happy-desktop-ui="happy-agent-settings-section"]');
     expect(section.element.textContent).toContain("Adds a phone beside Settings.");
     expect(section.computedStyle("display")).toBe("flex");
-    expect(section.computedStyle("gap")).toBe("8px");
+    expect(section.computedStyle("gap")).toBe("12px");
     expect(section.bounds().width).toBe(672);
     const row = view.$('[data-happy-desktop-ui="form-row"]');
     const switchBox = view.$('[role="switch"]').bounds();
@@ -52,7 +52,7 @@ it("renders the default-off opt-in and preserves switch identity and focus when 
     expect(switchBox.height).toBe(16);
     expect(switchBox.x + switchBox.width).toBe(row.bounds().x + row.bounds().width);
     const label = view.$('[data-happy-desktop-ui="form-row-label"]');
-    expect(label.computedStyle("font-size")).toBe("13px");
+    expect(label.computedStyle("font-size")).toBe("14px");
     expect(label.computedStyle("line-height")).toBe("20px");
     expect(label.computedStyle("color")).toBe("rgb(0, 0, 0)");
     const ink = await label.visibleMetrics();

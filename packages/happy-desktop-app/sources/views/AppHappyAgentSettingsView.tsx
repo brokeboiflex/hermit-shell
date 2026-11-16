@@ -129,6 +129,7 @@ import {
     type HappyAgentStateDocument,
     HappyCloudWebSettings,
 } from "happy-desktop-ui";
+import { chatWallpaperImageRead } from "../chatWallpaperImage";
 import { HappyAgentVersionProvider } from "../HappyAgentVersionProvider";
 import { AppOnboardingSettings } from "./AppOnboardingSettings";
 import { AppPaymentsSettings } from "./AppPaymentsSettings";
@@ -154,37 +155,37 @@ import {
 /** The categories the local settings window offers, in the order they are listed. */
 export const HAPPY_AGENT_SETTINGS_CATEGORIES: readonly HappyAgentSettingsCategory[] = [
     // Listed in blocks of like things, the everyday ones first and unheaded.
-    { icon: "settings", id: "general", label: "General", tone: "gray" },
+    { icon: "settings", id: "general", label: "General" },
     // Local author identity and the optional WorkOS account share one category.
-    { icon: "users", id: "account", label: "Account", tone: "blue" },
+    { icon: "users", id: "account", label: "Account" },
     // Which of other people's tasks, docs, lists and calendars come to you. Its
     // address stays `sharing`, so links to it keep working.
-    { icon: "bell", id: "sharing", label: "Notifications", tone: "red" },
-    { icon: "mobile", id: "mobile-access", label: "Mobile access", tone: "green" },
-    { icon: "call", id: "voice", label: "Voice", tone: "orange" },
+    { icon: "bell", id: "sharing", label: "Notifications" },
+    { icon: "mobile", id: "mobile-access", label: "Mobile access" },
+    { icon: "call", id: "voice", label: "Voice" },
     // What agents on this machine are told, run on, and may use.
-    { group: "Agents", icon: "doc", id: "instructions", label: "Instructions", tone: "purple" },
-    { group: "Agents", icon: "globe", id: "providers", label: "Inference", tone: "indigo" },
+    { group: "Agents", icon: "doc", id: "instructions", label: "Instructions" },
+    { group: "Agents", icon: "globe", id: "providers", label: "Inference" },
     // The computers agents run on, beside the models they run; Happy Cloud only.
-    { group: "Agents", icon: "terminal", id: "compute", label: "Compute", tone: "blue" },
+    { group: "Agents", icon: "terminal", id: "compute", label: "Compute" },
     // Usage follows Inference because it is the same accounts read the other
     // way round: which of them exist, then what each has spent.
-    { group: "Agents", icon: "zap", id: "usage", label: "Usage", tone: "teal" },
-    { group: "Agents", icon: "lock", id: "secrets", label: "Secrets", tone: "green" },
+    { group: "Agents", icon: "zap", id: "usage", label: "Usage" },
+    { group: "Agents", icon: "lock", id: "secrets", label: "Secrets" },
     // Who is on a Happy Cloud server; offered only there.
-    { group: "Team", icon: "users", id: "members", label: "Members", tone: "orange" },
+    { group: "Team", icon: "users", id: "members", label: "Members" },
     // The team's code on a Happy Cloud server; offered only there.
-    { group: "Team", icon: "repository", id: "repositories", label: "Repositories", tone: "gray" },
+    { group: "Team", icon: "repository", id: "repositories", label: "Repositories" },
     // What people are asked for when they first open a Happy Cloud server;
     // listed only where the server reports onboarding settings.
-    { group: "Team", icon: "check-circle", id: "onboarding", label: "Onboarding", tone: "green" },
+    { group: "Team", icon: "check-circle", id: "onboarding", label: "Onboarding" },
     // The team's credit and card; listed only where the server takes payments
     // and the reader may manage them.
-    { group: "Team", icon: "zap", id: "payments", label: "Payments", tone: "green" },
+    { group: "Team", icon: "zap", id: "payments", label: "Payments" },
     // How each project's changes are split into tiers in the Changes listing.
-    { group: "Advanced", icon: "file-diff", id: "file-tiers", label: "File tiers", tone: "orange" },
-    { group: "Advanced", icon: "zap", id: "experimental", label: "Experimental", tone: "purple" },
-    { group: "Advanced", icon: "code", id: "debug", label: "Dev tools", tone: "gray" },
+    { group: "Advanced", icon: "file-diff", id: "file-tiers", label: "File tiers" },
+    { group: "Advanced", icon: "zap", id: "experimental", label: "Experimental" },
+    { group: "Advanced", icon: "code", id: "debug", label: "Dev tools" },
 ];
 
 export const HAPPY_AGENT_SETTINGS_DEFAULT_CATEGORY = "general";
@@ -1794,6 +1795,18 @@ export function AppHappyAgentSettingsView(props: AppHappyAgentSettingsViewProps)
                     onAvatarsAnimatedChange={(animated) =>
                         props.appearance.avatarsAnimatedUpdate(animated)
                     }
+                    chatWallpaper={appearance.chatWallpaper}
+                    chatWallpaperImage={appearance.chatWallpaperImage}
+                    onChatWallpaperChange={(wallpaper) =>
+                        props.appearance.chatWallpaperSelect(wallpaper)
+                    }
+                    onChatWallpaperImageChoose={(file) => {
+                        void chatWallpaperImageRead(file).then(
+                            (image) => props.appearance.chatWallpaperImageUpdate(image),
+                            (error: unknown) =>
+                                console.error("Could not read the chosen wallpaper.", error),
+                        );
+                    }}
                     titleShimmerEnabled={titleShimmer.titleShimmerEnabled}
                     {...(unavailable === undefined ? {} : { unavailable })}
                 />

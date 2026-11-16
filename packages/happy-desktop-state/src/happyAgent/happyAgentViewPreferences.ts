@@ -3,11 +3,7 @@ import {
     type HappyAgentChangeTier,
     type HappyAgentChangeTierId,
 } from "./happyAgentChangeTiers.js";
-import type { HappyAgentGroupId, HappyAgentProjectId } from "./happyAgentTypes.js";
-import {
-    happyAgentCommandShortcutsParse,
-    type HappyAgentCommandShortcut,
-} from "./happyAgentCommandShortcutsStore.js";
+import type { HappyAgentGroupId } from "./happyAgentTypes.js";
 import type { HappyAgentFileLayout, HappyAgentFileScope } from "./happyAgentWorkspaceStore.js";
 
 /**
@@ -53,10 +49,6 @@ export interface HappyAgentGroupViewPreferences {
  */
 export interface HappyAgentViewPreferencesDocument {
     readonly groups: Readonly<Record<string, HappyAgentGroupViewPreferences>>;
-    /** User-authored commands, shared by a project's root and its worktrees. */
-    readonly projectShortcuts?: Readonly<
-        Record<HappyAgentProjectId, readonly HappyAgentCommandShortcut[]>
-    >;
     /**
      * Sections the Changes listing splits secondary files into, in match order.
      * One list for every project rather than one per project: which files
@@ -247,18 +239,7 @@ export function happyAgentViewPreferencesParse(
     // write leaves the per-project field out, so it is never read again.
     if (changeTiers.length === 0)
         changeTiers.push(...legacyTiersParse((value as { projects?: unknown }).projects));
-    const rawShortcuts = (value as { projectShortcuts?: unknown }).projectShortcuts;
-    const projectShortcuts: Record<HappyAgentProjectId, readonly HappyAgentCommandShortcut[]> = {};
-    if (typeof rawShortcuts === "object" && rawShortcuts !== null)
-        for (const [id, entries] of Object.entries(rawShortcuts)) {
-            const shortcuts = happyAgentCommandShortcutsParse(entries);
-            if (shortcuts.length > 0) projectShortcuts[id as HappyAgentProjectId] = shortcuts;
-        }
-    return {
-        groups: parsed,
-        changeTiers: changeTiers.slice(0, HAPPY_AGENT_CHANGE_TIERS_MAX),
-        ...(Object.keys(projectShortcuts).length > 0 ? { projectShortcuts } : {}),
-    };
+    return { groups: parsed, changeTiers: changeTiers.slice(0, HAPPY_AGENT_CHANGE_TIERS_MAX) };
 }
 
 /**

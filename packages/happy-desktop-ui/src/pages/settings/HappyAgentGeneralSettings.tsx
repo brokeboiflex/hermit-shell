@@ -1,4 +1,5 @@
 import type {
+    ChatWallpaper,
     HappyAgentCompletionSound,
     HappyAgentMenusSnapshot,
     HappyAgentNewSessionStart,
@@ -7,6 +8,7 @@ import type {
 import { Banner } from "../../Banner";
 import { Box } from "../../Box";
 import { Button } from "../../Button";
+import { ChatWallpaperPicker } from "../../ChatWallpaperPicker";
 import { ComposerModelControl, type ComposerModelControlProps } from "../../ComposerModelControl";
 import { FormRow } from "../../FormRow";
 import { HappyAgentSessionControls } from "../../HappyAgentSessionControls";
@@ -59,6 +61,16 @@ export type HappyAgentGeneralSettingsProps = {
      */
     avatarsAnimated?: boolean;
     onAvatarsAnimatedChange?: (animated: boolean) => void;
+    /**
+     * The picture behind every chat. Absent where the host keeps no such
+     * choice, which offers no control.
+     */
+    chatWallpaper?: ChatWallpaper;
+    /** The person's own picture, as an image URL, once they have chosen one. */
+    chatWallpaperImage?: string;
+    onChatWallpaperChange?: (wallpaper: ChatWallpaper) => void;
+    /** A picture file chosen as the wallpaper; absent where the host keeps no picture. */
+    onChatWallpaperImageChoose?: (file: File) => void;
     /**
      * Whether the sidebar leaves out every connection's Projects section. Absent
      * where the host keeps no such choice, which offers no control.
@@ -227,6 +239,22 @@ export function HappyAgentGeneralSettings(props: HappyAgentGeneralSettingsProps)
                           props.statusBar.onThemeShownChange,
                       )
                     : null}
+                {props.chatWallpaper && props.onChatWallpaperChange ? (
+                    <FormRow
+                        control={
+                            <ChatWallpaperPicker
+                                aria-label="Chat wallpaper"
+                                image={props.chatWallpaperImage}
+                                onChange={props.onChatWallpaperChange}
+                                onImageChoose={props.onChatWallpaperImageChoose}
+                                value={props.chatWallpaper}
+                            />
+                        }
+                        description="Shown behind every chat on this computer"
+                        label="Chat wallpaper"
+                        layout="stacked"
+                    />
+                ) : null}
                 <FormRow
                     control={
                         <SegmentedControl

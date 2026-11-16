@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { APP_SHELL_SIDEBAR_DEFAULT_WIDTH, AppShell } from "../../AppShell";
 import { Box } from "../../Box";
 import { Icon, type IconName } from "../../Icon";
-import { IconTile, type IconTileTone } from "../../IconTile";
 import { PanelHeader } from "../../PanelHeader";
 import { ScrollArea } from "../../Scrollbar";
 import { Sidebar, type SidebarSection } from "../../Sidebar";
@@ -11,8 +10,6 @@ export interface HappyAgentSettingsCategory {
     readonly id: string;
     readonly label: string;
     readonly icon: IconName;
-    /** The hue of the tile the category's glyph sits on, in the column and the header. */
-    readonly tone: IconTileTone;
     /**
      * The heading of the block this category is listed in. Consecutive
      * categories with the same group share one block; absent lists the category
@@ -31,8 +28,8 @@ export type HappyAgentSettingsShellProps = {
     /** Leaves settings and returns to the workspace. */
     onClose: () => void;
     /**
-     * Present on a page opened from inside the category: the header leads with
-     * a back control that returns to the category instead of with its icon.
+     * Present on a page opened from inside the category: the band above the
+     * page carries a control back to the category.
      */
     onBack?: () => void;
     title: string;
@@ -46,15 +43,19 @@ export type HappyAgentSettingsShellProps = {
     sidebarWidth?: number;
 };
 
+/** The column's first row, which leaves settings; no category may take this id. */
+const BACK_TO_APP_ID = "happy-agent-settings:back-to-app";
+
 /**
  * The local workspace's settings window: a permanent category column beside one
- * category's body.
+ * category's page.
  *
  * The column is not the workspace sidebar and does not collapse — settings is a
- * two-pane place with nothing to gain from hiding half of it — so the control at
- * the top of that column is the way back out rather than a collapse toggle. It is
- * the `Sidebar` drill-down heading, which puts the back control on the same line
- * as the workspace's own toggle and clear of the native traffic lights.
+ * two-pane place with nothing to gain from hiding half of it. Its first row is
+ * the way back out, a row like the categories under it, so the column reads as
+ * one list of places. The page leads with the category's title and subtitle on
+ * the content column, above its sections, and the band above it is left to the
+ * window's drag lane and, on a page inside a category, the way back to it.
  */
 export function HappyAgentSettingsShell(props: HappyAgentSettingsShellProps) {
     return (
@@ -67,56 +68,64 @@ export function HappyAgentSettingsShell(props: HappyAgentSettingsShellProps) {
             sidebar={
                 <Sidebar
                     activeItemId={props.activeCategoryId}
-                    onBack={props.onClose}
-                    onItemSelect={props.onCategorySelect}
-                    sections={categorySections(props.categories)}
-                    title="Settings"
+                    className="happy-agent-settings__nav"
+                    onItemSelect={(id) =>
+                        id === BACK_TO_APP_ID ? props.onClose() : props.onCategorySelect(id)
+                    }
+                    sections={[
+                        {
+                            id: "back-to-app",
+                            items: [
+                                {
+                                    icon: "chevron-left",
+                                    id: BACK_TO_APP_ID,
+                                    kind: "view",
+                                    label: "Back to app",
+                                },
+                            ],
+                        },
+                        ...categorySections(props.categories),
+                    ]}
                 />
             }
         >
             <PanelHeader className="happy-agent-settings__header">
                 {props.onBack ? (
                     <button
-                        aria-label={`Back to ${categoryLabel(props)}`}
                         className="happy-agent-settings__back"
                         data-happy-desktop-ui="happy-agent-settings-back"
                         onClick={props.onBack}
                         type="button"
                     >
-                        <Icon name="chevron-right" size={16} />
+                        <Icon name="chevron-left" size={16} />
+                        <span>{categoryLabel(props)}</span>
                     </button>
                 ) : null}
-                <Box className="happy-agent-settings__heading">
-                    {props.onBack ? null : (
-                        <IconTile
-                            className="happy-agent-settings__heading-tile"
-                            icon={activeCategory(props)?.icon ?? "settings"}
-                            size="small"
-                            tone={activeCategory(props)?.tone ?? "gray"}
-                        />
-                    )}
-                    <span
-                        className="happy-agent-settings__heading-title"
-                        data-happy-desktop-ui="happy-agent-settings-heading-title"
-                    >
-                        {props.title}
-                    </span>
-                    {props.description ? (
-                        <span
-                            className="happy-agent-settings__heading-description"
-                            data-happy-desktop-ui="happy-agent-settings-heading-description"
-                        >
-                            {props.description}
-                        </span>
-                    ) : null}
-                </Box>
             </PanelHeader>
             <ScrollArea
                 className="happy-agent-settings__body"
                 data-happy-desktop-ui="happy-agent-settings-body"
                 viewportClassName="happy-agent-settings__body-viewport"
             >
-                <Box className="happy-agent-settings__content">{props.children}</Box>
+                <Box className="happy-agent-settings__content">
+                    <Box className="happy-agent-settings__heading">
+                        <h1
+                            className="happy-agent-settings__heading-title"
+                            data-happy-desktop-ui="happy-agent-settings-heading-title"
+                        >
+                            {props.title}
+                        </h1>
+                        {props.description ? (
+                            <p
+                                className="happy-agent-settings__heading-description"
+                                data-happy-desktop-ui="happy-agent-settings-heading-description"
+                            >
+                                {props.description}
+                            </p>
+                        ) : null}
+                    </Box>
+                    {props.children}
+                </Box>
             </ScrollArea>
         </AppShell>
     );
@@ -134,7 +143,6 @@ function categorySections(categories: readonly HappyAgentSettingsCategory[]): Si
             id: category.id,
             kind: "view" as const,
             label: category.label,
-            tile: category.tone,
         };
         const last = sections.at(-1);
         if (last !== undefined && last.label === category.group) last.items.push(item);
@@ -152,14 +160,11 @@ function categorySections(categories: readonly HappyAgentSettingsCategory[]): Si
     return sections;
 }
 
-function activeCategory(
-    props: HappyAgentSettingsShellProps,
-): HappyAgentSettingsCategory | undefined {
-    return props.categories.find((category) => category.id === props.activeCategoryId);
-}
-
 function categoryLabel(props: HappyAgentSettingsShellProps): string {
-    return activeCategory(props)?.label ?? "Settings";
+    return (
+        props.categories.find((category) => category.id === props.activeCategoryId)?.label ??
+        "Settings"
+    );
 }
 
 export interface HappyAgentSettingsSectionProps {

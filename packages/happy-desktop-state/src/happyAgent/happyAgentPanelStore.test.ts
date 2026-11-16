@@ -11,12 +11,12 @@ const AGENT = "ses_a" as HappyAgentSessionId;
 
 function panelCreate(memory = new Map<HappyAgentGroupId, HappyAgentPanelMemory>()): {
     store: HappyAgentPanelStore;
-    terminalsOpened: HappyAgentSessionId[];
+    terminalsOpened: HappyAgentGroupId[];
 } {
-    const terminalsOpened: HappyAgentSessionId[] = [];
+    const terminalsOpened: HappyAgentGroupId[] = [];
     const store = happyAgentPanelStoreCreate({
-        terminalOpen: (sessionId) => {
-            terminalsOpened.push(sessionId);
+        terminalOpen: (groupId) => {
+            terminalsOpened.push(groupId);
             return { [Symbol.dispose]: () => undefined } as unknown as HappyAgentTerminalHandle;
         },
         memoryRead: (group) => memory.get(group),
@@ -75,7 +75,7 @@ it("turns a new tab into a terminal in its place", () => {
     const blank = store.get().tabs[1]!;
     store.terminalAdd(blank.id);
     const panel = store.get();
-    expect(terminalsOpened).toEqual([AGENT]);
+    expect(terminalsOpened).toEqual([GROUP_A]);
     expect(panel.tabs.map((tab) => tab.kind)).toEqual(["browser", "terminal"]);
     expect(panel.activeViewId).toBe(panel.tabs[1]?.id);
 });

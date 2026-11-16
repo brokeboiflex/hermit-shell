@@ -1,4 +1,4 @@
-import type { HappyAgentSessionUsage } from "happy-desktop-state";
+import type { HappyAgentContextGauge, HappyAgentSessionUsage } from "happy-desktop-state";
 import { HappyAgentUsagePanel } from "../../src/HappyAgentUsagePanel";
 import { ComponentPage, Specimen } from "../kit";
 
@@ -52,21 +52,30 @@ const usage: HappyAgentSessionUsage = {
     ],
 };
 
+const contextGauge: HappyAgentContextGauge = {
+    usedTokens: 184_200,
+    remainingTokens: 215_800,
+    totalTokens: 400_000,
+    remainingFraction: 0.5395,
+    compactTokens: 272_000,
+    approximate: true,
+};
+
 export function HappyAgentUsagePanelPage() {
     return (
         <ComponentPage
             number={componentNumber}
-            summary="Happy Agent session usage (`/usage`): per-model token/cost table, session totals, context-window occupancy, and provider rate-limit windows."
+            summary="Happy Agent session usage (`/usage`): where the context window has gone, session totals, per-model token/cost table, and provider rate-limit windows."
             title="HappyAgentUsagePanel"
         >
             <Specimen
-                detail="a session with two models, context usage, and quota windows"
+                detail="a session with two models, the context window broken down above the accounting, and quota windows"
                 label="Populated"
                 number="01"
                 stage="surface"
             >
                 <div style={{ width: "560px" }}>
-                    <HappyAgentUsagePanel usage={usage} />
+                    <HappyAgentUsagePanel contextGauge={contextGauge} usage={usage} />
                 </div>
             </Specimen>
 
@@ -77,24 +86,58 @@ export function HappyAgentUsagePanelPage() {
                 stage="surface"
             >
                 <div style={{ display: "flex", height: "520px", width: "280px" }}>
-                    <HappyAgentUsagePanel placement="panel" usage={usage} />
+                    <HappyAgentUsagePanel
+                        contextGauge={contextGauge}
+                        placement="panel"
+                        usage={usage}
+                    />
                 </div>
             </Specimen>
 
             <Specimen
-                detail="first load in flight, no snapshot yet"
+                detail="first load in flight, no snapshot yet · the window is already known, so it is drawn"
                 label="Loading"
                 number="03"
                 stage="surface"
             >
-                <div style={{ width: "560px" }}>
+                <div
+                    style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "32px",
+                        width: "560px",
+                    }}
+                >
                     <HappyAgentUsagePanel loading />
+                    <HappyAgentUsagePanel
+                        contextGauge={{
+                            usedTokens: 0,
+                            remainingTokens: 400_000,
+                            totalTokens: 400_000,
+                            remainingFraction: 1,
+                            compactTokens: 272_000,
+                            approximate: false,
+                            measured: false,
+                        }}
+                        loading
+                    />
                 </div>
             </Specimen>
 
             <Specimen detail="load failed" label="Error" number="04" stage="surface">
                 <div style={{ width: "560px" }}>
                     <HappyAgentUsagePanel error="Usage is unavailable for this session." />
+                </div>
+            </Specimen>
+
+            <Specimen
+                detail="a model that declares no window has nothing to break down, so its occupancy is one line under the table"
+                label="No declared window"
+                number="05"
+                stage="surface"
+            >
+                <div style={{ width: "560px" }}>
+                    <HappyAgentUsagePanel usage={usage} />
                 </div>
             </Specimen>
         </ComponentPage>

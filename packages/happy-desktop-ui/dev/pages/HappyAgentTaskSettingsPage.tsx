@@ -95,15 +95,14 @@ export function HappyAgentTaskSettingsPage() {
                     <HappyAgentSettingsShell
                         activeCategoryId="tasks"
                         categories={[
-                            { icon: "settings", id: "general", label: "General", tone: "gray" },
+                            { icon: "settings", id: "general", label: "General" },
                             {
                                 group: "Team",
                                 icon: "check-circle",
                                 id: "tasks",
                                 label: "Tasks",
-                                tone: "teal",
                             },
-                            { icon: "users", id: "account", label: "Account", tone: "blue" },
+                            { icon: "users", id: "account", label: "Account" },
                         ]}
                         description="Which tasks you automatically join on each connection"
                         onCategorySelect={noop}

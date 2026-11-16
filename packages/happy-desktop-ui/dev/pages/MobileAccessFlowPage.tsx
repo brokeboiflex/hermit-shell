@@ -23,14 +23,14 @@ const windows = [
 ] as const;
 
 const categories: readonly HappyAgentSettingsCategory[] = [
-    { icon: "settings", id: "general", label: "General", tone: "gray" },
-    { icon: "users", id: "account", label: "Account", tone: "blue" },
-    { icon: "mobile", id: "mobile-access", label: "Mobile access", tone: "green" },
-    { group: "Agents", icon: "doc", id: "instructions", label: "Instructions", tone: "purple" },
-    { group: "Agents", icon: "globe", id: "providers", label: "Inference", tone: "indigo" },
-    { group: "Agents", icon: "zap", id: "usage", label: "Usage", tone: "teal" },
-    { group: "Agents", icon: "lock", id: "secrets", label: "Secrets", tone: "green" },
-    { group: "Advanced", icon: "code", id: "debug", label: "Dev tools", tone: "gray" },
+    { icon: "settings", id: "general", label: "General" },
+    { icon: "users", id: "account", label: "Account" },
+    { icon: "mobile", id: "mobile-access", label: "Mobile access" },
+    { group: "Agents", icon: "doc", id: "instructions", label: "Instructions" },
+    { group: "Agents", icon: "globe", id: "providers", label: "Inference" },
+    { group: "Agents", icon: "zap", id: "usage", label: "Usage" },
+    { group: "Agents", icon: "lock", id: "secrets", label: "Secrets" },
+    { group: "Advanced", icon: "code", id: "debug", label: "Dev tools" },
 ];
 
 const updatedAt = 1_727_870_400_000;

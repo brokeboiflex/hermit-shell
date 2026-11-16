@@ -41,6 +41,13 @@
     font-family: var(--happy-font-ui);
 }
 
+/* The window is its own subject above the session's accounting, so a rule
+   parts them, as one parts the accounting from the rate limits below it. */
+.happy-agent-usage__context-breakdown {
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--divider);
+}
+
 .happy-agent-usage__empty,
 .happy-agent-usage__error {
     font-size: 13px;

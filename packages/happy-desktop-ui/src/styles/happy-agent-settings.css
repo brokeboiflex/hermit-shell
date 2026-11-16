@@ -3,57 +3,44 @@
  * and the provider cards inside the Providers category.
  */
 
-/* The band's title stands on the content column, over the section titles. It
-   sits on the same grouped ground as the body, so the band and the groups
-   below it read as one page. */
+/* The settings column wears its block headings in sentence case, as the
+   desktop clients set their settings navigation, in the row text's face. */
+.happy-agent-settings__nav .happy-sidebar__section-label {
+    font-family: var(--happy-font-ui);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+/* The band above the page is the window's drag lane on the page's own ground.
+   It carries nothing but, on a page inside a category, the way back to it. */
 .happy-agent-settings__header {
     padding-inline: var(--happy-content-inline);
-    background: var(--groupped-background);
+    background: var(--surface-high);
 }
 
-/* The band is one 20px line. A header never truncates, so when the column is
-   too narrow for the description it wraps onto a second line that the band
-   clips away whole: the description steps aside and the title stays. */
-.happy-agent-settings__heading {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    flex: 1 1 0%;
-    gap: 0 8px;
-    min-width: 0;
-    height: 20px;
-    overflow: hidden;
-    color: var(--text-secondary);
-}
-
-/* The sidebar drill-down's back control, standing where the category tile
-   stands: its 28px hover box is centred on the tile's 20px slot, and the
-   margins take back what the box adds, so the title keeps its coordinate. */
+/* The way back is a quiet text control whose words start on the content
+   column; the negative margin takes back its hover padding. */
 .happy-agent-settings__back {
     display: flex;
     flex: none;
     align-items: center;
-    justify-content: center;
-    width: 28px;
+    gap: 4px;
     height: 28px;
-    margin: 0 -8px 0 -4px;
-    padding: 0;
+    margin-inline-start: -8px;
+    padding: 0 10px 0 4px;
     border: 0;
     border-radius: var(--happy-hover-radius);
     background: transparent;
     color: var(--text-secondary);
+    font-family: var(--happy-font-ui);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 20px;
+    white-space: nowrap;
     cursor: pointer;
     appearance: none;
-}
-
-/* The tile is the band's one 20px line tall, so it stands at the line's top
-   rather than on the baseline its glyph would otherwise lend it. */
-.happy-agent-settings__heading-tile {
-    align-self: flex-start;
-}
-
-.happy-agent-settings__back .happy-icon {
-    transform: scaleX(-1);
 }
 
 .happy-agent-settings__back:hover {
@@ -66,31 +53,16 @@
     outline-offset: -2px;
 }
 
-.happy-agent-settings__heading-title {
-    flex: none;
-    color: var(--text);
-    font-size: 15px;
-    font-weight: 600;
-    line-height: 20px;
-    white-space: nowrap;
-}
-
-.happy-agent-settings__heading-description {
-    flex: none;
-    color: var(--text-secondary);
-    font-size: 13px;
-    line-height: 20px;
-    white-space: nowrap;
-}
-
-/* Full-bleed scrollport: it owns the whole region below the header band and
-   carries no spacing of its own. */
+/* Full-bleed scrollport: it owns the whole region below the band and carries
+   no spacing of its own. The page sits a step below the surface its groups of
+   rows are cards of: barely off-white in a light appearance, and in a dark one
+   deep enough that a card reads by its fill as well as its hairline. */
 .happy-agent-settings__body {
     box-sizing: border-box;
     flex: 1 1 0%;
     min-height: 0;
     width: 100%;
-    background: var(--groupped-background);
+    background: var(--surface-high);
 }
 
 .happy-agent-settings__body-viewport {
@@ -106,42 +78,70 @@
     display: flex;
     flex: 1 0 auto;
     flex-direction: column;
-    gap: 28px;
+    gap: 32px;
     width: 100%;
     max-width: var(--happy-content-measure);
     margin-inline: auto;
-    padding: 8px var(--happy-content-gutter) 48px;
+    padding: 8px var(--happy-content-gutter) 64px;
+}
+
+/* The page's title and subtitle lead the column, above its first section. */
+.happy-agent-settings__heading {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.happy-agent-settings__heading-title {
+    margin: 0;
+    color: var(--text);
+    font-family: var(--happy-font-ui);
+    font-size: 24px;
+    font-synthesis: none;
+    font-weight: 500;
+    line-height: 32px;
+}
+
+.happy-agent-settings__heading-description {
+    margin: 0;
+    color: var(--text-secondary);
+    font-family: var(--happy-font-ui);
+    font-size: 14px;
+    font-synthesis: none;
+    line-height: 20px;
 }
 
 .happy-agent-settings__section {
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 12px;
 }
 
-/* The heading stands over its group, its words on the column the rows' words
-   start on inside the card, as the native clients set a section's header. */
+/* The heading stands over its group on the group's own left edge. */
 .happy-agent-settings__section-heading {
     display: flex;
     flex-direction: column;
     gap: 2px;
-    padding-inline: 16px;
 }
 
 .happy-agent-settings__section-title {
     margin: 0;
-    color: var(--groupped-section-title);
-    font-size: 13px;
+    color: var(--text);
+    font-family: var(--happy-font-ui);
+    font-size: 14px;
+    font-synthesis: none;
     font-weight: 600;
-    line-height: 18px;
+    line-height: 20px;
 }
 
 .happy-agent-settings__section-description {
     margin: 0;
     color: var(--text-secondary);
-    font-size: 12px;
-    line-height: 16px;
+    font-family: var(--happy-font-ui);
+    font-size: 13px;
+    font-synthesis: none;
+    line-height: 18px;
 }
 
 .happy-agent-settings__section-rows {
@@ -151,12 +151,10 @@
 }
 
 /*
- * The inset group: one rounded card of rows on the grouped ground. The card's
- * inline padding is the rows' inset, so a row's hairline stops that far short
- * of either edge, as macOS draws its grouped settings. A dark appearance puts
- * the surface only a step above the ground, so a hairline ring states the
- * card's edge in every appearance. It never clips: a row's menus and pickers
- * open out of it.
+ * The inset group: one rounded card of rows on the page, ringed by a hairline.
+ * The card's inline padding is the rows' inset, so a
+ * row's hairline stops that far short of either edge. It never clips: a row's
+ * menus and pickers open out of it.
  */
 .happy-agent-settings__group {
     box-sizing: border-box;
@@ -164,7 +162,7 @@
     flex-direction: column;
     padding-inline: 16px;
     border: 1px solid var(--divider);
-    border-radius: var(--happy-radius-md);
+    border-radius: var(--happy-radius-shell);
     background: var(--surface);
 }
 
@@ -172,6 +170,13 @@
    it, so their words sit as far from those edges as from its side. */
 .happy-agent-settings__group .happy-form-row {
     padding-block: 12px;
+}
+
+/* A row names its setting in the body face and weight; the description under
+   it and the colour between them carry the hierarchy. */
+.happy-agent-settings__group .happy-form-row__label {
+    font-size: 14px;
+    font-weight: 400;
 }
 
 /* Every row draws the hairline under it, however deep a list nests it. The

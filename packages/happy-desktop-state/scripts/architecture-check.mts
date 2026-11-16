@@ -8,10 +8,12 @@ const failures: string[] = [];
 // Happy Agent Client declares the transport contract; Yjs is the
 // framework-independent value type used by Notes; picomatch's POSIX entry is
 // the dependency-free glob matcher behind the Changes tiers. TypeBox validates
-// the client's explicit wire schemas at the transport boundary.
+// the client's explicit wire schemas at the transport boundary. jsonc-parser is
+// the dependency-free reader and comment-preserving editor of `.vscode/tasks.json`.
 const allowedExternalSpecifiers = new Set([
     "@slopus/happy-agent-client",
     "@sinclair/typebox/value",
+    "jsonc-parser",
     "picomatch/posix",
     "vitest",
     "zustand/vanilla",

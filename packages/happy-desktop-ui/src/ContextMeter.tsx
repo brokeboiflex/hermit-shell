@@ -1,4 +1,9 @@
 import { type CSSProperties } from "react";
+import {
+    contextCompactFraction,
+    contextTokensFormat as tokensFormat,
+    contextWindowTone,
+} from "./contextWindowTone";
 
 export interface ContextMeterProps {
     readonly className?: string;
@@ -20,14 +25,6 @@ export interface ContextMeterProps {
     readonly measured?: boolean;
 }
 
-/** Where compaction is marked when the model publishes no threshold of its own. */
-const DEFAULT_COMPACT_FRACTION = 0.75;
-/**
- * The bar takes its warning colour once the fill is within this share of the compaction point,
- * so it turns yellow while there is still room to finish a thought, and its error colour at the
- * point itself, when the next turn compacts.
- */
-const WARNING_MARGIN = 0.2;
 const contextMeterFractions = new WeakMap<HTMLElement, number>();
 
 function contextMeterAnimate(node: HTMLElement | null, fraction: number): void {
@@ -89,15 +86,6 @@ function contextMeterAnimate(node: HTMLElement | null, fraction: number): void {
     );
 }
 
-function tokensFormat(tokens: number): string {
-    if (tokens < 1000) return String(Math.max(0, Math.round(tokens)));
-    const thousands = tokens / 1000;
-    if (thousands < 1000)
-        return `${thousands < 100 ? thousands.toFixed(1).replace(/\.0$/, "") : String(Math.round(thousands))}k`;
-    const millions = thousands / 1000;
-    return `${millions.toFixed(1).replace(/\.0$/, "")}M`;
-}
-
 /**
  * ContextMeter — how much of the model's context window the conversation has
  * spent, as a short bar with the numbers behind it.
@@ -117,16 +105,8 @@ export function ContextMeter(props: ContextMeterProps) {
     const used = measured ? Math.max(0, Math.min(props.usedTokens, total)) : 0;
     const fraction = total === 0 ? 0 : used / total;
     const percent = Math.round(fraction * 100);
-    const compactFraction =
-        props.compactTokens !== undefined && props.compactTokens > 0 && props.compactTokens < total
-            ? props.compactTokens / total
-            : DEFAULT_COMPACT_FRACTION;
-    const tone =
-        fraction >= compactFraction
-            ? "critical"
-            : fraction >= compactFraction * (1 - WARNING_MARGIN)
-              ? "compact"
-              : "ample";
+    const compactFraction = contextCompactFraction(total, props.compactTokens);
+    const tone = contextWindowTone(fraction, compactFraction);
     const compactNote =
         props.compactTokens === undefined
             ? ""
