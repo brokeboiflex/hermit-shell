@@ -1,3 +1,4 @@
+import { SecretValueField } from "../../src/SecretValueField";
 import { TextField } from "../../src/TextField";
 import { ComponentPage, DimensionRule, Specimen } from "../kit";
 
@@ -15,12 +16,12 @@ export function TextFieldPage() {
     return (
         <ComponentPage
             number={componentNumber}
-            summary="Labeled text input / textarea — three heights, hint/error/leading-icon."
+            summary="shadcn Field + InputGroup — labeled text input / textarea, three heights, hint/error, leading icon or text, trailing control."
             title="Text field"
         >
             <div className="specimen-grid specimen-grid--sizes">
                 <Specimen
-                    detail="28px high · 12px text"
+                    detail="28px high · 14px text"
                     label="Small"
                     number="T-01"
                     stage="surface"
@@ -31,24 +32,24 @@ export function TextFieldPage() {
                     </div>
                 </Specimen>
                 <Specimen
-                    detail="36px high · 13px text"
+                    detail="32px high · 14px text"
                     label="Medium"
                     number="T-02"
                     stage="surface"
                 >
                     <div style={{ display: "grid", gap: "6px", padding: "24px", width: "240px" }}>
-                        <DimensionRule label="height 36" />
+                        <DimensionRule label="height 32" />
                         <TextField label="Display name" placeholder="Ada Lovelace" size="medium" />
                     </div>
                 </Specimen>
                 <Specimen
-                    detail="44px high · 14px text"
+                    detail="36px high · 14px text"
                     label="Large"
                     number="T-03"
                     stage="surface"
                 >
                     <div style={{ display: "grid", gap: "6px", padding: "24px", width: "240px" }}>
-                        <DimensionRule label="height 44" />
+                        <DimensionRule label="height 36" />
                         <TextField label="Full name" placeholder="Ada Lovelace" size="large" />
                     </div>
                 </Specimen>
@@ -100,7 +101,7 @@ export function TextFieldPage() {
 
             <div className="specimen-grid">
                 <Specimen
-                    detail="leading icon 14/16/18 · 8px gap"
+                    detail="leading icon 14/16/16 · leading text"
                     label="Leading icon"
                     number="T-06"
                     stage="surface"
@@ -126,10 +127,16 @@ export function TextFieldPage() {
                             style={{ width: "280px" }}
                             value="happy.dev/ada"
                         />
+                        <TextField
+                            leadingText="@"
+                            placeholder="handle"
+                            style={{ width: "280px" }}
+                            value="ada"
+                        />
                     </div>
                 </Specimen>
                 <Specimen
-                    detail="disabled · password"
+                    detail="disabled · password · secret with show/hide toggle"
                     label="Locked and secret"
                     number="T-07"
                     stage="surface"
@@ -147,13 +154,33 @@ export function TextFieldPage() {
                             type="password"
                             value="hunter2hunter2"
                         />
+                        <div style={{ width: "280px" }}>
+                            <SecretValueField label="API key" value="sk-live-4f9a21c07b" />
+                        </div>
+                        <div style={{ width: "280px" }}>
+                            <SecretValueField
+                                initialShown
+                                label="API key (shown)"
+                                value="sk-live-4f9a21c07b"
+                            />
+                        </div>
+                        <div style={{ width: "280px" }}>
+                            <SecretValueField
+                                label="Certificate"
+                                multiline
+                                rows={3}
+                                value={
+                                    "-----BEGIN CERTIFICATE-----\nMIIBszCCAVmgAwIBAgIU\n-----END CERTIFICATE-----"
+                                }
+                            />
+                        </div>
                     </div>
                 </Specimen>
             </div>
 
             <div className="specimen-grid">
                 <Specimen
-                    detail="multiline textarea · 3 rows · 20px line"
+                    detail="multiline textarea · 3 rows · 20px line · 8px padding"
                     label="Textarea"
                     number="T-08"
                     stage="surface"

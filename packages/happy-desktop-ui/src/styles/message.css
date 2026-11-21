@@ -265,11 +265,6 @@
     height: 16px;
 }
 
-.happy-message__avatar-dangling .happy-avatar {
-    width: 12px;
-    height: 12px;
-}
-
 .happy-message__image-mark {
     display: block;
     width: 16px;
@@ -558,11 +553,6 @@
 .happy-message[data-own-actions],
 .happy-message-list__virtual-row:has(.happy-message[data-own-actions]) {
     z-index: 1;
-}
-
-/* Bare glyphs under the bubble: hover only brightens the ink, never fills. */
-.happy-message__own-actions .happy-copy-button:hover {
-    background: transparent;
 }
 
 .happy-message:hover .happy-message__own-actions .happy-copy-button,
@@ -1271,9 +1261,6 @@
 }
 
 .happy-message-list__jump .happy-button[data-icon-only][data-size="small"] {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
     box-shadow: 0 2px 8px var(--shadow-color);
 }
 

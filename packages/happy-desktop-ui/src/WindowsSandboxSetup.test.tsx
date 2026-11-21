@@ -10,7 +10,7 @@ import "./styles/onboarding-steps.css";
 import "./styles/segmented-progress.css";
 import "./styles/window-chrome.css";
 import "./styles/title-bar.css";
-import "./styles/button.css";
+import "./styles.css";
 import "./styles/icon.css";
 import "./styles/lottie-scene.css";
 import "./styles/vector-icon.css";

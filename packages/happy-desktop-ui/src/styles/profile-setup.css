@@ -73,18 +73,6 @@
     margin-top: 12px;
 }
 
-.happy-profile-setup__name .happy-text-field__control[data-size="large"] {
-    height: 56px;
-    border-radius: 12px;
-    padding: 0 18px;
-}
-
-.happy-profile-setup__name
-    .happy-text-field__control[data-size="large"]
-    input.happy-text-field__input {
-    font-size: 20px;
-}
-
 .happy-profile-setup__hint {
     align-self: stretch;
     min-height: 32px;

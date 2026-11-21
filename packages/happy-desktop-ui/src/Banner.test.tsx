@@ -1,9 +1,8 @@
 import { expect, it } from "vitest";
 import { server } from "vitest/browser";
 import "./theme.css";
-import "./styles/banner.css";
+import "./styles.css";
 import "./styles/icon.css";
-import "./styles/button.css";
 import { Banner, type BannerTone } from "./Banner";
 import type { IconName } from "./Icon";
 import { createRenderer } from "./testing";

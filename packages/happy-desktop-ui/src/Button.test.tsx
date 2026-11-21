@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import { server } from "vitest/browser";
 import "./theme.css";
-import "./styles/button.css";
+import "./styles.css";
 import "./styles/icon.css";
 import { Button, type ButtonSize, type ButtonVariant } from "./Button";
 import { createRenderer } from "./testing";

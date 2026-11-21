@@ -63,11 +63,6 @@
     padding-right: var(--happy-desktop-app-shell-caption-inset, 0px);
 }
 
-/* Full-window headers and overlays own the whole native caption reservation. */
-.happy-desktop-app-shell[data-window-controls] .happy-lightbox__header {
-    padding-right: calc(16px + var(--happy-window-caption-right));
-}
-
 .happy-title-bar[data-window-controls] {
     padding-right: calc(12px + var(--happy-window-caption-right));
 }

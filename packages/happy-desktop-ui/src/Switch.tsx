@@ -1,4 +1,7 @@
-import { type CSSProperties } from "react";
+import { useId, type CSSProperties } from "react";
+import { Field, FieldContent, FieldDescription, FieldLabel } from "./components/ui/field";
+import { Switch as SwitchControl } from "./components/ui/switch";
+import { cn } from "./lib/utils";
 export type SwitchSize = "small" | "medium";
 export type SwitchProps = {
     "aria-label"?: string;
@@ -13,56 +16,65 @@ export type SwitchProps = {
     size?: SwitchSize;
     style?: CSSProperties;
 };
+/** Happy's two switch sizes are shadcn's two. */
+const controlSizes: Record<SwitchSize, "sm" | "default"> = {
+    small: "sm",
+    medium: "default",
+};
 /**
- * C-020 Switch — Happy toggle. Integer track/thumb geometry on the 4px grid,
- * accent-filled when on and inset-welled when off, with an optional label and
- * secondary description. The whole control is one `role="switch"` button so the
- * label and description are part of the hit target. Desktop only, props only.
+ * C-020 Switch — shadcn's Switch (a Radix `role="switch"` button) with an
+ * optional label and muted description after it, laid out as a horizontal
+ * shadcn Field: the label is the switch's own `<label>`, so clicking the words
+ * toggles it too, and the description describes it. Desktop only, props only.
  */
 export function Switch(props: SwitchProps) {
-    const size = () => props.size ?? "medium";
+    const size = props.size ?? "medium";
+    const generatedId = useId();
+    const controlId = props.id ?? `happy-switch-${generatedId}`;
+    const descriptionId = `${controlId}-description`;
+    const described = props.label !== undefined && props.label !== "" && Boolean(props.description);
     return (
-        <button
-            aria-checked={props.checked}
-            aria-label={props["aria-label"]}
-            className={["happy-switch", props.className].filter(Boolean).join(" ")}
+        <Field
+            className={cn("happy-switch w-fit", props.className)}
             data-checked={props.checked ? "" : undefined}
-            data-disabled={props.disabled ? "" : undefined}
+            data-disabled={props.disabled ? "true" : undefined}
             data-happy-desktop-ui="switch"
-            data-size={size()}
+            data-size={size}
             data-testid={props["data-testid"]}
-            disabled={props.disabled}
-            id={props.id}
-            onClick={() => props.onChange?.(!props.checked)}
-            role="switch"
+            orientation="horizontal"
             style={props.style}
-            type="button"
         >
-            <span className="happy-switch__track" data-happy-desktop-ui="switch-track">
-                <span className="happy-switch__thumb" data-happy-desktop-ui="switch-thumb" />
-            </span>
-            {props.label
-                ? ((label) => (
-                      <span className="happy-switch__text" data-happy-desktop-ui="switch-text">
-                          <span
-                              className="happy-switch__label"
-                              data-happy-desktop-ui="switch-label"
-                          >
-                              {label}
-                          </span>
-                          {props.description
-                              ? ((description) => (
-                                    <span
-                                        className="happy-switch__description"
-                                        data-happy-desktop-ui="switch-description"
-                                    >
-                                        {description}
-                                    </span>
-                                ))(props.description)
-                              : null}
-                      </span>
-                  ))(props.label)
-                : null}
-        </button>
+            <SwitchControl
+                aria-describedby={described ? descriptionId : undefined}
+                aria-label={props["aria-label"]}
+                checked={props.checked}
+                className="happy-switch__track"
+                data-happy-desktop-ui="switch-track"
+                disabled={props.disabled}
+                id={controlId}
+                onCheckedChange={(checked) => props.onChange?.(checked)}
+                size={controlSizes[size]}
+            />
+            {props.label ? (
+                <FieldContent className="happy-switch__text" data-happy-desktop-ui="switch-text">
+                    <FieldLabel
+                        className="happy-switch__label"
+                        data-happy-desktop-ui="switch-label"
+                        htmlFor={controlId}
+                    >
+                        {props.label}
+                    </FieldLabel>
+                    {described ? (
+                        <FieldDescription
+                            className="happy-switch__description"
+                            data-happy-desktop-ui="switch-description"
+                            id={descriptionId}
+                        >
+                            {props.description}
+                        </FieldDescription>
+                    ) : null}
+                </FieldContent>
+            ) : null}
+        </Field>
     );
 }

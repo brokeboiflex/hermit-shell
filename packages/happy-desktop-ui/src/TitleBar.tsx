@@ -97,7 +97,7 @@ export function SearchField(props: SearchFieldProps) {
             />
             {props.shortcutHint === false ? null : (
                 <KeyCap
-                    className="happy-search-field__hint"
+                    className="happy-search-field__hint rounded-[2px]"
                     keys={props.shortcutHint ?? commandShortcut("k").caps}
                 />
             )}

@@ -5,7 +5,7 @@ import "./styles/visually-hidden.css";
 import "./styles/icon.css";
 import "./styles/diff-snippet.css";
 import "./styles/agent-activity-row.css";
-import "./styles/avatar.css";
+import "./styles.css";
 import "./styles/typed-text.css";
 import { AgentActivityRow } from "./AgentActivityRow";
 import { avatarPlaceholderIndex } from "./AvatarPlaceholder";

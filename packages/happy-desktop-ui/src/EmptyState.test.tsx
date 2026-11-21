@@ -1,8 +1,7 @@
 import { expect, it } from "vitest";
 import "./theme.css";
 import "./styles/icon.css";
-import "./styles/button.css";
-import "./styles/empty-state.css";
+import "./styles.css";
 import { EmptyState } from "./EmptyState";
 import { createRenderer, RenderedElement } from "./testing";
 

@@ -4,7 +4,7 @@ import { Avatar, type AvatarSize, type AvatarType, type ToneName } from "./Avata
 import { avatarPlaceholderHash, avatarPlaceholderIndex } from "./AvatarPlaceholder";
 import { createRenderer } from "./testing";
 import "./theme.css";
-import "./styles/avatar.css";
+import "./styles.css";
 
 const FIXTURE_IMAGE =
     "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAT0lEQVR4nGPorvk+ufrTrOp3i6perqx8srHiwY6K2wfKrzNgFT1edokBq+j5srMMWEWvlZ5kwCp6r+QIA1bRp8X7GbCKvi3ezYBV9EvRNgD7aoNVazUeBQAAAABJRU5ErkJggg==";

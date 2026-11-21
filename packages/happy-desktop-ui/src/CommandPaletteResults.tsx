@@ -4,6 +4,7 @@ import { KeyCap } from "./Badge";
 import { Icon, type IconName } from "./Icon";
 import type { KeyboardShortcut } from "./keyboardShortcut";
 import { type ImageMark } from "./imageMark";
+import { cn } from "./lib/utils";
 import { Ionicon } from "./vectorIcons/VectorIcon";
 /**
  * A row whose leading lane is the product's own mark for one kind of news
@@ -127,13 +128,46 @@ function rowAnnouncement(row: CommandPaletteResultsRow, index: number, total: nu
     const words = row.kind === "control" ? [row.label, row.description] : [row.title, row.meta];
     return `${words.filter(Boolean).join(" — ")}, ${index + 1} of ${total}`;
 }
+/*
+ * A row in shadcn's CommandItem look: one rounded line, an 8px gap, 14px text,
+ * and the muted selected fill on the highlighted row, whose glyph lifts to the
+ * text colour (a row's own news keeps its colour). The highlight follows the
+ * owner's index, never DOM focus, so it is keyed off `data-active` rather than
+ * cmdk's selection.
+ */
+const rowClassName =
+    "happy-command-palette-results__row group/row flex w-full min-h-8 flex-none items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-foreground outline-hidden select-none focus-visible:ring-3 focus-visible:ring-ring/50 data-active:bg-muted";
+/* The 20px lane the leading glyph, mark, or face sits in, so every row's words
+   start on one column whatever leads them. */
+const leadingClassName =
+    "happy-command-palette-results__leading flex size-5 flex-none items-center justify-center text-muted-foreground group-data-active/row:text-foreground data-[emphasis=update]:text-warning";
+/* One line: the title, then what it is or where it lives, muted, on the
+   title's baseline. The secondary text gives way first, so a long path never
+   hides whose it is; the title truncates only once the secondary text is gone. */
+const bodyClassName =
+    "happy-command-palette-results__body flex min-w-0 flex-auto items-baseline gap-2 overflow-hidden leading-5 whitespace-nowrap";
+const titleClassName =
+    "happy-command-palette-results__title min-w-0 flex-[0_1_auto] truncate font-medium";
+const metaClassName =
+    "happy-command-palette-results__meta min-w-0 flex-[0_100000_auto] truncate text-[13px] text-muted-foreground";
+/*
+ * A settings row hosts the settings page's own FormRow at its compact 56px,
+ * after the same lane, so its label starts on the titles' column. A list read
+ * by its highlight has no use for the FormRow's hairline. And because a
+ * segmented control paints its chosen segment in the same muted fill as the
+ * highlighted row, that segment would sink into the highlight and read as
+ * unchosen; on the highlighted row it is lifted onto the card's own surface
+ * and edge instead.
+ */
+const controlRowClassName =
+    "py-0 [&_[data-happy-desktop-ui=form-row]]:border-b-0 data-active:[&_[data-happy-desktop-ui=segmented-control-segment][data-active]]:border-border data-active:[&_[data-happy-desktop-ui=segmented-control-segment][data-active]]:bg-background";
 /** The inside of a command row: leading lane, its one line, then its cap. */
 function commandRowContent(row: CommandPaletteCommandRow) {
     return (
         <>
             <span
                 aria-hidden="true"
-                className="happy-command-palette-results__leading"
+                className={leadingClassName}
                 data-emphasis={row.emphasis}
                 data-happy-desktop-ui="command-palette-results-leading"
             >
@@ -142,7 +176,7 @@ function commandRowContent(row: CommandPaletteCommandRow) {
                 ) : row.imageMark ? (
                     <img
                         alt={row.imageMark.alt ?? ""}
-                        className="happy-command-palette-results__image-mark"
+                        className="happy-command-palette-results__image-mark block size-5 flex-none object-contain"
                         src={row.imageMark.src}
                         srcSet={row.imageMark.srcSet}
                     />
@@ -160,19 +194,16 @@ function commandRowContent(row: CommandPaletteCommandRow) {
                     <Icon name={row.icon} size={16} />
                 ) : null}
             </span>
-            <span
-                className="happy-command-palette-results__body"
-                data-happy-desktop-ui="command-palette-results-body"
-            >
+            <span className={bodyClassName} data-happy-desktop-ui="command-palette-results-body">
                 <span
-                    className="happy-command-palette-results__title"
+                    className={titleClassName}
                     data-happy-desktop-ui="command-palette-results-title"
                 >
                     {row.title}
                 </span>
                 {row.meta ? (
                     <span
-                        className="happy-command-palette-results__meta"
+                        className={metaClassName}
                         data-happy-desktop-ui="command-palette-results-meta"
                     >
                         {row.meta}
@@ -181,7 +212,7 @@ function commandRowContent(row: CommandPaletteCommandRow) {
             </span>
             {row.shortcut ? (
                 <KeyCap
-                    className="happy-command-palette-results__caps"
+                    className="happy-command-palette-results__caps ml-auto flex-none"
                     decorative
                     keys={row.shortcut.caps}
                 />
@@ -207,9 +238,14 @@ function commandRowContent(row: CommandPaletteCommandRow) {
  * their native roles, states, and tab stops, and the announcement carries what
  * `aria-selected` would have carried.
  *
+ * That is also why it wears shadcn's Command look — CommandGroup's caption,
+ * CommandItem's rounded row and muted selected fill — without being built on
+ * cmdk: cmdk's list is a listbox of options, which is exactly what a row
+ * hosting a switch may not be.
+ *
  * Two kinds of row share one list. A command row is a button on one compact
- * 40px line, Linear-style — a leading glyph or avatar, the title, its muted
- * secondary text on the title's baseline, and an optional trailing cap. A control
+ * 32px line — a leading glyph or avatar, the title, its muted secondary text
+ * on the title's baseline, and an optional trailing cap. A control
  * row hosts the very FormRow + Switch/SegmentedControl the settings page
  * renders, after the same leading lane, so a preference can be changed where
  * it was found instead of being navigated to; it keeps the settings row's two
@@ -235,7 +271,10 @@ export function CommandPaletteResults(props: CommandPaletteResultsProps) {
     }
     return (
         <div
-            className={["happy-command-palette-results", props.className].filter(Boolean).join(" ")}
+            className={cn(
+                "happy-command-palette-results flex w-full flex-[1_0_auto] flex-col font-sans text-foreground",
+                props.className,
+            )}
             data-happy-desktop-ui="command-palette-results"
             data-testid={props["data-testid"]}
             style={props.style}
@@ -244,28 +283,29 @@ export function CommandPaletteResults(props: CommandPaletteResultsProps) {
                 // One row's height, in a row's columns: nothing found keeps the
                 // card as short as one result would.
                 <div
-                    className="happy-command-palette-results__row happy-command-palette-results__empty"
+                    className={cn(
+                        rowClassName,
+                        "happy-command-palette-results__empty text-muted-foreground",
+                    )}
                     data-happy-desktop-ui="command-palette-results-empty"
                     role="status"
                 >
-                    <span aria-hidden="true" className="happy-command-palette-results__leading">
+                    <span aria-hidden="true" className={leadingClassName}>
                         <Icon name="search" size={16} />
                     </span>
-                    <span className="happy-command-palette-results__body">
-                        <span className="happy-command-palette-results__title">
+                    <span className={bodyClassName}>
+                        <span className={cn(titleClassName, "font-normal")}>
                             {props.emptyLabel ?? "No results"}
                         </span>
                         {props.emptyDescription ? (
-                            <span className="happy-command-palette-results__meta">
-                                {props.emptyDescription}
-                            </span>
+                            <span className={metaClassName}>{props.emptyDescription}</span>
                         ) : null}
                     </span>
                 </div>
             ) : (
                 <div
                     aria-label={props.label ?? "Results"}
-                    className="happy-command-palette-results__list"
+                    className="happy-command-palette-results__list flex w-full flex-none flex-col"
                     data-happy-desktop-ui="command-palette-results-list"
                     role="group"
                 >
@@ -273,7 +313,7 @@ export function CommandPaletteResults(props: CommandPaletteResultsProps) {
                         section.rows.length === 0 ? null : (
                             <div
                                 aria-label={section.caption}
-                                className="happy-command-palette-results__section"
+                                className="happy-command-palette-results__section flex flex-none flex-col p-1"
                                 data-happy-desktop-ui="command-palette-results-section"
                                 data-section-id={section.id}
                                 key={section.id}
@@ -282,7 +322,7 @@ export function CommandPaletteResults(props: CommandPaletteResultsProps) {
                                 {section.caption ? (
                                     <span
                                         aria-hidden="true"
-                                        className="happy-command-palette-results__caption"
+                                        className="happy-command-palette-results__caption flex flex-none items-center px-2 py-1.5 text-xs font-medium whitespace-nowrap text-muted-foreground"
                                         data-happy-desktop-ui="command-palette-results-caption"
                                     >
                                         {section.caption}
@@ -300,7 +340,7 @@ export function CommandPaletteResults(props: CommandPaletteResultsProps) {
                                     };
                                     return row.kind === "control" ? (
                                         <div
-                                            className="happy-command-palette-results__row"
+                                            className={cn(rowClassName, controlRowClassName)}
                                             data-active={isActive ? "" : undefined}
                                             data-happy-desktop-ui="command-palette-results-row"
                                             data-kind="control"
@@ -311,21 +351,21 @@ export function CommandPaletteResults(props: CommandPaletteResultsProps) {
                                         >
                                             <span
                                                 aria-hidden="true"
-                                                className="happy-command-palette-results__leading"
+                                                className={leadingClassName}
                                                 data-happy-desktop-ui="command-palette-results-leading"
                                             >
                                                 {row.icon ? (
                                                     <Icon name={row.icon} size={16} />
                                                 ) : null}
                                             </span>
-                                            <div className="happy-command-palette-results__control">
+                                            <div className="happy-command-palette-results__control flex min-w-0 flex-auto flex-col">
                                                 {row.control}
                                             </div>
                                         </div>
                                     ) : (
                                         <button
                                             aria-keyshortcuts={row.shortcut?.aria}
-                                            className="happy-command-palette-results__row"
+                                            className={cn(rowClassName, "cursor-pointer")}
                                             data-active={isActive ? "" : undefined}
                                             data-happy-desktop-ui="command-palette-results-row"
                                             data-kind="command"
@@ -348,9 +388,12 @@ export function CommandPaletteResults(props: CommandPaletteResultsProps) {
             {/* The highlight is the only thing that moves when the arrow keys
                 travel the list, and focus stays in the input, so nothing about
                 it reaches a screen reader unless it is spoken here. */}
+            {/* Never in the way of a pointer travelling the rows under it: the
+                highlight follows the pointer, and a clipped 1px span must not
+                be what the pointer lands on. */}
             <span
                 aria-live="polite"
-                className="happy-visually-hidden happy-command-palette-results__announcement"
+                className="happy-command-palette-results__announcement pointer-events-none sr-only"
                 data-happy-desktop-ui="command-palette-results-announcement"
                 role="status"
             >

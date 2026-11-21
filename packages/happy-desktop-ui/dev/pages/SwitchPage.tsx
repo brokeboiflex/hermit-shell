@@ -8,12 +8,12 @@ export function SwitchPage() {
     return (
         <ComponentPage
             number={componentNumber}
-            summary="Relay toggle — two sizes, on/off with accent vs inset track, optional label and secondary description, disabled state."
+            summary="shadcn Switch (Radix) in a horizontal shadcn Field — two sizes, on/off with primary vs input track, optional label and muted description, disabled state."
             title="Switch"
         >
             <div className="specimen-grid specimen-grid--sizes">
                 <Specimen
-                    detail="track 36×20 · thumb 16 · travel 16"
+                    detail="track 32×18.4 · thumb 16"
                     label="Medium"
                     number="S-01"
                     stage="surface"
@@ -28,7 +28,7 @@ export function SwitchPage() {
                         }}
                     >
                         <div style={{ width: "120px" }}>
-                            <DimensionRule label="track 36 × 20" />
+                            <DimensionRule label="track 32 × 18.4" />
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
                             <Switch aria-label="Off" checked={false} size="medium" />
@@ -37,7 +37,7 @@ export function SwitchPage() {
                     </div>
                 </Specimen>
                 <Specimen
-                    detail="track 28×16 · thumb 12 · travel 12"
+                    detail="track 24×14 · thumb 12"
                     label="Small"
                     number="S-02"
                     stage="surface"
@@ -52,7 +52,7 @@ export function SwitchPage() {
                         }}
                     >
                         <div style={{ width: "120px" }}>
-                            <DimensionRule label="track 28 × 16" />
+                            <DimensionRule label="track 24 × 14" />
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
                             <Switch aria-label="Off" checked={false} size="small" />
@@ -61,7 +61,7 @@ export function SwitchPage() {
                     </div>
                 </Specimen>
                 <Specimen
-                    detail="opacity 0.48 · not-allowed"
+                    detail="opacity 0.5 · not-allowed"
                     label="Disabled"
                     number="S-03"
                     stage="surface"
@@ -85,7 +85,7 @@ export function SwitchPage() {
 
             <div className="specimen-grid">
                 <Specimen
-                    detail="label 13/20 · track center on label line · 10px gap"
+                    detail="label 14 · track on the label line · 8px gap"
                     label="With label"
                     number="S-04"
                     stage="app"
@@ -104,7 +104,7 @@ export function SwitchPage() {
                     </div>
                 </Specimen>
                 <Specimen
-                    detail="description 12/16 muted below the label"
+                    detail="description 14 muted below the label"
                     label="Label and description"
                     number="S-05"
                     stage="surface"

@@ -3,6 +3,7 @@ import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode }
 import type { KeyboardShortcut } from "./keyboardShortcut";
 import { type MenuItem } from "./Menu";
 import { Tabs, type TabItem, type TabsSize } from "./Tabs";
+import { cn } from "./lib/utils";
 import type { TabTransferTarget } from "./tabTransfer";
 
 export type TabbedPaneProps = {
@@ -74,6 +75,16 @@ export type TabbedPaneProps = {
  * It renders exactly one body — whatever the owner passes as `children` for the
  * active tab — so switching tabs is the owner's state change, not a hidden
  * mount of every tab at once.
+ *
+ * The pane's own parts are Tailwind utilities. Two things are not, and stay in
+ * styles/tabbed-pane.css (the legacy layer) until the sheets they answer to
+ * convert:
+ * - the bar's height, alignment, fill, insets, and gap, which the desktop
+ *   shell (app-shell.css, window-chrome.css) and the file workspace
+ *   (file-workspace.css) restate from legacy sheets a utility would outrank;
+ * - the overrides of the workspace tab strip (`Tabs`, styles/tabs.css) that
+ *   make its tabs equal cells or content-sized here. That strip is not a
+ *   shadcn component and is not rebuilt with this pane.
  */
 export function TabbedPane(props: TabbedPaneProps) {
     const [local, rest] = partitionComponentProps(props, [
@@ -102,6 +113,7 @@ export function TabbedPane(props: TabbedPaneProps) {
         "transferTargets",
         "transferable",
     ]);
+    const contentSized = local.tabSizing === "content";
     const scroller = useRef<HTMLDivElement>(null);
     const [overflowEnd, setOverflowEnd] = useState(false);
     const measureOverflow = (viewport: HTMLElement) => {
@@ -135,15 +147,31 @@ export function TabbedPane(props: TabbedPaneProps) {
     return (
         <div
             {...rest}
-            className={["happy-tabbed-pane", local.className].filter(Boolean).join(" ")}
+            className={cn(
+                "happy-tabbed-pane flex min-h-0 min-w-0 flex-1 flex-col",
+                local.className,
+            )}
             data-happy-desktop-ui="tabbed-pane"
             data-size={local.size ?? "small"}
             data-tab-sizing={local.tabSizing ?? "equal"}
             style={local.style}
         >
-            <div className="happy-tabbed-pane__bar" data-happy-desktop-ui="tabbed-pane-bar">
+            {/* The bar owns the hairline, as an inset shadow so it never enters
+                the box and the tabs keep the bar's whole height. */}
+            <div
+                className="happy-tabbed-pane__bar flex flex-none shadow-[inset_0_-1px_0_var(--border)]"
+                data-happy-desktop-ui="tabbed-pane-bar"
+            >
+                {/* The strip scrolls horizontally and never vertically, with the
+                    browser's own bar (styles/scrollbar.css). The band is a
+                    fixed height and the tab row is drawn at that same height
+                    (`--happy-tabbed-pane-band-height`, tabbed-pane.css), so
+                    when the tabs overflow, the bar's track arrives inside the
+                    band and covers the row's foot: nothing moves and the band
+                    never grows. The trailing edge fades into the bar's surface
+                    while more tabs remain out of view. */}
                 <div
-                    className="happy-tabbed-pane__scroller"
+                    className="happy-tabbed-pane__scroller flex min-w-0 flex-[0_1_auto] overflow-x-auto overflow-y-hidden data-[fade-end]:[mask-image:linear-gradient(to_right,var(--background)_calc(100%_-_36px),transparent)]"
                     data-fade-end={local.overflowFade && overflowEnd ? "" : undefined}
                     data-happy-desktop-ui="tabbed-pane-scroller"
                     onScroll={
@@ -163,16 +191,27 @@ export function TabbedPane(props: TabbedPaneProps) {
                         return () => observer.disconnect();
                     }}
                 >
-                    {/* The strip is only as wide as the tabs. The action follows
-                        this shrinkable scrollport outside its clip, so it stays
-                        beside short strips and reachable beside long ones. */}
+                    {/* The strip fills the scrollport exactly. The scrollport's
+                        own basis is the tabs at their full width, so a short
+                        strip keeps the following action beside its last tab;
+                        when the bar is narrower, the scrollport shrinks and the
+                        strip with it, which is what lets the tabs give way.
+                        Content-sized tabs keep their full titles and scroll.
+                        It clips the row vertically, so the row's foot under the
+                        scrollbar's track is not scrollable overflow. */}
                     <div
-                        className="happy-tabbed-pane__strip"
+                        className={cn(
+                            "happy-tabbed-pane__strip flex min-w-0 flex-auto items-stretch overflow-y-clip",
+                            contentSized && "min-w-max flex-none",
+                        )}
                         data-happy-desktop-ui="tabbed-pane-strip"
                     >
                         <Tabs
                             activeId={local.activeId}
-                            className="happy-tabbed-pane__tabs"
+                            className={cn(
+                                "happy-tabbed-pane__tabs h-[var(--happy-tabbed-pane-band-height,100%)] min-w-0 flex-auto border-b-0",
+                                contentSized && "min-w-max flex-none",
+                            )}
                             closeLabel={local.closeLabel}
                             closeShortcut={local.closeShortcut}
                             closePresentation={local.closePresentation}
@@ -193,23 +232,41 @@ export function TabbedPane(props: TabbedPaneProps) {
                     </div>
                 </div>
                 {local.actions ? (
+                    /* No leading padding: the last tab already ends with its
+                       own, and doubling it strands the "+" away from the tabs.
+                       The trailing 8px is the bar's ordinary outer gutter.
+                       Outside the clipping scrollport, a shortcut hint can
+                       float below the control instead of widening the bar. */
                     <div
-                        className="happy-tabbed-pane__actions"
+                        className="happy-tabbed-pane__actions flex flex-none items-center gap-1 pr-2"
                         data-happy-desktop-ui="tabbed-pane-actions"
                     >
                         {local.actions}
                     </div>
                 ) : null}
                 {local.trailing ? (
+                    /* Held against the bar's far edge whatever the tabs do: the
+                       auto margin takes the free space the shrinkable scrollport
+                       leaves. The 16px gutter is the ChannelHeader's, which lines
+                       it up with the header control directly above it; an
+                       editor strip uses the panel inset on both sides. */
                     <div
-                        className="happy-tabbed-pane__trailing"
+                        className={cn(
+                            "happy-tabbed-pane__trailing ml-auto flex flex-none items-center gap-1",
+                            contentSized ? "px-(--happy-panel-inset)" : "pr-4 pl-2",
+                        )}
                         data-happy-desktop-ui="tabbed-pane-trailing"
                     >
                         {local.trailing}
                     </div>
                 ) : null}
             </div>
-            <div className="happy-tabbed-pane__body" data-happy-desktop-ui="tabbed-pane-body">
+            {/* The body, not the pane, owns scrolling: `min-h-0` lets it shrink
+                inside the column instead of pushing the bar out of view. */}
+            <div
+                className="happy-tabbed-pane__body relative flex min-h-0 min-w-0 flex-1 flex-col"
+                data-happy-desktop-ui="tabbed-pane-body"
+            >
                 {local.children}
             </div>
         </div>

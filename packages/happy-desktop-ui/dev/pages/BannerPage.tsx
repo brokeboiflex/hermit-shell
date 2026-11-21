@@ -10,7 +10,7 @@ export function BannerPage() {
     return (
         <ComponentPage
             number={componentNumber}
-            summary="Inline alert — soft tone fill, hairline border, tone-colored leading icon. Five tones, optional title, action, and dismiss."
+            summary="Inline alert on shadcn's Alert — card fill, hairline border, tone-colored leading icon (danger colors its words too). Five tones, optional title, action, and dismiss."
             title="Banner"
         >
             <div className="specimen-grid">

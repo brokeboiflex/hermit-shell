@@ -98,7 +98,10 @@ export function HappyAgentCreateBotPage(props: HappyAgentCreateBotPageProps) {
                 >
                     <TextField
                         aria-label="Name"
-                        className="happy-agent-create-bot__name"
+                        // The name takes focus the way the composer under it does: no
+                        // hairline at rest, the quiet divider hairline while typing, and
+                        // no ring, so it never lights up harder than the composer.
+                        className="happy-agent-create-bot__name [&_[data-happy-desktop-ui=text-field-control]]:border-transparent [&_[data-happy-desktop-ui=text-field-control]:focus-within]:border-border! [&_[data-happy-desktop-ui=text-field-control]:focus-within]:ring-0!"
                         data-testid="happy-agent-create-bot-name"
                         disabled={submitting}
                         fullWidth

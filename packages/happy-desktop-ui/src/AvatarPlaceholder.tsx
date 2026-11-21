@@ -1,6 +1,7 @@
 import { createContext, use, type CSSProperties } from "react";
 import { avatarPlaceholderBackdrops } from "./avatarPlaceholderBackdrops";
 import { avatarShaderAttach } from "./avatarShader/avatarShaderRenderer";
+import { cn } from "./lib/utils";
 
 /*
  * The picture something without one of its own wears — a person, a bot, a
@@ -76,7 +77,9 @@ export type AvatarPlaceholderProps = {
 export function AvatarPlaceholder(props: AvatarPlaceholderProps) {
     const index = avatarPlaceholderIndex(props.seed);
     const side = props.side;
-    const className = ["happy-avatar-placeholder", props.className].filter(Boolean).join(" ");
+    // Unstyled on its own: the mark that wears it (Avatar, the profile photo)
+    // gives it its box and corners.
+    const className = cn("happy-avatar-placeholder", props.className);
     const style = { background: avatarPlaceholderBackdrops[index], ...props.style };
     return use(AvatarsAnimatedContext) ? (
         <canvas

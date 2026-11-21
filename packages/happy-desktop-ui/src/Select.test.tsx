@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import { server } from "vitest/browser";
 import "./theme.css";
-import "./styles/select.css";
+import "./styles.css";
 import "./styles/icon.css";
 import { Select, type SelectSize } from "./Select";
 import { createRenderer } from "./testing";

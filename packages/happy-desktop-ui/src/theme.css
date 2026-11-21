@@ -1,9 +1,25 @@
 /*
- * Happy's desktop theme, flattened for CSS consumers.
+ * The desktop theme: the one place a colour value is written.
  *
- * Every colour property below corresponds directly to a property in
- * packages/happy-app/sources/theme.ts. Do not add aliases, gradients, or
- * derived palette values here: components should name the Happy role they use.
+ * Three kinds of colour live here, each in its own clearly marked place:
+ *
+ * - shadcn/ui's token set (`--background`, `--primary`, `--muted-foreground`,
+ *   ...) with the registry's neutral values, per appearance. Components paint
+ *   with these through the Tailwind colours registered in `@theme inline`
+ *   below.
+ * - Domain tokens shadcn has no counterpart for: diff, code and syntax ink,
+ *   git and file kinds, terminal, permission, error and warning boxes, tile
+ *   and avatar tones, mentions, link, and success / warning / info. They keep
+ *   their own names and are registered as Tailwind colours too.
+ * - Migration aliases: every older Happy role that has a shadcn counterpart
+ *   (`--surface`, `--text`, `--divider`, ...) now resolves to it, so CSS that
+ *   has not converted yet already paints in the shadcn palette. They sit in one
+ *   block and go away as their last consumers convert.
+ *
+ * Appearance: the system's light or dark by default (`prefers-color-scheme`),
+ * overridden by `.happy-theme-light`, `.happy-theme-dark`, or
+ * `.happy-theme-midnight` on ThemeScope's single tree. Tailwind's `dark:`
+ * variant follows exactly that choice (see `@custom-variant dark`).
  */
 
 @font-face {
@@ -27,6 +43,55 @@
 :root,
 .happy-theme-light {
     color-scheme: light;
+    /* shadcn/ui's token set, neutral base colour, as the registry's radix-nova
+       style ships it. These are the product's colours: a component paints with
+       them through Tailwind (`bg-background`, `text-muted-foreground`,
+       `ring-ring/50`) and never with a raw colour. */
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.145 0 0);
+    --primary: oklch(0.205 0 0);
+    --primary-foreground: oklch(0.985 0 0);
+    --secondary: oklch(0.97 0 0);
+    --secondary-foreground: oklch(0.205 0 0);
+    --muted: oklch(0.97 0 0);
+    --muted-foreground: oklch(0.556 0 0);
+    --accent: oklch(0.97 0 0);
+    --accent-foreground: oklch(0.205 0 0);
+    --destructive: oklch(0.577 0.245 27.325);
+    --border: oklch(0.922 0 0);
+    --input: oklch(0.922 0 0);
+    --ring: oklch(0.708 0 0);
+    --chart-1: oklch(0.87 0 0);
+    --chart-2: oklch(0.556 0 0);
+    --chart-3: oklch(0.439 0 0);
+    --chart-4: oklch(0.371 0 0);
+    --chart-5: oklch(0.269 0 0);
+    --radius: 0.625rem;
+    --sidebar: oklch(0.985 0 0);
+    --sidebar-foreground: oklch(0.145 0 0);
+    --sidebar-primary: oklch(0.205 0 0);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.97 0 0);
+    --sidebar-accent-foreground: oklch(0.205 0 0);
+    --sidebar-border: oklch(0.922 0 0);
+    --sidebar-ring: oklch(0.708 0 0);
+
+    /* Meaning shadcn has no token for, drawn from the same Tailwind palette its
+       destructive red comes from so it sits with the neutrals: success green,
+       warning amber, and info blue. Registered below as `success`, `warning`,
+       and `info`. Happy's older grey `warning` ink is a different colour, and
+       is `--quiet-ink` so the two names never meet. */
+    --success: oklch(0.627 0.194 149.214);
+    --status-warning: oklch(0.666 0.179 58.318);
+    --status-info: oklch(0.546 0.245 262.881);
+    /* The ember avatar tone, which the destructive role painted before it
+       became shadcn's red; kept so ember and rose stay two tones. */
+    --avatar-ember: #f44336;
+
     --happy-brand-logo-source: url("./assets/brand/logo-black.png");
     --happy-wordmark-source: url("./assets/brand/happy-engineering-stacked-light.svg");
     /* The picture a todo list is laid over. */
@@ -89,31 +154,11 @@
     --happy-scrollbar-quiet-color: rgb(128 128 128 / 0.32);
     --happy-scrollbar-active-color: rgb(128 128 128 / 0.5);
     --happy-scrollbar-interaction-color: rgb(128 128 128 / 0.68);
-    --happy-scrollbar-rest-color: transparent;
-    --happy-scrollbar-surface-color: var(--happy-scrollbar-active-color);
 
-    --text: #000000;
-    --text-destructive: #f44336;
-    --text-secondary: #49454f;
     --text-link: #2baccc;
     --delete-action: #ff6b6b;
-    --warning-critical: #ff3b30;
-    --warning: #8e8e93;
-    --success: #34c759;
-    --surface: #ffffff;
-    --surface-ripple: rgb(0 0 0 / 0.08);
-    --surface-pressed: #f0f0f2;
-    --surface-selected: #eaeaea;
+    --quiet-ink: #8e8e93;
     --surface-pressed-overlay: transparent;
-    --surface-high: #f8f8f8;
-    --surface-highest: #f0f0f0;
-    /* The surface turned inside out: near-black on a light appearance and
-       near-white on a dark one, always the opposite of what surrounds it. It is
-       for the rare band that has to be seen without claiming anything is wrong —
-       a colour would say error or warning, and neutral at full contrast says
-       only "read this". Not a container: it carries one line and no controls. */
-    --surface-inverse: #1c1c1e;
-    --text-inverse: #ffffff;
     /* The paper a rendered web page sits on. It is the browser's canvas rather
        than one of our surfaces, so it stays white in both appearances: a page
        that sets no background of its own was written expecting white, and
@@ -124,7 +169,6 @@
        appearances: far enough from the modules that a camera and a reader never
        take it for one of them. */
     --qr-code-mark: #6e6e73;
-    --divider: #eaeaea;
     --shadow-color: rgb(0 0 0 / 0.1);
     --shadow-opacity: 0.1;
     --shadow-subtle: rgb(0 0 0 / 0.24);
@@ -140,36 +184,12 @@
     --overlay-backdrop: rgb(15 15 15 / 0.75);
     --overlay-backdrop-soft: rgb(15 15 15 / 0.12);
     --overlay-panel: rgb(0 0 0 / 0.48);
-    --groupped-background: #f5f5f5;
-    --groupped-chevron: #49454f;
-    --groupped-section-title: #49454f;
-    --header-background: #ffffff;
-    --header-tint: #18171c;
-    --header-tint-secondary: #666666;
-    --switch-track-active: #1976d2;
-    --switch-track-inactive: #dddddd;
-    --switch-thumb-active: #ffffff;
     --switch-thumb-inactive: #767577;
-    --fab-background: #000000;
     --fab-background-pressed: #1a1a1a;
-    --fab-icon: #ffffff;
     --radio-active: #007aff;
-    --radio-inactive: #c0c0c0;
     --radio-dot: #007aff;
-    --modal-border: rgb(0 0 0 / 0.1);
-    --button-primary-background: #000000;
-    --button-primary-tint: #ffffff;
     --button-primary-ripple: rgb(255 255 255 / 0.16);
     --button-primary-disabled: #c0c0c0;
-    --button-secondary-tint: #666666;
-    /* The composer's round send control: one stable disc whose arrow never
-       changes color as the draft becomes sendable; availability is its opacity. */
-    --composer-send-background: #c0c0c0;
-    --composer-send-icon: #000000;
-    --input-background: #f5f5f5;
-    /* The sidebar search sits on the sidebar itself, so it is lifted off it. */
-    --input-text: #000000;
-    --input-placeholder: #999999;
     --box-warning-background: #fff8f0;
     --box-warning-border: #ff9500;
     --box-warning-text: #ff9500;
@@ -314,10 +334,6 @@
     --diff-inline-removed-bg: #ffcecb;
     --diff-inline-removed-text: #5a0a05;
 
-    --user-message-background: #f0eee6;
-    --user-message-text: #000000;
-    --agent-message-text: #000000;
-    --agent-event-text: #666666;
     --syntax-keyword: #1d4ed8;
     --syntax-string: #059669;
     --syntax-comment: #6b7280;
@@ -362,13 +378,7 @@
     --terminal-error: #ff5555;
     --terminal-empty-output: #6272a4;
 
-    --happy-font-ui: "happy Figtree", system-ui, sans-serif;
-    --happy-font-mono: "happy Mono", ui-monospace, monospace;
     --happy-font-emoji: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
-    --happy-radius-sm: 6px;
-    --happy-radius-md: 10px;
-    --happy-radius-window: 8px;
-    --happy-radius-shell: 14px;
     --happy-radius-pill: 999px;
     /* Motion for a surface that appears over the window and goes again, such
        as the ⌘K palette: it arrives quickly and settles, and leaves faster
@@ -459,27 +469,50 @@
 @media (prefers-color-scheme: dark) {
     :root {
         color-scheme: dark;
+        /* shadcn/ui's neutral dark tokens, verbatim from the registry. */
+        --background: oklch(0.145 0 0);
+        --foreground: oklch(0.985 0 0);
+        --card: oklch(0.205 0 0);
+        --card-foreground: oklch(0.985 0 0);
+        --popover: oklch(0.205 0 0);
+        --popover-foreground: oklch(0.985 0 0);
+        --primary: oklch(0.922 0 0);
+        --primary-foreground: oklch(0.205 0 0);
+        --secondary: oklch(0.269 0 0);
+        --secondary-foreground: oklch(0.985 0 0);
+        --muted: oklch(0.269 0 0);
+        --muted-foreground: oklch(0.708 0 0);
+        --accent: oklch(0.269 0 0);
+        --accent-foreground: oklch(0.985 0 0);
+        --destructive: oklch(0.704 0.191 22.216);
+        --border: oklch(1 0 0 / 10%);
+        --input: oklch(1 0 0 / 15%);
+        --ring: oklch(0.556 0 0);
+        --chart-1: oklch(0.87 0 0);
+        --chart-2: oklch(0.556 0 0);
+        --chart-3: oklch(0.439 0 0);
+        --chart-4: oklch(0.371 0 0);
+        --chart-5: oklch(0.269 0 0);
+        --sidebar: oklch(0.205 0 0);
+        --sidebar-foreground: oklch(0.985 0 0);
+        --sidebar-primary: oklch(0.488 0.243 264.376);
+        --sidebar-primary-foreground: oklch(0.985 0 0);
+        --sidebar-accent: oklch(0.269 0 0);
+        --sidebar-accent-foreground: oklch(0.985 0 0);
+        --sidebar-border: oklch(1 0 0 / 10%);
+        --sidebar-ring: oklch(0.556 0 0);
+        --success: oklch(0.723 0.219 149.579);
+        --status-warning: oklch(0.769 0.188 70.08);
+        --status-info: oklch(0.707 0.165 254.624);
+        --avatar-ember: #f48fb1;
+
         --happy-brand-logo-source: url("./assets/brand/logo-white.png");
         --happy-wordmark-source: url("./assets/brand/happy-engineering-stacked-dark.svg");
         --happy-todo-backdrop-source: url("./assets/backdrops/todo-ginkgo-dark.jpg");
-        --text: #ffffff;
-        --text-destructive: #f48fb1;
-        --text-secondary: #cac4d0;
         --text-link: #2baccc;
         --delete-action: #ff6b6b;
-        --warning-critical: #ff453a;
-        --warning: #8e8e93;
-        --success: #32d74b;
-        --surface: #212121;
-        --surface-ripple: rgb(255 255 255 / 0.08);
-        --surface-pressed: #2c2c2e;
-        --surface-selected: #2c2c2e;
+        --quiet-ink: #8e8e93;
         --surface-pressed-overlay: transparent;
-        --surface-high: #171717;
-        --surface-highest: #292929;
-        --surface-inverse: #f2f2f7;
-        --text-inverse: #1c1c1e;
-        --divider: #292929;
         --shadow-color: rgb(0 0 0 / 0.1);
         --shadow-opacity: 0.1;
         --shadow-subtle: rgb(0 0 0 / 0.24);
@@ -492,33 +525,12 @@
         --overlay-backdrop: rgb(15 15 15 / 0.75);
         --overlay-backdrop-soft: rgb(0 0 0 / 0.4);
         --overlay-panel: rgb(0 0 0 / 0.48);
-        --groupped-background: #1e1e1e;
-        --groupped-chevron: #cac4d0;
-        --groupped-section-title: #cac4d0;
-        --header-background: #212121;
-        --header-tint: #ffffff;
-        --header-tint-secondary: #8e8e93;
-        --switch-track-active: #1976d2;
-        --switch-track-inactive: #3a393f;
-        --switch-thumb-active: #ffffff;
         --switch-thumb-inactive: #767577;
-        --fab-background: #ffffff;
         --fab-background-pressed: #f0f0f0;
-        --fab-icon: #000000;
         --radio-active: #0a84ff;
-        --radio-inactive: #48484a;
         --radio-dot: #0a84ff;
-        --modal-border: rgb(255 255 255 / 0.1);
-        --button-primary-background: #000000;
-        --button-primary-tint: #ffffff;
         --button-primary-ripple: rgb(255 255 255 / 0.16);
         --button-primary-disabled: #c0c0c0;
-        --button-secondary-tint: #8e8e93;
-        --composer-send-background: #c0c0c0;
-        --composer-send-icon: #000000;
-        --input-background: #303030;
-        --input-text: #ffffff;
-        --input-placeholder: #8e8e93;
         --box-warning-background: rgb(255 159 10 / 0.15);
         --box-warning-border: #ff9f0a;
         --box-warning-text: #ffab00;
@@ -587,10 +599,6 @@
         --diff-inline-added-text: #7aff7a;
         --diff-inline-removed-bg: #5a2a2a;
         --diff-inline-removed-text: #ff7a7a;
-        --user-message-background: #2c2c2e;
-        --user-message-text: #ffffff;
-        --agent-message-text: #ffffff;
-        --agent-event-text: #8e8e93;
         --syntax-keyword: #569cd6;
         --syntax-string: #ce9178;
         --syntax-comment: #6a9955;
@@ -691,30 +699,53 @@
 .happy-theme-dark,
 .happy-theme-midnight {
     color-scheme: dark;
+    /* shadcn/ui's neutral dark tokens, verbatim from the registry. */
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.205 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.205 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.922 0 0);
+    --primary-foreground: oklch(0.205 0 0);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --accent: oklch(0.269 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.556 0 0);
+    --chart-1: oklch(0.87 0 0);
+    --chart-2: oklch(0.556 0 0);
+    --chart-3: oklch(0.439 0 0);
+    --chart-4: oklch(0.371 0 0);
+    --chart-5: oklch(0.269 0 0);
+    --sidebar: oklch(0.205 0 0);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.488 0.243 264.376);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.269 0 0);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.556 0 0);
+    --success: oklch(0.723 0.219 149.579);
+    --status-warning: oklch(0.769 0.188 70.08);
+    --status-info: oklch(0.707 0.165 254.624);
+    --avatar-ember: #f48fb1;
+
     /* Declared again so it resolves against this scope's own ripple: inherited
        from a light :root it would stay the light theme's black wash. */
     --happy-hover-fill: var(--surface-ripple);
     --happy-brand-logo-source: url("./assets/brand/logo-white.png");
     --happy-wordmark-source: url("./assets/brand/happy-engineering-stacked-dark.svg");
     --happy-todo-backdrop-source: url("./assets/backdrops/todo-ginkgo-dark.jpg");
-    --text: #ffffff;
-    --text-destructive: #f48fb1;
-    --text-secondary: #cac4d0;
     --text-link: #2baccc;
     --delete-action: #ff6b6b;
-    --warning-critical: #ff453a;
-    --warning: #8e8e93;
-    --success: #32d74b;
-    --surface: #212121;
-    --surface-ripple: rgb(255 255 255 / 0.08);
-    --surface-pressed: #2c2c2e;
-    --surface-selected: #2c2c2e;
+    --quiet-ink: #8e8e93;
     --surface-pressed-overlay: transparent;
-    --surface-high: #171717;
-    --surface-highest: #292929;
-    --surface-inverse: #f2f2f7;
-    --text-inverse: #1c1c1e;
-    --divider: #292929;
     --shadow-color: rgb(0 0 0 / 0.1);
     --shadow-opacity: 0.1;
     --shadow-subtle: rgb(0 0 0 / 0.24);
@@ -727,33 +758,12 @@
     --overlay-backdrop: rgb(15 15 15 / 0.75);
     --overlay-backdrop-soft: rgb(0 0 0 / 0.4);
     --overlay-panel: rgb(0 0 0 / 0.48);
-    --groupped-background: #1e1e1e;
-    --groupped-chevron: #cac4d0;
-    --groupped-section-title: #cac4d0;
-    --header-background: #212121;
-    --header-tint: #ffffff;
-    --header-tint-secondary: #8e8e93;
-    --switch-track-active: #1976d2;
-    --switch-track-inactive: #3a393f;
-    --switch-thumb-active: #ffffff;
     --switch-thumb-inactive: #767577;
-    --fab-background: #ffffff;
     --fab-background-pressed: #f0f0f0;
-    --fab-icon: #000000;
     --radio-active: #0a84ff;
-    --radio-inactive: #48484a;
     --radio-dot: #0a84ff;
-    --modal-border: rgb(255 255 255 / 0.1);
-    --button-primary-background: #000000;
-    --button-primary-tint: #ffffff;
     --button-primary-ripple: rgb(255 255 255 / 0.16);
     --button-primary-disabled: #c0c0c0;
-    --button-secondary-tint: #8e8e93;
-    --composer-send-background: #c0c0c0;
-    --composer-send-icon: #000000;
-    --input-background: #303030;
-    --input-text: #ffffff;
-    --input-placeholder: #8e8e93;
     --box-warning-background: rgb(255 159 10 / 0.15);
     --box-warning-border: #ff9f0a;
     --box-warning-text: #ffab00;
@@ -822,10 +832,6 @@
     --diff-inline-added-text: #7aff7a;
     --diff-inline-removed-bg: #5a2a2a;
     --diff-inline-removed-text: #ff7a7a;
-    --user-message-background: #2c2c2e;
-    --user-message-text: #ffffff;
-    --agent-message-text: #ffffff;
-    --agent-event-text: #8e8e93;
     --syntax-keyword: #569cd6;
     --syntax-string: #ce9178;
     --syntax-comment: #6a9955;
@@ -914,42 +920,42 @@
 }
 
 /* Midnight: the dark palette taken down to a neutral near-black. Surfaces step
-   lighter as they rise — app, panel, raised, input — so depth survives without
-   shadows, which barely read this dark. Secondary ink is neutral grey rather
-   than dark's violet-tinted grey, and the primary action turns white because
-   black would vanish into the canvas. Everything not named here is dark's. */
+   lighter as they rise — canvas, sidebar, card, fill — so depth survives
+   without shadows, which barely read this dark. Everything not named here is
+   dark's. */
 .happy-theme-midnight {
-    --text: #ececec;
-    --text-secondary: #a3a3a3;
-    --surface: #121212;
-    --surface-ripple: rgb(255 255 255 / 0.06);
-    --surface-pressed: #1c1c1c;
-    --surface-selected: #1f1f1f;
-    --surface-high: #0d0d0d;
-    --surface-highest: #1c1c1c;
-    --divider: #1f1f1f;
+    /* The neutral dark tokens one step further down: a near-black canvas
+       (#030303), cards and popovers at #0d0d0d, the sidebar between them, and
+       fills, hairlines, and secondary ink each a little quieter than dark's. */
+    --background: oklch(0.1 0 0);
+    --foreground: oklch(0.93 0 0);
+    --card: oklch(0.16 0 0);
+    --card-foreground: oklch(0.93 0 0);
+    --popover: oklch(0.16 0 0);
+    --popover-foreground: oklch(0.93 0 0);
+    --primary: oklch(0.93 0 0);
+    --primary-foreground: oklch(0.16 0 0);
+    --secondary: oklch(0.22 0 0);
+    --secondary-foreground: oklch(0.93 0 0);
+    --muted: oklch(0.22 0 0);
+    --muted-foreground: oklch(0.65 0 0);
+    --accent: oklch(0.22 0 0);
+    --accent-foreground: oklch(0.93 0 0);
+    --border: oklch(1 0 0 / 8%);
+    --input: oklch(1 0 0 / 12%);
+    --ring: oklch(0.45 0 0);
+    --sidebar: oklch(0.13 0 0);
+    --sidebar-foreground: oklch(0.93 0 0);
+    --sidebar-accent: oklch(0.22 0 0);
+    --sidebar-accent-foreground: oklch(0.93 0 0);
+    --sidebar-border: oklch(1 0 0 / 8%);
+    --sidebar-ring: oklch(0.45 0 0);
+
     --shadow-floating: rgb(0 0 0 / 0.6);
     --shadow-elevated: rgb(0 0 0 / 0.7);
     --overlay-backdrop: rgb(0 0 0 / 0.72);
     --overlay-backdrop-soft: rgb(0 0 0 / 0.48);
-    --groupped-background: #0b0b0b;
-    --groupped-chevron: #8f8f8f;
-    --groupped-section-title: #8f8f8f;
-    --header-background: #121212;
-    --header-tint: #ececec;
-    --header-tint-secondary: #8f8f8f;
-    --switch-track-inactive: #2a2a2a;
-    --radio-inactive: #3a3a3a;
-    --modal-border: rgb(255 255 255 / 0.08);
-    --button-primary-background: #ececec;
-    --button-primary-tint: #0b0b0b;
     --button-primary-ripple: rgb(0 0 0 / 0.12);
-    --button-secondary-tint: #8f8f8f;
-    --composer-send-background: #ececec;
-    --composer-send-icon: #0b0b0b;
-    --input-background: #1a1a1a;
-    --input-text: #ececec;
-    --input-placeholder: #6e6e6e;
     --permission-button-inactive-background: #1c1c1c;
     --permission-button-inactive-border: #2a2a2a;
     --permission-button-selected-background: #141414;
@@ -959,15 +965,394 @@
     --diff-line-number-bg: #0d0d0d;
     --diff-hunk-header-bg: #0d0d0d;
     --diff-leading-space-dot: #1f1f1f;
-    --user-message-background: #1f1f1f;
-    --user-message-text: #ececec;
-    --agent-message-text: #ececec;
-    --agent-event-text: #8f8f8f;
     --git-branch-text: #8f8f8f;
     --git-file-count-text: #8f8f8f;
     --file-path-text: #6e6e6e;
     --terminal-background: #0b0b0b;
     --terminal-selection: #333338;
+}
+
+/* Migration aliases — delete when the last consumer converts.
+
+   Every Happy role that has a shadcn counterpart resolves to it, so CSS that
+   still reads `var(--surface)` or `var(--text)` already paints in the shadcn
+   palette. A converted component names the shadcn token (its Tailwind colour)
+   instead; once nothing reads an alias, delete its line. Declared on every
+   appearance scope so each resolves against that scope's own tokens. A custom
+   theme declares its roles inline on the ThemeScope element, which outranks
+   this block, so those roles still reach the CSS that reads them; ThemeScope
+   declares the shadcn tokens they stand for beside them (SHADCN_TOKEN_ROLES in
+   ThemeScope.tsx), so converted components take the same colours. */
+:root,
+.happy-theme-light,
+.happy-theme-dark,
+.happy-theme-midnight {
+    /* Ink. */
+    --text: var(--foreground);
+    --text-secondary: var(--muted-foreground);
+    --text-destructive: var(--destructive);
+    --warning-critical: var(--destructive);
+    --header-tint: var(--foreground);
+    --header-tint-secondary: var(--muted-foreground);
+    --groupped-chevron: var(--muted-foreground);
+    --groupped-section-title: var(--muted-foreground);
+    --input-text: var(--foreground);
+    --input-placeholder: var(--muted-foreground);
+    --user-message-text: var(--foreground);
+    --agent-message-text: var(--foreground);
+    --agent-event-text: var(--muted-foreground);
+    --button-secondary-tint: var(--muted-foreground);
+
+    /* Surfaces: the window floor is the sidebar, panels and their headers are
+       the background, recessed and filled areas are muted, hover and press
+       are accent, and a selected row is the same quiet muted fill a selected
+       tab or toggle carries. */
+    --groupped-background: var(--sidebar);
+    --surface: var(--background);
+    --header-background: var(--background);
+    --surface-high: var(--muted);
+    --surface-highest: var(--accent);
+    --surface-selected: var(--muted);
+    --surface-pressed: var(--accent);
+    --surface-ripple: var(--accent);
+    --input-background: var(--muted);
+    --user-message-background: var(--muted);
+    /* The surface turned inside out: near-black on light, near-white on dark. */
+    --surface-inverse: var(--primary);
+    --text-inverse: var(--primary-foreground);
+
+    /* Hairlines. */
+    --divider: var(--border);
+    --modal-border: var(--border);
+    --radio-inactive: var(--input);
+
+    /* The primary action and the controls that wear it. */
+    --button-primary-background: var(--primary);
+    --button-primary-tint: var(--primary-foreground);
+    --fab-background: var(--primary);
+    --fab-icon: var(--primary-foreground);
+    --composer-send-background: var(--primary);
+    --composer-send-icon: var(--primary-foreground);
+    --switch-track-active: var(--primary);
+    --switch-track-inactive: var(--input);
+    --switch-thumb-active: var(--primary-foreground);
+
+    /* Type and corners. shadcn's radius scale lands on Happy's old steps:
+       6, 8, 10, and 14px at the 10px base. */
+    --happy-font-ui: var(--font-sans);
+    --happy-font-mono: var(--font-mono);
+    --happy-radius-sm: calc(var(--radius) * 0.6);
+    --happy-radius-window: calc(var(--radius) * 0.8);
+    --happy-radius-md: var(--radius);
+    --happy-radius-shell: calc(var(--radius) * 1.4);
+}
+
+/* Avatar tones: the fill each named tone paints, kept apart from the shadcn
+   tokens so the eight tones stay eight colours. A coloured tone carries white
+   ink; brand is the primary action and carries its ink. Declared on every
+   appearance scope so each resolves against that scope's roles. */
+:root,
+.happy-theme-light,
+.happy-theme-dark,
+.happy-theme-midnight {
+    --avatar-violet: var(--radio-active);
+    --avatar-mint: var(--success);
+    --avatar-ocean: var(--text-link);
+    --avatar-rose: var(--delete-action);
+    --avatar-amber: var(--box-warning-border);
+    --avatar-slate: var(--accent);
+    --avatar-brand: var(--primary);
+    --avatar-brand-ink: var(--primary-foreground);
+    --avatar-ink: #ffffff;
+}
+
+@theme {
+    /* Tailwind's own palette is off: every colour utility names a token from
+       this file, so `bg-red-500` does not compile. */
+    --color-*: initial;
+
+    /* The vendored variable faces (@font-face above) are Tailwind's sans and
+       mono. Not inline, so Tailwind declares them on :root, where preflight and
+       CSS that has not converted read them as `var(--font-sans)`. */
+    --font-sans: "happy Figtree", system-ui, sans-serif;
+    --font-mono: "happy Mono", ui-monospace, monospace;
+}
+
+@theme inline {
+    /* shadcn/ui. */
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-destructive: var(--destructive);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    --color-chart-1: var(--chart-1);
+    --color-chart-2: var(--chart-2);
+    --color-chart-3: var(--chart-3);
+    --color-chart-4: var(--chart-4);
+    --color-chart-5: var(--chart-5);
+    --color-sidebar: var(--sidebar);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-ring: var(--sidebar-ring);
+
+    /* Meaning, link, and the scrim under a dialog. */
+    --color-success: var(--success);
+    --color-warning: var(--status-warning);
+    --color-info: var(--status-info);
+    --color-link: var(--text-link);
+    --color-review: var(--review-accent);
+    --color-overlay: var(--overlay-backdrop-soft);
+
+    /* Avatar tones. */
+    --color-avatar-violet: var(--avatar-violet);
+    --color-avatar-ember: var(--avatar-ember);
+    --color-avatar-mint: var(--avatar-mint);
+    --color-avatar-ocean: var(--avatar-ocean);
+    --color-avatar-rose: var(--avatar-rose);
+    --color-avatar-amber: var(--avatar-amber);
+    --color-avatar-slate: var(--avatar-slate);
+    --color-avatar-brand: var(--avatar-brand);
+    --color-avatar-brand-ink: var(--avatar-brand-ink);
+    --color-avatar-ink: var(--avatar-ink);
+
+    /* Diff. */
+    --color-diff-outline: var(--diff-outline);
+    --color-diff-success: var(--diff-success);
+    --color-diff-error: var(--diff-error);
+    --color-diff-added-bg: var(--diff-added-bg);
+    --color-diff-added-border: var(--diff-added-border);
+    --color-diff-added-text: var(--diff-added-text);
+    --color-diff-removed-bg: var(--diff-removed-bg);
+    --color-diff-removed-border: var(--diff-removed-border);
+    --color-diff-removed-text: var(--diff-removed-text);
+    --color-diff-context-bg: var(--diff-context-bg);
+    --color-diff-context-text: var(--diff-context-text);
+    --color-diff-line-number-bg: var(--diff-line-number-bg);
+    --color-diff-line-number-text: var(--diff-line-number-text);
+    --color-diff-hunk-header-bg: var(--diff-hunk-header-bg);
+    --color-diff-hunk-header-text: var(--diff-hunk-header-text);
+    --color-diff-leading-space-dot: var(--diff-leading-space-dot);
+    --color-diff-inline-added-bg: var(--diff-inline-added-bg);
+    --color-diff-inline-added-text: var(--diff-inline-added-text);
+    --color-diff-inline-removed-bg: var(--diff-inline-removed-bg);
+    --color-diff-inline-removed-text: var(--diff-inline-removed-text);
+
+    /* Code and syntax ink. */
+    --color-code-comment: var(--code-comment);
+    --color-code-string: var(--code-string);
+    --color-code-number: var(--code-number);
+    --color-code-keyword: var(--code-keyword);
+    --color-code-type: var(--code-type);
+    --color-code-function: var(--code-function);
+    --color-code-variable: var(--code-variable);
+    --color-code-constant: var(--code-constant);
+    --color-code-operator: var(--code-operator);
+    --color-code-punctuation: var(--code-punctuation);
+    --color-code-gutter: var(--code-gutter);
+    --color-code-gutter-active: var(--code-gutter-active);
+    --color-code-caret: var(--code-caret);
+    --color-code-selection: var(--code-selection);
+    --color-code-active-line: var(--code-active-line);
+    --color-code-reveal: var(--code-reveal);
+    --color-syntax-keyword: var(--syntax-keyword);
+    --color-syntax-string: var(--syntax-string);
+    --color-syntax-comment: var(--syntax-comment);
+    --color-syntax-number: var(--syntax-number);
+    --color-syntax-function: var(--syntax-function);
+    --color-syntax-bracket-1: var(--syntax-bracket-1);
+    --color-syntax-bracket-2: var(--syntax-bracket-2);
+    --color-syntax-bracket-3: var(--syntax-bracket-3);
+    --color-syntax-bracket-4: var(--syntax-bracket-4);
+    --color-syntax-bracket-5: var(--syntax-bracket-5);
+    --color-syntax-default: var(--syntax-default);
+
+    /* Git status and file kinds. */
+    --color-git-branch-text: var(--git-branch-text);
+    --color-git-file-count-text: var(--git-file-count-text);
+    --color-git-added-text: var(--git-added-text);
+    --color-git-removed-text: var(--git-removed-text);
+    --color-git-status-new: var(--git-status-new);
+    --color-git-status-modified: var(--git-status-modified);
+    --color-git-status-renamed: var(--git-status-renamed);
+    --color-git-status-deleted: var(--git-status-deleted);
+    --color-file-code: var(--file-code);
+    --color-file-data: var(--file-data);
+    --color-file-style: var(--file-style);
+    --color-file-image: var(--file-image);
+    --color-file-video: var(--file-video);
+    --color-file-audio: var(--file-audio);
+    --color-file-shell: var(--file-shell);
+    --color-file-secret: var(--file-secret);
+    --color-file-archive: var(--file-archive);
+    --color-file-prose: var(--file-prose);
+    --color-file-config: var(--file-config);
+    --color-file-directory: var(--file-directory);
+    --color-file-other: var(--file-other);
+    --color-file-path-text: var(--file-path-text);
+
+    /* Terminal. */
+    --color-terminal-selection: var(--terminal-selection);
+    --color-terminal-background: var(--terminal-background);
+    --color-terminal-prompt: var(--terminal-prompt);
+    --color-terminal-command: var(--terminal-command);
+    --color-terminal-stdout: var(--terminal-stdout);
+    --color-terminal-stderr: var(--terminal-stderr);
+    --color-terminal-error: var(--terminal-error);
+    --color-terminal-empty-output: var(--terminal-empty-output);
+
+    /* Permission modes and their buttons (never overridden by a custom theme). */
+    --color-permission-default: var(--permission-default);
+    --color-permission-accept-edits: var(--permission-accept-edits);
+    --color-permission-bypass: var(--permission-bypass);
+    --color-permission-plan: var(--permission-plan);
+    --color-permission-read-only: var(--permission-read-only);
+    --color-permission-safe-yolo: var(--permission-safe-yolo);
+    --color-permission-yolo: var(--permission-yolo);
+    --color-permission-button-allow-background: var(--permission-button-allow-background);
+    --color-permission-button-allow-text: var(--permission-button-allow-text);
+    --color-permission-button-deny-background: var(--permission-button-deny-background);
+    --color-permission-button-deny-text: var(--permission-button-deny-text);
+    --color-permission-button-allow-all-background: var(--permission-button-allow-all-background);
+    --color-permission-button-allow-all-text: var(--permission-button-allow-all-text);
+    --color-permission-button-inactive-background: var(--permission-button-inactive-background);
+    --color-permission-button-inactive-border: var(--permission-button-inactive-border);
+    --color-permission-button-inactive-text: var(--permission-button-inactive-text);
+    --color-permission-button-selected-background: var(--permission-button-selected-background);
+    --color-permission-button-selected-border: var(--permission-button-selected-border);
+    --color-permission-button-selected-text: var(--permission-button-selected-text);
+
+    /* Error and warning boxes (never overridden by a custom theme). */
+    --color-box-warning-background: var(--box-warning-background);
+    --color-box-warning-border: var(--box-warning-border);
+    --color-box-warning-text: var(--box-warning-text);
+    --color-box-error-background: var(--box-error-background);
+    --color-box-error-border: var(--box-error-border);
+    --color-box-error-text: var(--box-error-text);
+
+    /* Connection status. */
+    --color-status-connected: var(--status-connected);
+    --color-status-connecting: var(--status-connecting);
+    --color-status-disconnected: var(--status-disconnected);
+    --color-status-error: var(--status-error);
+    --color-status-default: var(--status-default);
+
+    /* Row tiles. */
+    --color-tile-blue: var(--happy-tile-blue);
+    --color-tile-blue-fill: var(--happy-tile-blue-fill);
+    --color-tile-green: var(--happy-tile-green);
+    --color-tile-green-fill: var(--happy-tile-green-fill);
+    --color-tile-orange: var(--happy-tile-orange);
+    --color-tile-orange-fill: var(--happy-tile-orange-fill);
+    --color-tile-indigo: var(--happy-tile-indigo);
+    --color-tile-indigo-fill: var(--happy-tile-indigo-fill);
+    --color-tile-purple: var(--happy-tile-purple);
+    --color-tile-purple-fill: var(--happy-tile-purple-fill);
+    --color-tile-red: var(--happy-tile-red);
+    --color-tile-red-fill: var(--happy-tile-red-fill);
+    --color-tile-teal: var(--happy-tile-teal);
+    --color-tile-teal-fill: var(--happy-tile-teal-fill);
+    --color-tile-gray: var(--happy-tile-gray);
+
+    /* Mentions. */
+    --color-mention-tint: var(--happy-mention-tint);
+    --color-mention-tint-self: var(--happy-mention-tint-self);
+    --color-mention-text: var(--happy-mention-text);
+    --color-unread-mention-background: var(--happy-unread-mention-background);
+    --color-unread-mention-text: var(--happy-unread-mention-text);
+
+    /* shadcn's heading face is its sans. */
+    --font-heading: var(--font-sans);
+
+    /* shadcn's radius scale around `--radius`. */
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* Tailwind's `dark:` variant, matched to the appearance logic above: an
+   element is dark when its nearest appearance scope is `.happy-theme-dark` or
+   `.happy-theme-midnight`, or when no scope encloses it and the system is
+   dark. CSS has no "nearest ancestor", so it is spelled out: inside a dark
+   scope, unless a light scope sits inside that dark one, unless a dark scope
+   sits inside that light one again. That is exact for scopes nested up to
+   three deep (dark in light in dark, light in dark in light) — deeper than any
+   product tree or Blueprint specimen nests. Every branch is wrapped in
+   `:where()`, so `dark:x` weighs exactly what `x` does and wins only by coming
+   later. */
+@custom-variant dark {
+    &:where(
+        .happy-theme-dark,
+        .happy-theme-dark *,
+        .happy-theme-midnight,
+        .happy-theme-midnight *
+    ):not(
+        :where(
+            :is(.happy-theme-dark, .happy-theme-midnight) .happy-theme-light,
+            :is(.happy-theme-dark, .happy-theme-midnight) .happy-theme-light *
+        ):not(
+            :where(
+                :is(.happy-theme-dark, .happy-theme-midnight)
+                    .happy-theme-light
+                    :is(.happy-theme-dark, .happy-theme-midnight),
+                :is(.happy-theme-dark, .happy-theme-midnight)
+                    .happy-theme-light
+                    :is(.happy-theme-dark, .happy-theme-midnight)
+                    *
+            )
+        )
+    ) {
+        @slot;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        &:not(
+            :where(
+                .happy-theme-light,
+                .happy-theme-light *,
+                .happy-theme-dark,
+                .happy-theme-dark *,
+                .happy-theme-midnight,
+                .happy-theme-midnight *
+            )
+        ) {
+            @slot;
+        }
+    }
+}
+
+/* shadcn's base: hairlines and focus outlines default to the theme's border and
+   ring, and the page to its background and foreground. */
+@layer base {
+    * {
+        border-color: var(--border);
+        outline-color: color-mix(in oklab, var(--ring) 50%, transparent);
+    }
+
+    body {
+        background-color: var(--background);
+        color: var(--foreground);
+    }
 }
 
 /* Native StartSpec / StartViewController artwork palette, not application
@@ -1028,7 +1413,21 @@
     --happy-chat-wallpaper-image: none;
 }
 
-.happy-box {
-    display: block;
-    box-sizing: border-box;
+/* The scrollbar's resting and surface thumb colours, on the document only. The
+   visibility a ThemeScope chooses (styles/scrollbar.css) is declared on the
+   same element as its appearance class, and this sheet is unlayered while the
+   scrollbar sheet sits in the legacy layer, so declaring these on the
+   appearance classes too would silently outrank that choice. */
+:root {
+    --happy-scrollbar-rest-color: transparent;
+    --happy-scrollbar-surface-color: var(--happy-scrollbar-active-color);
+}
+
+/* Box is a primitive that converted components hand utilities to, so its own
+   rule sits in the legacy layer, beneath them (see styles.css). */
+@layer happy-legacy {
+    .happy-box {
+        display: block;
+        box-sizing: border-box;
+    }
 }

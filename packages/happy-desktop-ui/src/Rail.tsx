@@ -146,7 +146,7 @@ export function Rail(props: RailProps) {
                                         className="happy-rail__item-badge"
                                         data-happy-desktop-ui="rail-item-badge"
                                     >
-                                        <CountBadge count={count} />
+                                        <CountBadge className="rounded-[4px]" count={count} />
                                     </span>
                                 ))(item.badge)
                             ) : item.unread ? (

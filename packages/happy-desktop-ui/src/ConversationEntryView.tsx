@@ -649,6 +649,8 @@ export function ConversationEntryView(props: ConversationEntryViewProps) {
             ownActions={
                 own && props.ownRunText !== undefined ? (
                     <CopyButton
+                        // Bare glyphs under the bubble: hover only brightens the ink, never fills.
+                        className="hover:bg-transparent dark:hover:bg-transparent"
                         label={
                             (props.ownRunMessageCount ?? 1) > 1 ? "Copy messages" : "Copy message"
                         }

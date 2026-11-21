@@ -1,29 +1,24 @@
 /*
  * PanelHeader — the 56px band across the top of a docked panel column.
  *
- * Contract: 56px high, 16px x-padding, transparent, and no hairline of its own —
- * exactly `ChannelHeader`'s band, because the point is that the two columns'
- * headers form one band across the window. Whatever sits beneath the band owns
- * the dividing line, as the tab bar does in both columns.
+ * The component is Tailwind utilities (PanelHeader.tsx). Only its height and
+ * its inline insets remain here, in the legacy layer, because other legacy
+ * sheets restate exactly these and a utility would outrank them:
+ *
+ *   - app-shell.css: the window-controls band height, and the collapsed
+ *     sidebar's leading inset on the artifact viewer's header;
+ *   - window-chrome.css: the trailing inset beside native caption buttons;
+ *   - happy-agent-settings.css, happy-agent-surfaces.css,
+ *     happy-agent-artifacts.css, happy-agent-plugins.css, and
+ *     happy-agent-feed.css: those pages' headers put their inline padding on
+ *     their content column.
+ *
+ * Move these to the component when those sheets convert.
  */
 
-.happy-panel-header,
-.happy-panel-header * {
-    box-sizing: border-box;
-}
-
 .happy-panel-header {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex: none;
-    width: 100%;
     height: 56px;
-    margin: 0;
     padding: 0 16px;
-    background: transparent;
-    color: var(--text);
-    font-family: var(--happy-font-ui);
 }
 
 /* Chrome controls dock 12px from a panel edge, matching AppShell's sidebar

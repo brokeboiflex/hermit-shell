@@ -1,14 +1,17 @@
 /*
- * C-160 TabbedPane — a scrolling tab bar over a body that takes the remaining
- * height.
+ * C-160 TabbedPane — what is left in the legacy layer.
  *
- * The pane is a flex column so the body, not the pane, owns scrolling:
- * `min-height: 0` lets the body shrink inside the column instead of pushing the
- * bar out of view. The bar owns the hairline; inside it the strip scrolls
- * horizontally, with `overflow-y: hidden` so a scrollbar never appears under
- * the tabs. Because
- * that scrollport would clip the tab underline's usual 1px overhang, the
- * underline sits flush at the bottom of the tab here.
+ * The pane's own parts are Tailwind utilities (TabbedPane.tsx). Two groups of
+ * rules stay here, beneath the utilities, until the sheets they answer to
+ * convert:
+ *
+ *   1. The bar's height, alignment, fill, and (by leaving them unset here)
+ *      insets and gap. The desktop shell restates these from app-shell.css and
+ *      window-chrome.css (integrated band height and fill, window-control and
+ *      pane-toggle insets), and the file workspace from file-workspace.css
+ *      (gap and fill). Those are legacy rules, and a utility would outrank them.
+ *   2. The pane's overrides of the workspace tab strip (`Tabs`, tabs.css),
+ *      which is not a shadcn component and is not rebuilt here.
  */
 
 .happy-tabbed-pane {
@@ -22,70 +25,36 @@
      */
     --happy-tabbed-pane-tab-width: 160px;
     --happy-tabbed-pane-tab-min-width: 88px;
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    min-width: 0;
-    min-height: 0;
 }
+
+/* ---- 1. The bar ------------------------------------------------------- */
 
 .happy-tabbed-pane__bar {
-    box-sizing: border-box;
-    display: flex;
-    flex: none;
     align-items: stretch;
-    background: var(--surface);
-    box-shadow: inset 0 -1px var(--divider);
+    background: var(--background);
 }
 
+/* The band's height is stated once, as `--happy-tabbed-pane-band-height`, and
+   the tab row inside the strip is drawn at it too (TabbedPane.tsx): when the
+   strip overflows, its scrollbar's track takes room from the scrollport, not
+   from the row, so the tabs never move. A sheet that restates the band's
+   height restates this property. */
 .happy-tabbed-pane[data-size="small"] .happy-tabbed-pane__bar {
-    height: var(--happy-subheader-height);
+    --happy-tabbed-pane-band-height: var(--happy-subheader-height);
+    height: var(--happy-tabbed-pane-band-height);
 }
 
 .happy-tabbed-pane[data-size="medium"] .happy-tabbed-pane__bar {
-    height: 40px;
+    --happy-tabbed-pane-band-height: 40px;
+    height: var(--happy-tabbed-pane-band-height);
 }
 
 .happy-tabbed-pane[data-size="large"] .happy-tabbed-pane__bar {
-    height: 48px;
+    --happy-tabbed-pane-band-height: 48px;
+    height: var(--happy-tabbed-pane-band-height);
 }
 
-.happy-tabbed-pane__scroller {
-    display: flex;
-    flex: 0 1 auto;
-    min-width: 0;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scrollbar-width: none;
-}
-
-.happy-tabbed-pane__scroller::-webkit-scrollbar {
-    display: none;
-}
-
-/* Fade tab ink into the bar's surface, like the overlay close affordance. */
-.happy-tabbed-pane__scroller[data-fade-end] {
-    mask-image: linear-gradient(to right, var(--surface) calc(100% - 36px), transparent);
-}
-
-/*
- * The strip fills the scrollport exactly. The scrollport's own basis is the
- * tabs at their full width, so a short strip keeps the following action beside
- * its last tab; when the bar is narrower than that, the scrollport shrinks and
- * the strip shrinks with it, which is what lets the tabs inside give way.
- */
-.happy-tabbed-pane__strip {
-    display: flex;
-    flex: 1 1 auto;
-    align-items: stretch;
-    min-width: 0;
-}
-
-.happy-tabbed-pane__tabs {
-    flex: 1 1 auto;
-    min-width: 0;
-    border-bottom: 0;
-}
+/* ---- 2. The workspace tab strip inside the pane ------------------------ */
 
 /*
  * One width for every tab, shrinking together and never below the minimum.
@@ -128,60 +97,14 @@
     margin-left: auto;
 }
 
+/* The strip's scrollport would clip the underline's usual 1px overhang, so the
+   underline sits flush at the bottom of the tab here. */
 .happy-tabbed-pane__tabs .happy-tabs__tab-underline {
     bottom: 0;
 }
 
-/*
- * The actions follow the tab scrollport, so the "add tab" control reads as the
- * next thing after the tabs while remaining visible when the strip overflows.
- * Keeping it outside the clipping scrollport also lets a shortcut hint float
- * below the unchanged control instead of widening the bar.
- */
-.happy-tabbed-pane__actions {
-    display: flex;
-    flex: none;
-    align-items: center;
-    gap: 4px;
-    /* No leading padding: the last tab already ends with its own, and doubling
-       it leaves the "+" stranded away from the tabs. The trailing padding is
-       the bar's ordinary outer gutter. */
-    padding: 0 8px 0 0;
-}
-
-/*
- * The bar's own trailing controls, held against its far edge whatever the tabs
- * do. `margin-left: auto` takes the free space the shrinkable scrollport leaves,
- * so a strip with two tabs puts this control in the same column a strip with
- * twenty does — and the 16px gutter is the ChannelHeader's, which is what lines
- * it up with the header control directly above it.
- */
-.happy-tabbed-pane__trailing {
-    display: flex;
-    flex: none;
-    align-items: center;
-    gap: 4px;
-    margin-left: auto;
-    padding: 0 16px 0 8px;
-}
-
-.happy-tabbed-pane__body {
-    position: relative;
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    min-width: 0;
-    min-height: 0;
-}
-
 /* Editor-style strips retain the complete title and scroll instead of
    shrinking every document to the equal-cell default. */
-.happy-tabbed-pane[data-tab-sizing="content"] .happy-tabbed-pane__strip,
-.happy-tabbed-pane[data-tab-sizing="content"] .happy-tabbed-pane__tabs {
-    flex: none;
-    min-width: max-content;
-}
-
 .happy-tabbed-pane[data-tab-sizing="content"] .happy-tabs__tab {
     flex: none;
     width: auto;
@@ -212,17 +135,7 @@
 
 /* Editor tabs mark selection at the band's edge without painting a tab box. */
 .happy-tabbed-pane[data-tab-sizing="content"] .happy-tabs__tab-underline {
-    background: var(--text);
-}
-
-.happy-tabbed-pane[data-tab-sizing="content"] .happy-tabs__tab-label {
-    flex: none;
-    overflow: visible;
-    text-overflow: clip;
-}
-
-.happy-tabbed-pane[data-tab-sizing="content"] .happy-tabbed-pane__trailing {
-    padding: 0 var(--happy-panel-inset);
+    background: var(--foreground);
 }
 
 /* A long title stops short of the pane's own controls: the tab keeps its close

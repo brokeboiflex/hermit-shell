@@ -6,11 +6,10 @@ import type {
     HappyAgentTodo,
 } from "happy-desktop-state";
 import "./theme.css";
-import "./styles/button.css";
+import "./styles.css";
 import "./styles/delegated-agent.css";
 import "./styles/icon.css";
 import "./styles/happy-agent-activity.css";
-import "./styles/spinner.css";
 import { HappyAgentActivityPanel } from "./HappyAgentActivityPanel";
 import { createRenderer } from "./testing";
 

@@ -1,7 +1,9 @@
-import { useId, type CSSProperties, type ReactNode } from "react";
-import { KeyCap } from "./Badge";
-import { partitionComponentProps } from "./componentProps";
+import { useId, useState, type CSSProperties, type ReactNode } from "react";
+import { Kbd } from "./components/ui/kbd";
+import { Tooltip as TooltipRoot, TooltipContent, TooltipTrigger } from "./components/ui/tooltip";
 import type { KeyboardShortcut } from "./keyboardShortcut";
+import { cn } from "./lib/utils";
+import { modalOverlayEscapeHandOn } from "./ModalOverlay";
 
 export type TooltipPlacement = "top" | "bottom";
 export type TooltipAlign = "center" | "start" | "end";
@@ -20,8 +22,10 @@ export interface TooltipProps {
     /** Bubble text. With none, the trigger renders bare and nothing wraps it. */
     readonly label?: string;
     /**
-     * Forces the bubble open regardless of pointer or focus, with no delay, so
-     * the revealed state is directly renderable by a blueprint fixture or test.
+     * `true` forces the bubble open regardless of pointer or focus, with no
+     * delay, so the revealed state is directly renderable by a blueprint
+     * fixture or test. `false` keeps it shut, for a trigger whose own popup is
+     * open where the bubble would rise. Absent, hover and focus decide.
      */
     readonly open?: boolean;
     readonly placement?: TooltipPlacement;
@@ -30,64 +34,99 @@ export interface TooltipProps {
     readonly style?: CSSProperties;
 }
 
+/*
+ * How long the pointer must rest on a trigger before its bubble appears. The
+ * browser's own `title` waits around a second — long enough that detail put
+ * behind it reads as absent rather than deferred. This is short enough that
+ * the detail feels like part of the thing already being looked at, and still
+ * long enough that a pointer crossing a row on its way elsewhere opens nothing.
+ * Keyboard focus opens it at once, and closing never waits.
+ */
+const OPEN_DELAY_MS = 180;
+
 /**
  * C-179 Tooltip — the house replacement for the native `title` attribute:
- * secondary detail held behind a trigger and revealed on hover or focus.
+ * secondary detail held behind a trigger and revealed on hover or focus,
+ * drawn as shadcn's tooltip (the inverted foreground bubble with its arrow).
  *
- * Hover, focus, and the dwell before the bubble appears are all owned by
- * `tooltip.css`, on the same model as the floating shortcut hint in
- * `badge.css`. That keeps the component stateless: there is no timer to leak
- * when a virtualized row unmounts under the pointer mid-scroll, and no render
- * caused by moving the mouse across a transcript.
+ * Built on the shadcn/Radix tooltip. The trigger is a bare inline-flex wrapper
+ * around the child — it takes the child's size and passes its shrink through,
+ * so the row it sits in measures exactly as it does with no tooltip — and the
+ * bubble hangs off the shell's overlay lane, so it never changes the layout it
+ * explains and is never clipped by a scrolling list. The bubble takes no
+ * pointer, so it never covers a control the person is reaching for.
  *
- * The bubble is an overlay anchored to the trigger, not a sibling in its row,
- * so it never changes the layout it explains. It stays in the accessibility
- * tree while hidden — invisible through `opacity`, never `visibility` — so the
- * `aria-describedby` description is announced without needing a pointer.
- * Content must still be non-essential: a trigger that is not focusable offers
- * no keyboard route to the bubble, exactly as `title` did not.
+ * Only keyboard focus opens the bubble at once: focus that followed a click,
+ * or that a script moved — a dialog focusing its first control as it opens —
+ * is not the person asking about that control. Escape closes an open bubble
+ * and still reaches the dialog beneath it, as it did when the bubble was not a
+ * layer of its own.
+ *
+ * The bubble is only what the eye reads. The description a screen reader
+ * announces is a visually hidden copy of the label inside the trigger, always
+ * present, so it is announced without a pointer and only once while the
+ * bubble is up. Content must still be non-essential: a trigger that is not
+ * focusable offers no keyboard route to the bubble, exactly as `title` did not.
  */
 export function Tooltip(props: TooltipProps) {
-    const [local] = partitionComponentProps(props, [
-        "align",
-        "children",
-        "className",
-        "data-testid",
-        "label",
-        "open",
-        "placement",
-        "shortcut",
-        "style",
-    ]);
-    const bubbleId = useId();
-    if (local.label === undefined) return <>{local.children}</>;
+    // Hover and focus, as Radix reports them; `open` overrides them either way.
+    const [shown, setShown] = useState(false);
+    const descriptionId = useId();
+    // Held shut, the bubble forgets any hover or focus it saw before, so it
+    // does not rise unasked the moment it is let go.
+    if (props.open === false && shown) setShown(false);
+    if (props.label === undefined) return <>{props.children}</>;
     return (
-        <span
-            aria-describedby={bubbleId}
-            className={["happy-tooltip", local.className].filter(Boolean).join(" ")}
-            data-happy-desktop-ui="tooltip"
-            data-open={local.open ? "" : undefined}
-            data-testid={local["data-testid"]}
-            style={local.style}
+        <TooltipRoot
+            delayDuration={OPEN_DELAY_MS}
+            disableHoverableContent
+            onOpenChange={props.open === undefined ? setShown : undefined}
+            open={props.open ?? shown}
         >
-            {local.children}
-            <span
-                className="happy-tooltip__bubble"
-                data-happy-desktop-ui="tooltip-bubble"
-                data-align={local.align === "center" ? undefined : local.align}
-                data-placement={local.placement ?? "top"}
-                id={bubbleId}
-                role="tooltip"
+            <TooltipTrigger
+                aria-describedby={descriptionId}
+                asChild
+                onFocus={(event) => {
+                    // Radix opens on any focus it did not see a press for;
+                    // a prevented focus skips that.
+                    if (!event.currentTarget.matches(":focus-visible, :has(:focus-visible)"))
+                        event.preventDefault();
+                }}
             >
-                {local.label}
-                {local.shortcut ? (
-                    <KeyCap
-                        className="happy-tooltip__shortcut"
-                        decorative
-                        keys={local.shortcut.caps}
-                    />
+                <span
+                    className={cn(
+                        "happy-tooltip inline-flex min-w-0 items-center",
+                        props.className,
+                    )}
+                    data-happy-desktop-ui="tooltip"
+                    data-open={props.open ? "" : undefined}
+                    data-testid={props["data-testid"]}
+                    style={props.style}
+                >
+                    {props.children}
+                    <span
+                        className="happy-tooltip__description sr-only select-none"
+                        id={descriptionId}
+                    >
+                        {props.label}
+                    </span>
+                </span>
+            </TooltipTrigger>
+            <TooltipContent
+                align={props.align ?? "center"}
+                className="happy-tooltip__bubble pointer-events-none font-sans tabular-nums select-none"
+                data-happy-desktop-ui="tooltip-bubble"
+                data-placement={props.placement ?? "top"}
+                onEscapeKeyDown={modalOverlayEscapeHandOn}
+                side={props.placement ?? "top"}
+            >
+                <span aria-hidden="true">{props.label}</span>
+                {props.shortcut ? (
+                    <Kbd aria-hidden="true" className="happy-tooltip__shortcut">
+                        {props.shortcut.caps}
+                    </Kbd>
                 ) : null}
-            </span>
-        </span>
+            </TooltipContent>
+        </TooltipRoot>
     );
 }

@@ -2,6 +2,7 @@ import { partitionComponentProps } from "./componentProps";
 import { type CSSProperties, type HTMLAttributes } from "react";
 import type { Dimension } from "./dimensions";
 import { toCssDimension } from "./dimensions";
+import { cn } from "./lib/utils";
 export type BoxProps = Omit<HTMLAttributes<HTMLDivElement>, "style"> & {
     height?: Dimension;
     style?: CSSProperties;
@@ -18,7 +19,13 @@ export function Box(props: BoxProps) {
     return (
         <div
             {...rest}
-            className={["happy-box", local.className].filter(Boolean).join(" ")}
+            /* Box is the neutral layout primitive: it draws nothing, and its one
+               rule (display and box sizing) sits in the legacy layer beneath
+               the utilities (theme.css), so a caller's own class, legacy or
+               utility, always decides its layout. It deliberately takes no
+               utilities of its own, which would outrank a caller's legacy
+               class, and is not a Card or an Item: it has no surface. */
+            className={cn("happy-box", local.className)}
             /* A composing component's explicit part marker must survive so its
                measurable parts stay addressable; plain boxes keep the generic
                marker. */

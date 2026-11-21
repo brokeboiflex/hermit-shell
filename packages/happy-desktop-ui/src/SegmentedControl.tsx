@@ -1,7 +1,9 @@
 import { partitionComponentProps } from "./componentProps";
 import { type CSSProperties } from "react";
-import { Badge } from "./Badge";
+import { Badge } from "./components/ui/badge";
+import { ToggleGroup, ToggleGroupItem } from "./components/ui/toggle-group";
 import { Icon, type IconName } from "./Icon";
+import { cn } from "./lib/utils";
 export type SegmentedControlSize = "compact" | "small" | "medium" | "large";
 /** A small badge on a segment's top-right corner, such as "New". */
 export type SegmentedControlTag = {
@@ -31,18 +33,30 @@ export type SegmentedControlProps = {
     fullWidth?: boolean;
     disabled?: boolean;
 };
-const iconSizes: Record<SegmentedControlSize, 14 | 16 | 18> = {
+/** Happy's sizes on shadcn's toggle sizes; `compact` is the 24px subheader radio. */
+const toggleSizes: Record<SegmentedControlSize, "sm" | "default" | "lg"> = {
+    compact: "sm",
+    small: "sm",
+    medium: "default",
+    large: "lg",
+};
+const iconSizes: Record<SegmentedControlSize, 14 | 16> = {
     compact: 14,
     small: 14,
     medium: 16,
-    large: 18,
+    large: 16,
 };
+/** The compact segment: shadcn's small toggle cut to the subheader's control height. */
+const compactSegment = "h-(--happy-subheader-control-height) px-1.5 text-xs";
 /**
- * C-022 SegmentedControl — inline exclusive choice group (2–5 segments) with a
- * one-layer radio treatment. Segments share one equal column width regardless
- * of label length. The group itself is transparent; only the selected segment
- * is painted, so the choices sit directly on their owning surface instead of
- * nesting a selected box inside another box.
+ * C-022 SegmentedControl — an exclusive choice group (2–5 segments) on shadcn's
+ * single ToggleGroup, one layer deep: the group draws no track, unselected
+ * segments sit directly on the owning surface, and only the selected one
+ * carries the quiet selected fill.
+ *
+ * Every segment is as wide as the widest label. That is the one layout here
+ * flexbox cannot express — equal columns sized by their widest content — so the
+ * group is a single-row CSS grid of equal `1fr` tracks.
  */
 export function SegmentedControl(props: SegmentedControlProps) {
     const [local] = partitionComponentProps(props, [
@@ -57,57 +71,65 @@ export function SegmentedControl(props: SegmentedControlProps) {
         "style",
         "value",
     ]);
-    const size = () => local.size ?? "medium";
+    const size = local.size ?? "medium";
     return (
-        <div
+        <ToggleGroup
             aria-label={local["aria-label"]}
-            className={["happy-segmented-control", local.className].filter(Boolean).join(" ")}
+            className={cn(
+                "happy-segmented-control auto-cols-fr grid-flow-col items-stretch",
+                local.fullWidth ? "grid w-full" : "inline-grid",
+                local.className,
+            )}
             data-disabled={local.disabled ? "" : undefined}
             data-full-width={local.fullWidth ? "" : undefined}
             data-happy-desktop-ui="segmented-control"
-            data-size={size()}
+            data-size={size}
             data-testid={local["data-testid"]}
-            role="group"
-            style={
-                {
-                    ...local.style,
-                    gridTemplateColumns: `repeat(${local.segments.length}, 1fr)`,
-                } as CSSProperties
-            }
+            disabled={local.disabled}
+            onValueChange={(next) => {
+                // Pressing the chosen segment again would clear the choice;
+                // an exclusive choice always has one.
+                if (next !== "" && next !== local.value) local.onChange?.(next);
+            }}
+            size={toggleSizes[size]}
+            spacing={0.5}
+            style={local.style}
+            type="single"
+            value={local.value}
         >
             {local.segments.map((segment) => {
-                const active = () => segment.value === local.value;
+                const active = segment.value === local.value;
                 return (
-                    <button
-                        aria-pressed={active()}
-                        key={segment.value}
-                        className="happy-segmented-control__segment"
-                        data-active={active() ? "" : undefined}
+                    <ToggleGroupItem
+                        className={cn(
+                            "happy-segmented-control__segment relative min-w-0",
+                            size === "compact" && compactSegment,
+                        )}
+                        data-active={active ? "" : undefined}
                         data-happy-desktop-ui="segmented-control-segment"
                         data-value={segment.value}
-                        disabled={local.disabled || segment.disabled}
-                        onClick={() => local.onChange?.(segment.value)}
+                        disabled={segment.disabled}
+                        key={segment.value}
                         title={segment.title}
-                        type="button"
+                        value={segment.value}
                     >
                         {segment.tag ? (
-                            <span
-                                className="happy-segmented-control__tag"
+                            <Badge
+                                className="happy-segmented-control__tag absolute -top-2 right-0 z-10 h-4 bg-background px-1.5 text-[0.625rem] text-muted-foreground"
                                 data-happy-desktop-ui="segmented-control-tag"
+                                variant="outline"
                             >
                                 {segment.tag.label}
-                            </span>
+                            </Badge>
                         ) : null}
-                        {segment.icon
-                            ? ((name) => (
-                                  <span
-                                      className="happy-segmented-control__icon"
-                                      data-happy-desktop-ui="segmented-control-icon"
-                                  >
-                                      <Icon name={name} size={iconSizes[size()]} />
-                                  </span>
-                              ))(segment.icon)
-                            : null}
+                        {segment.icon ? (
+                            <Icon
+                                className="happy-segmented-control__icon"
+                                data-icon="inline-start"
+                                name={segment.icon}
+                                size={iconSizes[size]}
+                            />
+                        ) : null}
                         <span
                             className="happy-segmented-control__label"
                             data-happy-desktop-ui="segmented-control-label"
@@ -115,15 +137,13 @@ export function SegmentedControl(props: SegmentedControlProps) {
                             {segment.label}
                         </span>
                         {segment.badge ? (
-                            <Badge
-                                className="happy-segmented-control__badge"
-                                label={segment.badge}
-                                variant="outline"
-                            />
+                            <Badge className="happy-segmented-control__badge" variant="outline">
+                                {segment.badge}
+                            </Badge>
                         ) : null}
-                    </button>
+                    </ToggleGroupItem>
                 );
             })}
-        </div>
+        </ToggleGroup>
     );
 }

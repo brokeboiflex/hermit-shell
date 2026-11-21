@@ -291,7 +291,6 @@
 .happy-setup-page[data-backdrop="sky"] .happy-setup-assistants__detail,
 .happy-setup-page[data-backdrop="sky"] .happy-setup-assistants__note,
 .happy-setup-page[data-backdrop="sky"] .happy-setup-assistants__link,
-.happy-setup-page[data-backdrop="sky"] .happy-copy-button[data-captioned],
 .happy-setup-page[data-backdrop="sky"] .happy-local-onboarding__facts,
 .happy-setup-page[data-backdrop="sky"] .happy-text-field__label {
     color: var(--onboarding-foreground);
@@ -326,20 +325,27 @@
     color: color-mix(in srgb, var(--onboarding-foreground) 64%, transparent);
 }
 
+/* The sky's overrides of converted controls (CopyButton, Button) are
+   `!important`: the legacy layer sits under their utilities until this sheet
+   converts. */
+.happy-setup-page[data-backdrop="sky"] .happy-copy-button[data-captioned] {
+    color: var(--onboarding-foreground) !important;
+}
+
 .happy-setup-page[data-backdrop="sky"] .happy-setup-command__copy {
-    color: color-mix(in srgb, var(--onboarding-foreground) 78%, transparent);
+    color: color-mix(in srgb, var(--onboarding-foreground) 78%, transparent) !important;
 }
 
 .happy-setup-page[data-backdrop="sky"] .happy-setup-command__copy:hover,
 .happy-setup-page[data-backdrop="sky"] .happy-setup-command__copy:focus-visible {
-    color: var(--onboarding-foreground);
-    background: color-mix(in srgb, var(--onboarding-foreground) 14%, transparent);
+    color: var(--onboarding-foreground) !important;
+    background: color-mix(in srgb, var(--onboarding-foreground) 14%, transparent) !important;
 }
 
 /* Quiet controls share the backdrop ink and translucent hover. */
 .happy-setup-page[data-backdrop="sky"] .happy-copy-button[data-captioned]:hover {
-    color: var(--onboarding-foreground);
-    background: color-mix(in srgb, var(--onboarding-foreground) 12%, transparent);
+    color: var(--onboarding-foreground) !important;
+    background: color-mix(in srgb, var(--onboarding-foreground) 12%, transparent) !important;
 }
 
 /* What the machine turned out to hold, reported rather than acted on. */
@@ -390,8 +396,8 @@
 }
 
 .happy-setup-page[data-backdrop="sky"] .happy-button[data-variant="primary"] {
-    background: var(--onboarding-foreground);
-    color: var(--onboarding-action-label);
+    background: var(--onboarding-foreground) !important;
+    color: var(--onboarding-action-label) !important;
 }
 
 .happy-setup-page[data-backdrop="sky"] .happy-button[data-variant="ghost"] {
@@ -414,16 +420,20 @@
 }
 
 .happy-setup-page__footer-secondary > .happy-button[data-variant="ghost"] {
-    border-radius: var(--happy-radius-pill);
+    border-radius: var(--happy-radius-pill) !important;
 }
 
 .happy-setup-page[data-backdrop="sky"] .happy-button[data-variant="ghost"]:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--onboarding-foreground) 12%, transparent);
-    color: var(--onboarding-foreground);
+    background: color-mix(in srgb, var(--onboarding-foreground) 12%, transparent) !important;
+    color: var(--onboarding-foreground) !important;
 }
 
 .happy-setup-page[data-backdrop="sky"] .happy-button[data-variant="primary"]:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--onboarding-action-label) 8%, var(--onboarding-foreground));
+    background: color-mix(
+        in srgb,
+        var(--onboarding-action-label) 8%,
+        var(--onboarding-foreground)
+    ) !important;
 }
 
 /* Fixed square whether the art arrives or not: the scene renders nothing until

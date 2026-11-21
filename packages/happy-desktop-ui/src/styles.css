@@ -1,195 +1,268 @@
+/*
+ * The design system's one stylesheet, and the one Tailwind root of every
+ * document that renders happy-desktop-ui: Blueprint, the UI tests, the web
+ * build, and the Electron renderer all reach it through `src/index.ts`. No other
+ * stylesheet imports `tailwindcss`, so a document gets exactly one preflight.
+ *
+ * Cascade layers, lowest first:
+ *
+ *   theme, base     Tailwind's theme variables, then preflight and shadcn's base.
+ *   components      Tailwind's component layer (unused by shadcn).
+ *   happy-legacy    Every hand-written stylesheet below that predates the move
+ *                   to shadcn, and the vendor CSS they import, in their original
+ *                   order. Unlayered CSS outranks every layer whatever its
+ *                   specificity, so left unlayered these rules would silently
+ *                   beat the utilities of a converted component. Inside one
+ *                   layer they keep the order and specificity they always had,
+ *                   and they still sit above preflight, as they did when
+ *                   preflight came from the app's own Tailwind import.
+ *   utilities       Tailwind utilities: what converted components are made of.
+ *
+ * Only `theme.css` stays unlayered: it declares tokens on the appearance scopes
+ * and nothing else. When the last legacy stylesheet converts, delete its import
+ * here; when the list is empty, delete the layer.
+ */
+@layer theme, base, components, happy-legacy, utilities;
+
+@import "tailwindcss" source(none);
+@import "tw-animate-css";
+
+/* Class names are read from the components and their Blueprint pages, wherever
+   the host builds from. Recorded fixtures and binary assets carry none. */
+@source "./";
+@source "../dev";
+@source not "./assets";
+@source not "../dev/recordings";
+
+/* shadcn's state variants (shadcn/tailwind.css): `data-open:` and friends match
+   Radix's `data-state` and the boolean data attributes both. Its scroll-fade,
+   shimmer, and `no-scrollbar` utilities are deliberately not carried: the
+   scrollbar is always the browser's own (styles/scrollbar.css). */
+@custom-variant data-open {
+    &:where([data-state="open"]),
+    &:where([data-open]:not([data-open="false"])) {
+        @slot;
+    }
+}
+
+@custom-variant data-closed {
+    &:where([data-state="closed"]),
+    &:where([data-closed]:not([data-closed="false"])) {
+        @slot;
+    }
+}
+
+@custom-variant data-checked {
+    &:where([data-state="checked"]),
+    &:where([data-checked]:not([data-checked="false"])) {
+        @slot;
+    }
+}
+
+@custom-variant data-unchecked {
+    &:where([data-state="unchecked"]),
+    &:where([data-unchecked]:not([data-unchecked="false"])) {
+        @slot;
+    }
+}
+
+@custom-variant data-selected {
+    &:where([data-selected="true"]) {
+        @slot;
+    }
+}
+
+@custom-variant data-disabled {
+    &:where([data-disabled="true"]),
+    &:where([data-disabled]:not([data-disabled="false"])) {
+        @slot;
+    }
+}
+
+@custom-variant data-active {
+    &:where([data-state="active"]),
+    &:where([data-active]:not([data-active="false"])) {
+        @slot;
+    }
+}
+
+@custom-variant data-horizontal {
+    &:where([data-orientation="horizontal"]) {
+        @slot;
+    }
+}
+
+@custom-variant data-vertical {
+    &:where([data-orientation="vertical"]) {
+        @slot;
+    }
+}
+
 @import "./theme.css";
-@import "./styles/desktop-mobile-setup.css";
-@import "./styles/brand-logo.css";
-@import "./styles/scrollbar.css";
-@import "./styles/visually-hidden.css";
-@import "./styles/icon.css";
-@import "./styles/vector-icon.css";
-@import "./styles/button.css";
-@import "./styles/avatar.css";
-@import "./styles/icon-tile.css";
-@import "./styles/badge.css";
-@import "./styles/zoom-indicator.css";
-@import "./styles/automated-tag.css";
-@import "./styles/diff-snippet.css";
-@import "./styles/title-bar.css";
-@import "./styles/rail.css";
-@import "./styles/change-stats.css";
-@import "./styles/sidebar.css";
-@import "./styles/sidebar-bug-report.css";
-@import "./styles/sidebar-spaces.css";
-@import "./styles/app-shell.css";
-@import "./styles/channel-header.css";
-@import "./styles/message.css";
-@import "./styles/agent-run-card.css";
-@import "./styles/approval-card.css";
-@import "./styles/event-card.css";
-@import "./styles/typed-text.css";
-@import "./styles/agent-working-status.css";
-@import "./styles/turn-summary.css";
-@import "./styles/tooltip.css";
-@import "./styles/scrolling-text.css";
-@import "./styles/copy-button.css";
-@import "./styles/conversation-error-card.css";
-@import "./styles/conversation-failure-card.css";
-@import "./styles/conversation-compute-event.css";
-@import "./styles/agent-desk.css";
-@import "./styles/agent-trace-row.css";
-@import "./styles/agent-trace-panel.css";
-@import "./styles/composer.css";
-@import "./styles/composer-attachment-remove.css";
-@import "./styles/composer-attachment-previews.css";
-@import "./styles/composer-model-control.css";
-@import "./styles/composer-dock.css";
-@import "./styles/composer-panel.css";
-@import "./styles/text-field.css";
-@import "./styles/select.css";
-@import "./styles/switch.css";
-@import "./styles/spinner.css";
-@import "./styles/spinner-braille.css";
-@import "./styles/shimmer-text.css";
-@import "./styles/loading-swap.css";
-@import "./styles/checkbox.css";
-@import "./styles/segmented-control.css";
-@import "./styles/audience-toggle.css";
-@import "./styles/dev-build-menu.css";
-@import "./styles/sidebar-keep-awake-menu.css";
-@import "./styles/live-performance.css";
-@import "./styles/banner.css";
-@import "./styles/empty-state.css";
-@import "./styles/lottie-scene.css";
-@import "./styles/night-sky-shader.css";
-@import "./styles/fade.css";
-@import "./styles/tabs.css";
-@import "./styles/tabbed-pane.css";
-@import "./styles/deferred-pane.css";
-@import "./styles/retained-views.css";
-@import "./styles/transfer-zone.css";
-@import "./styles/toolbar.css";
-@import "./styles/terminal-panel.css";
-@import "./styles/browser-panel.css";
-@import "./styles/menu.css";
-@import "./styles/menu-button.css";
-@import "./styles/confirm-popover.css";
-@import "./styles/modal.css";
-@import "./styles/photo-crop-dialog.css";
-@import "./styles/modal-overlay.css";
-@import "./styles/compose-modal.css";
-@import "./styles/command-palette.css";
-@import "./styles/command-palette-results.css";
-@import "./styles/command-picker.css";
-@import "./styles/lightbox.css";
-@import "./styles/form-row.css";
-@import "./styles/data-disclosure.css";
-@import "./styles/data-table.css";
-@import "./styles/stat-tile.css";
-@import "./styles/status-picker.css";
-@import "./styles/search-results.css";
-@import "./styles/info-panel.css";
-@import "./styles/file-tree.css";
-@import "./styles/file-panel.css";
-@import "./styles/file-workspace.css";
-@import "./styles/file-browser.css";
-@import "./styles/diff-surface.css";
-@import "./styles/file-family.css";
-@import "./styles/diff-file-title.css";
-@import "./styles/review-file-actions.css";
-@import "./styles/review-comment.css";
-@import "./styles/review-stream.css";
-@import "./styles/file-path-label.css";
-@import "./styles/markdown-document.css";
-@import "./styles/markdown-diff.css";
-@import "./styles/mermaid-diagram.css";
-@import "katex/dist/katex.min.css";
-@import "./styles/math-formula.css";
-@import "./styles/file-preview.css";
-@import "./styles/image-viewer.css";
-@import "./styles/video-viewer.css";
-@import "./styles/html-preview.css";
-@import "./styles/file-editor.css";
-@import "./styles/changed-file-diff.css";
-@import "./styles/code-block.css";
-@import "./styles/code-editor.css";
-@import "./styles/document-editor.css";
-@import "./styles/media-gallery.css";
-@import "./styles/file-attachment.css";
-@import "./styles/result-card.css";
-@import "./styles/inline-page.css";
-@import "./styles/conversation-media.css";
-@import "./styles/emoji-picker.css";
-@import "./styles/splash-screen.css";
-@import "./styles/splash-cover.css";
-@import "./styles/onboarding-sky.css";
-@import "./styles/welcome-deck.css";
-@import "./styles/welcome-screen.css";
-@import "./styles/split-column.css";
-@import "./styles/setup-page.css";
-@import "./styles/setup-drift.css";
-@import "./styles/qr-code.css";
-@import "./styles/segmented-progress.css";
-@import "./styles/onboarding-steps.css";
-@import "./styles/setup-choice.css";
-@import "./styles/setup-assistants.css";
-@import "./styles/claude-setup-token.css";
-@import "./styles/setup-command.css";
-@import "./styles/setup-prompt.css";
-@import "./styles/agent-update-card.css";
-@import "./styles/setup-option-card.css";
-@import "./styles/default-agent-form.css";
-@import "./styles/build-progress-panel.css";
-@import "./styles/permission-checklist.css";
-@import "./styles/admin-page.css";
-@import "./styles/panel-header.css";
-@import "./styles/sidebar-apps.css";
-@import "./styles/happy-agent-install.css";
-@import "./styles/happy-agent-client.css";
-@import "./styles/happy-agent-chat.css";
-@import "./styles/happy-agent-connection-status.css";
-@import "./styles/agent-activity-row.css";
-@import "./styles/delegated-agent.css";
-@import "./styles/wait-ring.css";
-@import "./styles/usage-ring.css";
-@import "./styles/tool-call-preview.css";
-@import "./styles/context-meter.css";
-@import "./styles/context-breakdown.css";
-@import "./styles/conversation.css";
-@import "./styles/chat-conversation.css";
-@import "./styles/chat-wallpaper.css";
-@import "./styles/happy-agent-usage.css";
-@import "./styles/happy-agent-devices.css";
-@import "./styles/happy-agent-activity.css";
-@import "./styles/happy-agent-settings.css";
-@import "./styles/mobile-access-confirmation.css";
-@import "./styles/mobile-pairing.css";
-@import "./styles/happy-agent-mobile-link.css";
-@import "./styles/happy-agent-secret-settings.css";
-@import "./styles/secret-value-field.css";
-@import "./styles/happy-agent-file-tier-settings.css";
-@import "./styles/happy-agent-usage-settings.css";
-@import "./styles/usage-activity-grid.css";
-@import "./styles/happy-agent-inbox.css";
-@import "./styles/happy-agent-artifacts.css";
-@import "./styles/happy-agent-plugins.css";
-@import "./styles/happy-agent-feed.css";
-@import "./styles/happy-agent-project-settings.css";
-@import "./styles/happy-agent-create-bot.css";
-@import "./styles/happy-agent-create-task.css";
-@import "./styles/happy-agent-project-clone-dialog.css";
-@import "./styles/happy-agent-task-browse-dialog.css";
-@import "./styles/happy-link-notice.css";
-@import "./styles/profile-setup.css";
-@import "./styles/reordering-list.css";
-@import "./styles/happy-agent-surfaces.css";
-@import "./styles/happy-agent-calendar.css";
-@import "./styles/happy-agent-vault.css";
-@import "./styles/workspace-lifecycle-notice.css";
-@import "./styles/connections.css";
-@import "./styles/window-chrome.css";
-@import "./styles/gpt-live-phone.css";
-@import "./styles/system-monitor.css";
-@import "./styles/dither-chart.css";
-@import "./styles/work-story.css";
-@import "./styles/work-floaty.css";
-@import "./styles/project-command-shortcuts.css";
-@import "./styles/windows-sandbox-setup.css";
-@import "./styles/gen-ui.css";
+
+@import "./styles/desktop-mobile-setup.css" layer(happy-legacy);
+@import "./styles/brand-logo.css" layer(happy-legacy);
+@import "./styles/scrollbar.css" layer(happy-legacy);
+@import "./styles/visually-hidden.css" layer(happy-legacy);
+@import "./styles/icon.css" layer(happy-legacy);
+@import "./styles/vector-icon.css" layer(happy-legacy);
+@import "./styles/badge.css" layer(happy-legacy);
+@import "./styles/zoom-indicator.css" layer(happy-legacy);
+@import "./styles/diff-snippet.css" layer(happy-legacy);
+@import "./styles/title-bar.css" layer(happy-legacy);
+@import "./styles/rail.css" layer(happy-legacy);
+@import "./styles/change-stats.css" layer(happy-legacy);
+@import "./styles/sidebar.css" layer(happy-legacy);
+@import "./styles/sidebar-bug-report.css" layer(happy-legacy);
+@import "./styles/sidebar-spaces.css" layer(happy-legacy);
+@import "./styles/app-shell.css" layer(happy-legacy);
+@import "./styles/channel-header.css" layer(happy-legacy);
+@import "./styles/message.css" layer(happy-legacy);
+@import "./styles/agent-run-card.css" layer(happy-legacy);
+@import "./styles/approval-card.css" layer(happy-legacy);
+@import "./styles/event-card.css" layer(happy-legacy);
+@import "./styles/typed-text.css" layer(happy-legacy);
+@import "./styles/agent-working-status.css" layer(happy-legacy);
+@import "./styles/turn-summary.css" layer(happy-legacy);
+@import "./styles/scrolling-text.css" layer(happy-legacy);
+@import "./styles/copy-button.css" layer(happy-legacy);
+@import "./styles/conversation-error-card.css" layer(happy-legacy);
+@import "./styles/conversation-failure-card.css" layer(happy-legacy);
+@import "./styles/conversation-compute-event.css" layer(happy-legacy);
+@import "./styles/agent-desk.css" layer(happy-legacy);
+@import "./styles/agent-trace-row.css" layer(happy-legacy);
+@import "./styles/agent-trace-panel.css" layer(happy-legacy);
+@import "./styles/composer.css" layer(happy-legacy);
+@import "./styles/composer-attachment-remove.css" layer(happy-legacy);
+@import "./styles/composer-attachment-previews.css" layer(happy-legacy);
+@import "./styles/composer-model-control.css" layer(happy-legacy);
+@import "./styles/composer-dock.css" layer(happy-legacy);
+@import "./styles/composer-panel.css" layer(happy-legacy);
+@import "./styles/shimmer-text.css" layer(happy-legacy);
+@import "./styles/loading-swap.css" layer(happy-legacy);
+@import "./styles/audience-toggle.css" layer(happy-legacy);
+@import "./styles/dev-build-menu.css" layer(happy-legacy);
+@import "./styles/sidebar-keep-awake-menu.css" layer(happy-legacy);
+@import "./styles/live-performance.css" layer(happy-legacy);
+@import "./styles/lottie-scene.css" layer(happy-legacy);
+@import "./styles/night-sky-shader.css" layer(happy-legacy);
+@import "./styles/fade.css" layer(happy-legacy);
+@import "./styles/tabs.css" layer(happy-legacy);
+@import "./styles/tabbed-pane.css" layer(happy-legacy);
+@import "./styles/deferred-pane.css" layer(happy-legacy);
+@import "./styles/retained-views.css" layer(happy-legacy);
+@import "./styles/transfer-zone.css" layer(happy-legacy);
+@import "./styles/terminal-panel.css" layer(happy-legacy);
+@import "./styles/browser-panel.css" layer(happy-legacy);
+@import "./styles/photo-crop-dialog.css" layer(happy-legacy);
+@import "./styles/compose-modal.css" layer(happy-legacy);
+@import "./styles/data-disclosure.css" layer(happy-legacy);
+@import "./styles/stat-tile.css" layer(happy-legacy);
+@import "./styles/search-results.css" layer(happy-legacy);
+@import "./styles/info-panel.css" layer(happy-legacy);
+@import "./styles/file-tree.css" layer(happy-legacy);
+@import "./styles/file-panel.css" layer(happy-legacy);
+@import "./styles/file-workspace.css" layer(happy-legacy);
+@import "./styles/file-browser.css" layer(happy-legacy);
+@import "./styles/diff-surface.css" layer(happy-legacy);
+@import "./styles/file-family.css" layer(happy-legacy);
+@import "./styles/diff-file-title.css" layer(happy-legacy);
+@import "./styles/review-file-actions.css" layer(happy-legacy);
+@import "./styles/review-comment.css" layer(happy-legacy);
+@import "./styles/review-stream.css" layer(happy-legacy);
+@import "./styles/file-path-label.css" layer(happy-legacy);
+@import "./styles/markdown-document.css" layer(happy-legacy);
+@import "./styles/markdown-diff.css" layer(happy-legacy);
+@import "./styles/mermaid-diagram.css" layer(happy-legacy);
+@import "katex/dist/katex.min.css" layer(happy-legacy);
+@import "./styles/math-formula.css" layer(happy-legacy);
+@import "./styles/file-preview.css" layer(happy-legacy);
+@import "./styles/image-viewer.css" layer(happy-legacy);
+@import "./styles/video-viewer.css" layer(happy-legacy);
+@import "./styles/html-preview.css" layer(happy-legacy);
+@import "./styles/file-editor.css" layer(happy-legacy);
+@import "./styles/changed-file-diff.css" layer(happy-legacy);
+@import "./styles/code-block.css" layer(happy-legacy);
+@import "./styles/code-editor.css" layer(happy-legacy);
+@import "./styles/document-editor.css" layer(happy-legacy);
+@import "./styles/media-gallery.css" layer(happy-legacy);
+@import "./styles/file-attachment.css" layer(happy-legacy);
+@import "./styles/result-card.css" layer(happy-legacy);
+@import "./styles/inline-page.css" layer(happy-legacy);
+@import "./styles/conversation-media.css" layer(happy-legacy);
+@import "./styles/emoji-picker.css" layer(happy-legacy);
+@import "./styles/splash-screen.css" layer(happy-legacy);
+@import "./styles/splash-cover.css" layer(happy-legacy);
+@import "./styles/onboarding-sky.css" layer(happy-legacy);
+@import "./styles/welcome-deck.css" layer(happy-legacy);
+@import "./styles/welcome-screen.css" layer(happy-legacy);
+@import "./styles/split-column.css" layer(happy-legacy);
+@import "./styles/setup-page.css" layer(happy-legacy);
+@import "./styles/setup-drift.css" layer(happy-legacy);
+@import "./styles/qr-code.css" layer(happy-legacy);
+@import "./styles/segmented-progress.css" layer(happy-legacy);
+@import "./styles/onboarding-steps.css" layer(happy-legacy);
+@import "./styles/setup-choice.css" layer(happy-legacy);
+@import "./styles/setup-assistants.css" layer(happy-legacy);
+@import "./styles/claude-setup-token.css" layer(happy-legacy);
+@import "./styles/setup-command.css" layer(happy-legacy);
+@import "./styles/setup-prompt.css" layer(happy-legacy);
+@import "./styles/agent-update-card.css" layer(happy-legacy);
+@import "./styles/setup-option-card.css" layer(happy-legacy);
+@import "./styles/default-agent-form.css" layer(happy-legacy);
+@import "./styles/build-progress-panel.css" layer(happy-legacy);
+@import "./styles/permission-checklist.css" layer(happy-legacy);
+@import "./styles/admin-page.css" layer(happy-legacy);
+@import "./styles/panel-header.css" layer(happy-legacy);
+@import "./styles/sidebar-apps.css" layer(happy-legacy);
+@import "./styles/happy-agent-install.css" layer(happy-legacy);
+@import "./styles/happy-agent-client.css" layer(happy-legacy);
+@import "./styles/happy-agent-chat.css" layer(happy-legacy);
+@import "./styles/happy-agent-connection-status.css" layer(happy-legacy);
+@import "./styles/agent-activity-row.css" layer(happy-legacy);
+@import "./styles/delegated-agent.css" layer(happy-legacy);
+@import "./styles/wait-ring.css" layer(happy-legacy);
+@import "./styles/usage-ring.css" layer(happy-legacy);
+@import "./styles/tool-call-preview.css" layer(happy-legacy);
+@import "./styles/context-meter.css" layer(happy-legacy);
+@import "./styles/context-breakdown.css" layer(happy-legacy);
+@import "./styles/conversation.css" layer(happy-legacy);
+@import "./styles/chat-conversation.css" layer(happy-legacy);
+@import "./styles/chat-wallpaper.css" layer(happy-legacy);
+@import "./styles/happy-agent-usage.css" layer(happy-legacy);
+@import "./styles/happy-agent-devices.css" layer(happy-legacy);
+@import "./styles/happy-agent-activity.css" layer(happy-legacy);
+@import "./styles/happy-agent-settings.css" layer(happy-legacy);
+@import "./styles/mobile-access-confirmation.css" layer(happy-legacy);
+@import "./styles/mobile-pairing.css" layer(happy-legacy);
+@import "./styles/happy-agent-mobile-link.css" layer(happy-legacy);
+@import "./styles/happy-agent-secret-settings.css" layer(happy-legacy);
+@import "./styles/happy-agent-file-tier-settings.css" layer(happy-legacy);
+@import "./styles/happy-agent-usage-settings.css" layer(happy-legacy);
+@import "./styles/usage-activity-grid.css" layer(happy-legacy);
+@import "./styles/happy-agent-inbox.css" layer(happy-legacy);
+@import "./styles/happy-agent-artifacts.css" layer(happy-legacy);
+@import "./styles/happy-agent-plugins.css" layer(happy-legacy);
+@import "./styles/happy-agent-feed.css" layer(happy-legacy);
+@import "./styles/happy-agent-project-settings.css" layer(happy-legacy);
+@import "./styles/happy-agent-create-bot.css" layer(happy-legacy);
+@import "./styles/happy-agent-create-task.css" layer(happy-legacy);
+@import "./styles/happy-agent-project-clone-dialog.css" layer(happy-legacy);
+@import "./styles/happy-agent-task-browse-dialog.css" layer(happy-legacy);
+@import "./styles/happy-link-notice.css" layer(happy-legacy);
+@import "./styles/profile-setup.css" layer(happy-legacy);
+@import "./styles/reordering-list.css" layer(happy-legacy);
+@import "./styles/happy-agent-surfaces.css" layer(happy-legacy);
+@import "./styles/happy-agent-calendar.css" layer(happy-legacy);
+@import "./styles/happy-agent-vault.css" layer(happy-legacy);
+@import "./styles/workspace-lifecycle-notice.css" layer(happy-legacy);
+@import "./styles/connections.css" layer(happy-legacy);
+@import "./styles/window-chrome.css" layer(happy-legacy);
+@import "./styles/gpt-live-phone.css" layer(happy-legacy);
+@import "./styles/system-monitor.css" layer(happy-legacy);
+@import "./styles/dither-chart.css" layer(happy-legacy);
+@import "./styles/work-story.css" layer(happy-legacy);
+@import "./styles/work-floaty.css" layer(happy-legacy);
+@import "./styles/project-command-shortcuts.css" layer(happy-legacy);
+@import "./styles/windows-sandbox-setup.css" layer(happy-legacy);
+@import "./styles/gen-ui.css" layer(happy-legacy);

@@ -44,12 +44,12 @@ export function AvatarPage() {
         <ComponentPage
             number={componentNumber}
             title="Avatar"
-            summary="Identity mark for humans (circle) and agents (rounded square) with tone gradients, presence, and image variant."
+            summary="Identity mark on shadcn/ui's Avatar for humans (circle) and agents (rounded square) with tones, presence, and image variant."
         >
             <Specimen
                 number="01"
                 label="Human sizes"
-                detail="Circle · 20 / 28 / 36 / 44 · initials 8 / 10 / 12 / 14 px, 700"
+                detail="Circle · 20 / 28 / 36 / 44 · initials 8 / 10 / 12 / 14 px, medium"
                 stage="app"
             >
                 <div style={row}>
@@ -83,7 +83,7 @@ export function AvatarPage() {
             <Specimen
                 number="02"
                 label="Agent sizes"
-                detail="Rounded square · radius 6 / 7 / 9 / 10 by size"
+                detail="Rounded square · radius 6 / 8 / 10 / 14 by size (shadcn sm–xl)"
                 stage="app"
             >
                 <div style={row}>
@@ -148,7 +148,7 @@ export function AvatarPage() {
             <Specimen
                 number="04"
                 label="Presence"
-                detail="Online dot 8px (10px on lg) · 2px app-colored ring · −1px overhang"
+                detail="Online dot 8px (10px on lg) · 2px background ring · shadcn AvatarBadge"
                 stage="app"
             >
                 <div style={row}>

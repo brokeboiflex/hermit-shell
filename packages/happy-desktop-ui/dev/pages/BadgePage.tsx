@@ -35,11 +35,11 @@ export function BadgePage() {
     return (
         <ComponentPage
             number={componentNumber}
-            summary="Status pills, unread counts, reaction chips, and shortcut key caps — the small mono-labelled signals that annotate everything else."
+            summary="Status pills, unread counts, reaction chips, and shortcut key caps on shadcn/ui's Badge, Toggle, and Kbd — the small signals that annotate everything else."
             title="Badge family"
         >
             <Specimen
-                detail="18px pill · radius 4 · mono 10/700 uppercase · letter-spacing 0.06em"
+                detail="20px shadcn Badge pill · 12px medium label"
                 label="Badge — seven variants"
                 number="01"
                 stage="surface"
@@ -54,7 +54,7 @@ export function BadgePage() {
                             />
                         ))}
                     </div>
-                    <DimensionRule label="18 px high · 6 px x-pad" />
+                    <DimensionRule label="20 px high · 8 px x-pad" />
                 </div>
             </Specimen>
 
@@ -74,7 +74,7 @@ export function BadgePage() {
             </Specimen>
 
             <Specimen
-                detail="18px round pill · min-width 18 · mono 11/700 lining tabular numerals · ink and neutral tones"
+                detail="20px round Badge · min-width 20 · mono tabular numerals · default and secondary tones"
                 label="CountBadge"
                 number="03"
                 stage="chrome"
@@ -90,12 +90,12 @@ export function BadgePage() {
                         <CountBadge count={4} tone="neutral" />
                         <CountBadge count={12} tone="neutral" />
                     </div>
-                    <DimensionRule label="18 px min · grows with digits" />
+                    <DimensionRule label="20 px min · 8 px per further digit" />
                 </div>
             </Specimen>
 
             <Specimen
-                detail="24px pill · fixed 18px system-emoji slot + mono 11/700 lining/tabular count · active = accent chip"
+                detail="24px outline Toggle pill · 16px system-emoji slot + mono tabular count · active = pressed, muted fill"
                 label="ReactionChip"
                 number="04"
                 stage="app"
@@ -114,7 +114,7 @@ export function BadgePage() {
             </Specimen>
 
             <Specimen
-                detail="18px cap · system-face modifiers spanning the capitals' band + mono 10.8/500 letters, one shared baseline · 4px x-padding · Ctrl+ spelled out off macOS"
+                detail="20px shadcn Kbd · system-face modifiers on the letters' baseline · 4px x-padding · Ctrl+ spelled out off macOS"
                 label="KeyCap"
                 number="05"
                 stage="chrome"

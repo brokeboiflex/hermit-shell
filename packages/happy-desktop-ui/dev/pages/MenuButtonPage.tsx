@@ -15,11 +15,25 @@ const historyItems: MenuItem[] = [
     { kind: "item", id: "file-2", label: "/…/ui/AppShell.tsx", icon: "doc" },
 ];
 
+/** Every row a MenuItem can be: plain, iconned, detailed, with a shortcut, checked, disabled, and destructive. */
+const kindItems: MenuItem[] = [
+    { kind: "label", label: "Appearance" },
+    { kind: "item", id: "light", label: "Light", icon: "sun", checked: false },
+    { kind: "item", id: "dark", label: "Dark", icon: "moon", checked: true },
+    { kind: "separator" },
+    { kind: "item", id: "copy", label: "Copy link", icon: "link", shortcut: "⌘C" },
+    { kind: "item", id: "recent", label: "Reopen last chat", icon: "history", detail: "12m" },
+    { kind: "item", id: "plain", label: "Rename" },
+    { kind: "item", id: "offline", label: "Export (offline)", icon: "archive", disabled: true },
+    { kind: "separator" },
+    { kind: "item", id: "delete", label: "Delete workspace", icon: "trash", danger: true },
+];
+
 export function MenuButtonPage() {
     return (
         <ComponentPage
             number={componentNumber}
-            summary="Compact icon action with a corner-anchored Menu. Opening moves focus into the first enabled row; Escape and selection return it to the trigger."
+            summary="Compact icon action opening shadcn/ui's DropdownMenu of MenuItem rows. Radix places it beside the trigger, moves focus through its rows with the arrow keys, and returns focus to the trigger on Escape and on selection."
             title="Menu button"
         >
             <div className="specimen-grid">
@@ -65,6 +79,41 @@ export function MenuButtonPage() {
                             items={historyItems}
                             label="Workspace history unavailable"
                             onSelect={() => {}}
+                        />
+                    </div>
+                </Specimen>
+                <Specimen
+                    detail="label · checkbox rows · shortcut · detail · plain row inset to the icon column · disabled · destructive"
+                    label="Every row kind"
+                    number="MB-03"
+                    stage="app"
+                >
+                    <div style={{ display: "flex", padding: "28px" }}>
+                        <MenuButton
+                            icon="settings"
+                            items={kindItems}
+                            label="Workspace options"
+                            onSelect={() => {}}
+                        />
+                    </div>
+                </Specimen>
+
+                <Specimen
+                    detail="named medium trigger · opens above · fixed heading · lazily built rows"
+                    label="Named, above"
+                    number="MB-04"
+                    stage="surface"
+                >
+                    <div style={{ display: "flex", padding: "220px 28px 28px" }}>
+                        <MenuButton
+                            icon="question"
+                            items={() => historyItems}
+                            label="Ask a question"
+                            menuLabel="Ask a question"
+                            onSelect={() => {}}
+                            placement="above"
+                            size="medium"
+                            text="Ask a question"
                         />
                     </div>
                 </Specimen>

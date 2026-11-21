@@ -1,6 +1,8 @@
 import { partitionComponentProps } from "./componentProps";
-import { useLayoutEffect, useRef, type CSSProperties } from "react";
-import { Icon } from "./Icon";
+import { useId, type CSSProperties } from "react";
+import { Checkbox as CheckboxControl } from "./components/ui/checkbox";
+import { Field, FieldLabel } from "./components/ui/field";
+import { cn } from "./lib/utils";
 export type CheckboxProps = {
     "aria-describedby"?: string;
     "aria-label"?: string;
@@ -15,11 +17,17 @@ export type CheckboxProps = {
     onChange?: (checked: boolean) => void;
     style?: CSSProperties;
 };
+/*
+ * shadcn's Checkbox draws its tick for checked and for indeterminate alike, and
+ * paints only the checked state. A mixed box gets the checked fill too, with the
+ * tick hidden and a short bar drawn in its place.
+ */
+const indeterminateClasses =
+    "data-[state=indeterminate]:border-primary data-[state=indeterminate]:bg-primary data-[state=indeterminate]:text-primary-foreground data-[state=indeterminate]:before:h-0.5 data-[state=indeterminate]:before:w-2 data-[state=indeterminate]:before:rounded-full data-[state=indeterminate]:before:bg-current data-[state=indeterminate]:[&_[data-slot=icon]]:hidden";
 /**
- * C-021 Checkbox — an 18px control box with a reused Icon check glyph (checked)
- * or a symmetric bar (indeterminate). The real state lives on a visually hidden
- * native <input type="checkbox"> so keyboard, focus, and screen-reader semantics
- * come for free; the painted box and glyph are prop-driven. Compose it inside
+ * C-021 Checkbox — shadcn's Checkbox (a Radix `role="checkbox"` button) with an
+ * optional label beside it, laid out as a horizontal shadcn Field. Checked,
+ * unchecked, indeterminate, and disabled are prop-driven. Compose it inside
  * FormRow/DataTable/Menu wherever a boolean toggle is needed.
  */
 export function Checkbox(props: CheckboxProps) {
@@ -37,51 +45,41 @@ export function Checkbox(props: CheckboxProps) {
         "onChange",
         "style",
     ]);
-    const control = useRef<HTMLInputElement>(null);
-    // indeterminate is a DOM property, not an attribute — mirror the prop onto
-    // the live input so assistive tech announces the mixed state.
-    // eslint-disable-next-line happy-react/no-layout-effect -- HTML exposes the mixed checkbox state only through the live input.indeterminate DOM property, so it must be synchronized after commit
-    useLayoutEffect(() => {
-        if (control.current) control.current.indeterminate = local.indeterminate ?? false;
-    }, [local.indeterminate]);
-    const state = () =>
-        local.indeterminate ? "indeterminate" : local.checked ? "checked" : "unchecked";
+    const generatedId = useId();
+    const controlId = local.id ?? `happy-checkbox-${generatedId}`;
+    const state = local.indeterminate ? "indeterminate" : local.checked ? "checked" : "unchecked";
     return (
-        <label
-            className={["happy-checkbox", local.className].filter(Boolean).join(" ")}
+        <Field
+            className={cn("happy-checkbox w-fit", local.className)}
             data-checked={local.checked ? "" : undefined}
-            data-disabled={local.disabled ? "" : undefined}
+            data-disabled={local.disabled ? "true" : undefined}
             data-indeterminate={local.indeterminate ? "" : undefined}
             data-happy-desktop-ui="checkbox"
-            data-state={state()}
+            data-state={state}
             data-testid={local["data-testid"]}
+            orientation="horizontal"
             style={local.style}
         >
-            <input
+            <CheckboxControl
                 aria-describedby={local["aria-describedby"]}
                 aria-label={local["aria-label"]}
-                checked={local.checked}
-                className="happy-checkbox__control"
+                checked={local.indeterminate ? "indeterminate" : local.checked}
+                className={cn("happy-checkbox__control happy-checkbox__box", indeterminateClasses)}
                 data-happy-desktop-ui="checkbox-control"
                 disabled={local.disabled}
-                id={local.id}
+                id={controlId}
                 name={local.name}
-                onChange={(event) => local.onChange?.(event.currentTarget.checked)}
-                ref={control}
-                type="checkbox"
+                onCheckedChange={(checked) => local.onChange?.(checked === true)}
             />
-            <span className="happy-checkbox__box" data-happy-desktop-ui="checkbox-box">
-                {local.indeterminate ? (
-                    <span className="happy-checkbox__dash" data-happy-desktop-ui="checkbox-mark" />
-                ) : local.checked ? (
-                    <Icon name="check" size={14} />
-                ) : null}
-            </span>
             {local.label !== undefined ? (
-                <span className="happy-checkbox__label" data-happy-desktop-ui="checkbox-label">
+                <FieldLabel
+                    className="happy-checkbox__label"
+                    data-happy-desktop-ui="checkbox-label"
+                    htmlFor={controlId}
+                >
                     {local.label}
-                </span>
+                </FieldLabel>
             ) : null}
-        </label>
+        </Field>
     );
 }

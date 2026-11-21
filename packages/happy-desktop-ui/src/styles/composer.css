@@ -361,41 +361,12 @@
     min-width: 0;
 }
 
-/* Composer-local action geometry: the shared Button ships a 28px "small", but
- * the composer's unified panel uses 32px controls (matches the original app).
- * Overridden here, not in the Button API, so other Button call sites are
- * unaffected. */
-.happy-composer__send.happy-button[data-size="small"] {
-    height: 32px;
-}
-
-.happy-composer__leading .happy-button[data-size="small"] {
-    height: 32px;
-}
-
-.happy-composer__send.happy-button[data-icon-only][data-size="small"] {
-    width: 32px;
-}
-
-.happy-composer__leading .happy-button[data-icon-only][data-size="small"] {
-    width: 32px;
-    border-radius: 50%;
-}
-
 /* Native plugin composer contribution triggers sit beside the attachment
  * affordance on the left side of the toolbar. */
 .happy-composer__contributions {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-}
-
-/* Composer ghost controls share one subtle hover treatment. */
-.happy-composer__contributions .happy-button[data-variant="ghost"]:hover:not(:disabled),
-.happy-composer__leading .happy-button[data-variant="ghost"]:hover:not(:disabled),
-.happy-composer__trailing .happy-button[data-variant="ghost"]:hover:not(:disabled) {
-    background: var(--surface-ripple);
-    color: var(--text);
 }
 
 .happy-composer__trailing {
@@ -409,14 +380,6 @@
    box, so nothing moves when sending becomes possible. */
 .happy-composer[data-disabled] .happy-composer__send {
     visibility: hidden;
-}
-
-.happy-composer__send.happy-button {
-    border-radius: 50%;
-    /* Availability fades this one stable light control in and out. Its dark
-     * arrow never swaps color as the draft becomes sendable. */
-    background: var(--composer-send-background);
-    color: var(--composer-send-icon);
 }
 
 /* The toolbar uses a 16px upward arrow in its 32px circular send control. The

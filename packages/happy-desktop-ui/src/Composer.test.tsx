@@ -3,10 +3,9 @@ import { flushSync } from "react-dom";
 import { expect, it } from "vitest";
 import { server, userEvent } from "vitest/browser";
 import "./theme.css";
-import "./styles/avatar.css";
+import "./styles.css";
 import "./styles/audience-toggle.css";
 import "./styles/badge.css";
-import "./styles/button.css";
 import "./styles/composer.css";
 import "./styles/emoji-picker.css";
 import "./styles/icon.css";
@@ -14,7 +13,6 @@ import "./styles/icon.css";
    platform's invisible overlay bar with a classic 10px one, which is what makes
    a scrolling control's own bar cost its text real width. */
 import "./styles/scrollbar.css";
-import "./styles/text-field.css";
 import {
     Composer,
     ContextChips,

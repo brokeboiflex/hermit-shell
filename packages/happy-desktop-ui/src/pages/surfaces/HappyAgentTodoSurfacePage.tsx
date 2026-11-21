@@ -156,7 +156,8 @@ export function HappyAgentTodoSurfacePage(props: HappyAgentTodoSurfacePageProps)
                 <div className="happy-agent-todo-surface__content">
                     <TextField
                         aria-label="Add a todo"
-                        className="happy-agent-todo-surface__add"
+                        // The add field is a card of its own, the same surface as the todos below it.
+                        className="happy-agent-todo-surface__add [&_[data-happy-desktop-ui=text-field-control]]:border-transparent [&_[data-happy-desktop-ui=text-field-control]]:bg-background [&_[data-happy-desktop-ui=text-field-control]]:shadow-[0_1px_3px_var(--shadow-color)]"
                         data-testid="happy-agent-todo-add"
                         {...(props.focusOnType
                             ? { focusKey: list.surfaceId, focusOnType: true }

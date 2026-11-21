@@ -90,10 +90,6 @@
     margin: -4px 0;
 }
 
-.happy-conversation-failure-card__line-actions .happy-button {
-    --happy-button-label-y: 0px;
-}
-
 /* A command with its copy button is one unbreakable box on the 20px line. */
 .happy-conversation-failure-card__code {
     display: inline-flex;

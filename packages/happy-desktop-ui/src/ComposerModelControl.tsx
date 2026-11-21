@@ -789,7 +789,9 @@ function AccountNotice(props: {
                 setOpen(false);
             }}
         >
-            <Tooltip label="Account unavailable">
+            {/* While its popover is open, the bubble would only repeat the
+                popover's own label over it. */}
+            <Tooltip label="Account unavailable" open={open ? false : undefined}>
                 <button
                     aria-expanded={open}
                     aria-haspopup="dialog"
@@ -1372,10 +1374,14 @@ export function ComposerModelControl(props: ComposerModelControlProps) {
                 type="button"
             >
                 {warning ? (
+                    /* The label answers the whole pill, not only the 12px
+                       ring: the trigger's hit area is stretched over the
+                       button, while the bubble still rises from the ring. The
+                       open menu covers where it would rise, and says more. */
                     <Tooltip
-                        className="happy-composer-model-control__warning"
+                        className="happy-composer-model-control__warning after:absolute after:inset-0"
                         label={warning.label}
-                        open={preview?.usageWarningOpen}
+                        open={open ? false : preview?.usageWarningOpen}
                     >
                         <UsageRing
                             className="happy-composer-model-control__warning-ring"

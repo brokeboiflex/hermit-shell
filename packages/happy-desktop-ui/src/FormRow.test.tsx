@@ -1,8 +1,7 @@
 import { expect, it } from "vitest";
 import { server } from "vitest/browser";
 import "./theme.css";
-import "./styles/form-row.css";
-import "./styles/button.css";
+import "./styles.css";
 import "./styles/icon.css";
 import "./styles/badge.css";
 import { Badge } from "./Badge";

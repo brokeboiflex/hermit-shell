@@ -1,10 +1,19 @@
-import { useCallback, useId, useRef, useState } from "react";
+import { useId, useRef, useState, type KeyboardEvent } from "react";
+import { KeyCap } from "./Badge";
 import { Button, type ButtonSize, type ButtonVariant } from "./Button";
+import {
+    DropdownMenu,
+    DropdownMenuCheckboxItem,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "./components/ui/dropdown-menu";
 import { Icon, type IconName, type IconProps } from "./Icon";
 import { CLOSE_SHORTCUT, commandShortcutMatches } from "./keyboardShortcut";
-import { Menu, type MenuItem } from "./Menu";
-import { fixedBlockMeasure } from "./fixedBlock";
-import { WindowOverlay } from "./WindowOverlay";
+import { cn } from "./lib/utils";
+import type { MenuItem } from "./Menu";
 
 export interface MenuButtonProps {
     readonly label: string;
@@ -28,12 +37,9 @@ export interface MenuButtonProps {
     /** Which edge of the trigger the popover opens from. */
     readonly placement?: "above" | "below";
     /**
-     * Hangs the popover off the window's overlay lane, fixed beside the
-     * trigger, instead of inside the trigger's own box. For a trigger in a pane
-     * that would clip or seal the card — a narrow sidebar, a layered panel —
-     * where a popover drawn in place is cut off at the pane's edge or painted
-     * under the chrome beside it. The card is pushed back inside the window
-     * when the trigger sits too near an edge for it to fit.
+     * @deprecated The menu always hangs off the window's overlay lane now, placed
+     * beside the trigger and pushed back inside the window near an edge, so a
+     * pane that would clip it no longer can. Stop passing it.
      */
     readonly overlay?: boolean;
     readonly disabled?: boolean;
@@ -50,93 +56,39 @@ export interface MenuButtonProps {
     readonly "data-testid"?: string;
 }
 
-/** How close to the window's edge an overlaid popover may sit before it is pushed back in. */
+/** How close to the window's edge the menu may sit before it is pushed back in. */
 const VIEWPORT_MARGIN = 8;
 
-/** The trigger's box at the moment the menu opened, in viewport pixels. */
-interface TriggerBounds {
-    readonly top: number;
-    readonly bottom: number;
-    readonly left: number;
-    readonly right: number;
-}
-
-const TRIGGER_UNMEASURED: TriggerBounds = { top: 0, bottom: 0, left: 0, right: 0 };
-
 /**
- * A compact icon action with a corner-anchored Menu. It owns only whether its
- * popover is open; the caller owns every item and what choosing one means.
+ * C-027a MenuButton — a compact icon action opening shadcn/ui's DropdownMenu
+ * of `MenuItem` rows. Radix owns the open menu's placement, focus, roving
+ * arrow keys, typeahead, and dismissal; the menu returns focus to the trigger
+ * when it closes. It owns only whether it is open and which page of a large
+ * catalog it shows; the caller owns every item and what choosing one means.
  */
 export function MenuButton(props: MenuButtonProps) {
     const [open, setOpen] = useState(false);
     const [materializedItems, setMaterializedItems] = useState<readonly MenuItem[]>([]);
     const [menuPage, setMenuPage] = useState(0);
-    const [trigger, setTrigger] = useState<TriggerBounds>(TRIGGER_UNMEASURED);
-    const root = useRef<HTMLDivElement>(null);
-    // The popover's node, wherever it was drawn: in the trigger's own box, or
-    // in the overlay lane where a query from the root would not find it.
-    const popover = useRef<HTMLDivElement>(null);
+    // The open menu's node, in the overlay lane where a query from the root
+    // would not find it.
+    const content = useRef<HTMLDivElement>(null);
     const menuId = useId();
     const expanded = open && !props.disabled;
-    const overlay = props.overlay === true;
     const above = props.placement === "above";
     const alignEnd = props.align === "end";
-    const triggerFocus = (): void => {
-        root.current?.querySelector<HTMLElement>(":scope > button")?.focus();
+    const openChange = (next: boolean): void => {
+        if (next) {
+            setMaterializedItems(typeof props.items === "function" ? props.items() : props.items);
+            setMenuPage(0);
+        }
+        setOpen(next);
+        props.onOpenChange?.(next);
     };
-    const menuItems = (): HTMLElement[] =>
-        popover.current
-            ? [
-                  ...popover.current.querySelectorAll<HTMLElement>(
-                      '[role^="menuitem"]:not(:disabled)',
-                  ),
-              ]
-            : [];
-    // The popover's commit is the exact lifetime boundary at which its box and
-    // its first menu item exist, so placement and focus do not depend on
-    // React's microtask ordering.
-    const popoverRef = useCallback(
-        (node: HTMLDivElement | null): void => {
-            popover.current = node;
-            if (!node) return;
-            if (overlay) {
-                // Anchored to the trigger's near corner, then pushed back
-                // inside the window if the card would run past an edge.
-                const bounds = node.getBoundingClientRect();
-                // The trigger was measured against the window; the card is
-                // laid out against whatever contains it, which is not the
-                // window inside a connection.
-                const block = fixedBlockMeasure(node.parentElement ?? node);
-                const wanted = alignEnd ? trigger.right - bounds.width : trigger.left;
-                const left = Math.max(
-                    VIEWPORT_MARGIN,
-                    Math.min(wanted, window.innerWidth - bounds.width - VIEWPORT_MARGIN),
-                );
-                node.style.left = `${String(left - block.left)}px`;
-                if (above) {
-                    // Held by its bottom edge, so a card that grows does
-                    // so away from the trigger rather than over it.
-                    const edge = Math.min(trigger.top, window.innerHeight - VIEWPORT_MARGIN);
-                    node.style.bottom = `${String(block.bottom - edge)}px`;
-                } else {
-                    const top = Math.max(
-                        VIEWPORT_MARGIN,
-                        Math.min(
-                            trigger.bottom,
-                            window.innerHeight - bounds.height - VIEWPORT_MARGIN,
-                        ),
-                    );
-                    node.style.top = `${String(top - block.top)}px`;
-                }
-            }
-            node.querySelector<HTMLElement>('[role^="menuitem"]:not(:disabled)')?.focus();
-        },
-        [above, alignEnd, overlay, trigger],
-    );
-    const close = (returnFocus: boolean): void => {
-        setOpen(false);
-        props.onOpenChange?.(false);
-        if (returnFocus) triggerFocus();
+    const firstItemFocus = (): void => {
+        content.current
+            ?.querySelector<HTMLElement>('[role^="menuitem"]:not([data-disabled])')
+            ?.focus();
     };
     const allItems = typeof props.items === "function" ? materializedItems : props.items;
     const pageSize =
@@ -151,163 +103,203 @@ export function MenuButton(props: MenuButtonProps) {
         pageSize === undefined
             ? allItems
             : allItems.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
-    const previousPageId = `${menuId}-previous-page`;
-    const nextPageId = `${menuId}-next-page`;
-    const visibleItems: readonly MenuItem[] = [
-        ...(currentPage > 0
-            ? [
-                  {
-                      id: previousPageId,
-                      kind: "item" as const,
-                      label: `Previous ${pageName} (${String(currentPage)} of ${String(pageCount)})`,
-                  },
-              ]
-            : []),
-        ...pageItems,
-        ...(currentPage + 1 < pageCount
-            ? [
-                  {
-                      id: nextPageId,
-                      kind: "item" as const,
-                      label: `More ${pageName} (${String(currentPage + 2)} of ${String(pageCount)})`,
-                  },
-              ]
-            : []),
-    ];
+    const hasIcons = pageItems.some(
+        (item) => item.kind === "item" && (item.icon !== undefined || item.iconUrl !== undefined),
+    );
+    // shadcn's `data-inset:` matches the attribute whatever its value, so a row
+    // that is not inset must not carry it at all: `true` or absent, never `false`.
+    const inset = (indented: boolean): true | undefined => (indented ? true : undefined);
+    // A page turn keeps the menu open on the new page's first row.
+    const pageTurn = (event: Event, page: number): void => {
+        event.preventDefault();
+        setMenuPage(page);
+        requestAnimationFrame(firstItemFocus);
+    };
+    const pageItem = (id: string, label: string, page: number) => (
+        <DropdownMenuItem
+            data-happy-desktop-ui="menu-item"
+            data-item-id={id}
+            inset={inset(hasIcons)}
+            onSelect={(event) => pageTurn(event, page)}
+        >
+            <span className="min-w-0 flex-1 truncate" data-happy-desktop-ui="menu-item-label">
+                {label}
+            </span>
+        </DropdownMenuItem>
+    );
     const menuMaxHeight =
         props.menuMaxHeight === undefined
             ? undefined
-            : above
-              ? `max(0px, min(${String(props.menuMaxHeight)}px, calc(${String(trigger.top)}px - 8px)))`
-              : `max(0px, min(${String(props.menuMaxHeight)}px, calc(100vh - ${String(trigger.bottom)}px - 8px)))`;
-    const popoverContent = (
-        <>
-            <button
-                aria-label="Close menu"
-                className="happy-menu-button__backdrop"
-                data-happy-desktop-ui="menu-button-backdrop"
-                onClick={() => close(true)}
-                tabIndex={-1}
-                type="button"
-            />
-            <div
-                className="happy-menu-button__popover"
-                data-happy-desktop-ui="menu-button-popover"
-                data-overlay={overlay ? "" : undefined}
-                data-placement={above ? "above" : undefined}
-                ref={popoverRef}
-            >
-                <Menu
-                    id={menuId}
-                    items={[...visibleItems]}
-                    label={props.menuLabel}
-                    onSelect={(id) => {
-                        if (id === previousPageId) {
-                            setMenuPage((page) => Math.max(0, page - 1));
-                            requestAnimationFrame(() => menuItems()[0]?.focus());
-                            return;
-                        }
-                        if (id === nextPageId) {
-                            setMenuPage((page) => Math.min(pageCount - 1, page + 1));
-                            requestAnimationFrame(() => menuItems()[0]?.focus());
-                            return;
-                        }
-                        close(true);
-                        props.onSelect(id);
-                    }}
-                    {...(menuMaxHeight === undefined
-                        ? {}
-                        : { style: { maxHeight: menuMaxHeight } })}
-                    width={props.menuWidth}
-                />
-            </div>
-        </>
-    );
+            : `min(${String(props.menuMaxHeight)}px, var(--radix-dropdown-menu-content-available-height))`;
     return (
         <div
-            className={["happy-menu-button", props.className].filter(Boolean).join(" ")}
+            className={cn("happy-menu-button relative flex flex-none", props.className)}
             data-align={alignEnd ? "end" : undefined}
             data-happy-desktop-ui="menu-button"
             data-open={expanded ? "" : undefined}
             data-testid={props["data-testid"]}
-            ref={root}
-            // Key events from an overlaid popover still arrive here: a portal
-            // is elsewhere in the document but in place in the React tree.
-            onKeyDown={(event) => {
-                if (!expanded) return;
-                // The close chord closes what is in front, and an open menu is
-                // in front of everything behind it: it answers here, as Escape
-                // does, and the press goes no further.
-                if (
-                    event.key === "Escape" ||
-                    commandShortcutMatches(event.nativeEvent, CLOSE_SHORTCUT)
-                ) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    close(true);
-                    return;
-                }
-                if (event.key === "Tab") {
-                    close(false);
-                    return;
-                }
-                const items = menuItems();
-                if (items.length === 0) return;
-                if (event.key === "Home" || event.key === "End") {
-                    event.preventDefault();
-                    items[event.key === "Home" ? 0 : items.length - 1]?.focus();
-                    return;
-                }
-                if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
-                event.preventDefault();
-                const active = document.activeElement as HTMLElement | null;
-                const at = active ? items.indexOf(active) : -1;
-                const step = event.key === "ArrowDown" ? 1 : -1;
-                const next = at < 0 ? (step > 0 ? 0 : items.length - 1) : at + step;
-                items[(next + items.length) % items.length]?.focus();
-            }}
         >
-            <Button
-                aria-controls={expanded ? menuId : undefined}
-                aria-expanded={expanded}
-                aria-haspopup="menu"
-                aria-label={props.label}
-                disabled={props.disabled}
-                {...(props.iconSize === undefined ? { icon: props.icon } : {})}
-                {...(props.text === undefined ? { iconOnly: true } : {})}
-                onClick={(event) => {
-                    if (expanded) close(false);
-                    else {
-                        setMaterializedItems(
-                            typeof props.items === "function" ? props.items() : props.items,
-                        );
-                        setMenuPage(0);
-                        const bounds = event.currentTarget.getBoundingClientRect();
-                        setTrigger({
-                            top: bounds.top,
-                            bottom: bounds.bottom,
-                            left: bounds.left,
-                            right: bounds.right,
-                        });
-                        setOpen(true);
-                        props.onOpenChange?.(true);
-                    }
-                }}
-                size={props.size ?? "small"}
-                variant={props.variant ?? "ghost"}
-            >
-                {props.iconSize === undefined ? null : (
-                    <Icon name={props.icon} size={props.iconSize} />
-                )}
-                {props.text}
-            </Button>
-            {expanded ? (
-                overlay ? (
-                    <WindowOverlay>{popoverContent}</WindowOverlay>
-                ) : (
-                    popoverContent
-                )
-            ) : null}
+            <DropdownMenu onOpenChange={openChange} open={expanded}>
+                <DropdownMenuTrigger asChild disabled={props.disabled}>
+                    <Button
+                        aria-label={props.label}
+                        disabled={props.disabled}
+                        {...(props.iconSize === undefined ? { icon: props.icon } : {})}
+                        {...(props.text === undefined ? { iconOnly: true } : {})}
+                        size={props.size ?? "small"}
+                        variant={props.variant ?? "ghost"}
+                    >
+                        {props.iconSize === undefined ? null : (
+                            <Icon name={props.icon} size={props.iconSize} />
+                        )}
+                        {props.text}
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                    align={alignEnd ? "end" : "start"}
+                    className={cn(
+                        // The heading holds still above rows that scroll in
+                        // their own edge-to-edge scrollport.
+                        "happy-menu-button__popover flex flex-col overflow-hidden p-0",
+                        props.menuWidth === undefined ? "w-auto" : undefined,
+                    )}
+                    collisionPadding={VIEWPORT_MARGIN}
+                    data-happy-desktop-ui="menu-button-popover"
+                    // The close chord closes what is in front, and an open menu
+                    // is in front of everything behind it: it answers here, as
+                    // Escape does, and the press goes no further.
+                    onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
+                        if (commandShortcutMatches(event.nativeEvent, CLOSE_SHORTCUT)) {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            openChange(false);
+                            return;
+                        }
+                        if (event.key === "Escape") event.stopPropagation();
+                    }}
+                    ref={content}
+                    side={above ? "top" : "bottom"}
+                    style={{
+                        ...(props.menuWidth === undefined
+                            ? null
+                            : { width: `${String(props.menuWidth)}px` }),
+                        ...(menuMaxHeight === undefined ? null : { maxHeight: menuMaxHeight }),
+                    }}
+                >
+                    {props.menuLabel ? (
+                        <div className="flex shrink-0 flex-col px-1 pt-1">
+                            <DropdownMenuLabel data-happy-desktop-ui="menu-header">
+                                {props.menuLabel}
+                            </DropdownMenuLabel>
+                        </div>
+                    ) : null}
+                    <div
+                        className="flex min-h-0 flex-1 flex-col overflow-y-auto"
+                        data-happy-desktop-ui="menu-list"
+                    >
+                        <div className="flex flex-col p-1" data-happy-desktop-ui="menu-rows">
+                            {currentPage > 0
+                                ? pageItem(
+                                      `${menuId}-previous-page`,
+                                      `Previous ${pageName} (${String(currentPage)} of ${String(pageCount)})`,
+                                      currentPage - 1,
+                                  )
+                                : null}
+                            {pageItems.map((item, index) => {
+                                if (item.kind === "separator") {
+                                    return (
+                                        <DropdownMenuSeparator
+                                            data-happy-desktop-ui="menu-separator"
+                                            key={`separator-${index}`}
+                                        />
+                                    );
+                                }
+                                if (item.kind === "label") {
+                                    return (
+                                        <DropdownMenuLabel
+                                            data-happy-desktop-ui="menu-label"
+                                            inset={inset(hasIcons)}
+                                            key={`label-${item.label}-${index}`}
+                                        >
+                                            {item.label}
+                                        </DropdownMenuLabel>
+                                    );
+                                }
+                                const leading = item.iconUrl ? (
+                                    <img
+                                        alt=""
+                                        className="size-4 shrink-0 rounded-sm object-contain"
+                                        data-happy-desktop-ui="menu-item-image"
+                                        src={item.iconUrl}
+                                    />
+                                ) : item.icon ? (
+                                    <Icon name={item.icon} size={16} />
+                                ) : null;
+                                const row = (
+                                    <>
+                                        {leading}
+                                        <span
+                                            className="min-w-0 flex-1 truncate"
+                                            data-happy-desktop-ui="menu-item-label"
+                                        >
+                                            {item.label}
+                                        </span>
+                                        {item.detail ? (
+                                            <span
+                                                className="shrink-0 text-xs text-muted-foreground"
+                                                data-happy-desktop-ui="menu-item-detail"
+                                            >
+                                                {item.detail}
+                                            </span>
+                                        ) : null}
+                                        {item.shortcut ? (
+                                            <KeyCap className="shrink-0" keys={item.shortcut} />
+                                        ) : null}
+                                    </>
+                                );
+                                const select = (): void => props.onSelect(item.id);
+                                return item.checked === undefined ? (
+                                    <DropdownMenuItem
+                                        data-happy-desktop-ui="menu-item"
+                                        data-item-id={item.id}
+                                        disabled={item.disabled}
+                                        inset={inset(hasIcons && leading === null)}
+                                        key={item.id}
+                                        onSelect={select}
+                                        variant={item.danger ? "destructive" : "default"}
+                                    >
+                                        {row}
+                                    </DropdownMenuItem>
+                                ) : (
+                                    <DropdownMenuCheckboxItem
+                                        checked={item.checked}
+                                        className={
+                                            item.danger
+                                                ? "text-destructive focus:bg-destructive/10 focus:text-destructive"
+                                                : undefined
+                                        }
+                                        data-happy-desktop-ui="menu-item"
+                                        data-item-id={item.id}
+                                        disabled={item.disabled}
+                                        inset={inset(hasIcons && leading === null)}
+                                        key={item.id}
+                                        onSelect={select}
+                                    >
+                                        {row}
+                                    </DropdownMenuCheckboxItem>
+                                );
+                            })}
+                            {currentPage + 1 < pageCount
+                                ? pageItem(
+                                      `${menuId}-next-page`,
+                                      `More ${pageName} (${String(currentPage + 2)} of ${String(pageCount)})`,
+                                      currentPage + 1,
+                                  )
+                                : null}
+                        </div>
+                    </div>
+                </DropdownMenuContent>
+            </DropdownMenu>
         </div>
     );
 }

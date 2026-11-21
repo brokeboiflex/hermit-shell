@@ -99,21 +99,6 @@
     min-width: 0;
 }
 
-/*
- * The name takes focus the way the composer under it does: no hairline at
- * rest, the quiet divider hairline while typing, and no ring. Both are the
- * same well on the same page, and the one the reader types into first must
- * not light up harder than the one it hands off to.
- */
-.happy-agent-create-bot__name .happy-text-field__control {
-    border-color: transparent;
-}
-
-.happy-agent-create-bot__name .happy-text-field__control:focus-within {
-    border-color: var(--divider);
-    outline: none;
-}
-
 .happy-agent-create-bot__create {
     flex: none;
 }

@@ -257,6 +257,7 @@ export function HappyAgentSecretCreateDialog(props: HappyAgentSecretCreateDialog
                     </fieldset>
                     {props.onAvailableToAgentsChange ? (
                         <FormRow
+                            className="pb-0"
                             control={
                                 <Switch
                                     aria-label="Available to every agent"

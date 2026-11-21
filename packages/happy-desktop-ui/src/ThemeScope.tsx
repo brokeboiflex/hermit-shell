@@ -28,8 +28,9 @@ export type ThemeScopeProps = {
 /**
  * Applies one user-selected appearance to a stable product subtree while
  * retaining the system palette when no explicit override is selected. The
- * custom theme is its base palette's class with the replaced roles declared on
- * the same element, so every descendant inherits them as it would the base.
+ * custom theme is its base palette's class with the replaced roles, and the
+ * shadcn tokens they stand for, declared on the same element, so every
+ * descendant inherits them as it would the base.
  * A chat wallpaper is declared the same way, as the image every conversation
  * in the subtree paints (`styles/chat-wallpaper.css`); `custom` without a
  * picture paints none.
@@ -69,6 +70,51 @@ function chatWallpaperPainted(
     return { wallpaper, url: chatWallpaperUrls[wallpaper] };
 }
 
+/*
+ * The shadcn tokens a custom theme's roles feed. The roles keep Happy's names,
+ * and CSS that has not converted still reads them by name; converted
+ * components paint from shadcn's tokens instead, which the migration aliases
+ * in theme.css point the other way. So each role the theme sets is declared
+ * under its own name and, through this table, under every shadcn token it
+ * stands for, and the whole window takes the person's colours.
+ *
+ * A token follows only roles that mean the same thing across the window. A
+ * role that names one place (a header, the composer's send button, the
+ * person's own message) stays with the CSS that reads it by name, so tinting
+ * that place never recolours every surface. Several roles now collapse onto
+ * one token — a hover and a press are both `accent` — and where the theme sets
+ * more than one, the first listed wins.
+ */
+const SHADCN_TOKEN_ROLES: Readonly<Record<string, readonly ThemeColorRole[]>> = {
+    background: ["surface"],
+    foreground: ["text"],
+    card: ["surface"],
+    "card-foreground": ["text"],
+    popover: ["surface"],
+    "popover-foreground": ["text"],
+    primary: ["button-primary-background"],
+    "primary-foreground": ["button-primary-tint"],
+    secondary: ["surface-high"],
+    "secondary-foreground": ["text"],
+    muted: ["surface-high", "surface-selected"],
+    "muted-foreground": ["text-secondary"],
+    accent: ["surface-pressed", "surface-ripple", "surface-highest"],
+    "accent-foreground": ["text"],
+    destructive: ["text-destructive"],
+    border: ["divider"],
+    input: ["switch-track-inactive", "radio-inactive"],
+    sidebar: ["groupped-background"],
+};
+
+/*
+ * Roles whose property in theme.css no longer carries the role's name: the
+ * grey `warning` ink is `--quiet-ink`, so it never meets shadcn's amber
+ * `warning` colour.
+ */
+const ROLE_PROPERTIES: Readonly<Partial<Record<ThemeColorRole, string>>> = {
+    warning: "quiet-ink",
+};
+
 function scopeStyle(
     colors: CustomTheme["colors"] | undefined,
     wallpaper: { url: string } | undefined,
@@ -76,7 +122,12 @@ function scopeStyle(
     if (!colors && !wallpaper) return undefined;
     const style: Record<string, string> = {};
     for (const [role, value] of Object.entries(colors ?? {}) as [ThemeColorRole, string][])
-        style[`--${role}`] = value;
+        style[`--${ROLE_PROPERTIES[role] ?? role}`] = value;
+    if (colors)
+        for (const [token, roles] of Object.entries(SHADCN_TOKEN_ROLES)) {
+            const value = roles.map((role) => colors[role]).find((color) => color !== undefined);
+            if (value !== undefined) style[`--${token}`] = value;
+        }
     if (wallpaper) style["--happy-chat-wallpaper-image"] = `url("${wallpaper.url}")`;
     return style;
 }

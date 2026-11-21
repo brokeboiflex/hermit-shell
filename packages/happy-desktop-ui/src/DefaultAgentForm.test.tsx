@@ -1,9 +1,8 @@
 import { expect, it } from "vitest";
 import { type ReactNode } from "react";
 import "./theme.css";
-import "./styles/button.css";
+import "./styles.css";
 import "./styles/icon.css";
-import "./styles/text-field.css";
 import "./styles/default-agent-form.css";
 import { Button } from "./Button";
 import {

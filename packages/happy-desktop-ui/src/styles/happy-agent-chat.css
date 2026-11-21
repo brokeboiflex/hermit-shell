@@ -168,9 +168,9 @@
     transition: background-color 120ms ease;
 }
 
-/* Align the 18px checkbox to the first 24px line, including wrapped options. */
+/* Align the 16px checkbox to the first 24px line, including wrapped options. */
 .happy-agent-input__option > .happy-checkbox {
-    margin-top: 3px;
+    margin-top: 4px;
 }
 
 .happy-agent-input__option:hover {

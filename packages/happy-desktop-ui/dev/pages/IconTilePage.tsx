@@ -30,7 +30,7 @@ export function IconTilePage() {
             title="Icon tile"
         >
             <Specimen
-                detail="20px · radius 5 · 14px glyph — a sidebar's glyph lane"
+                detail="20px · radius 6 · 14px glyph — a sidebar's glyph lane"
                 label="Small — every tone"
                 number="01"
                 stage="app"
@@ -45,7 +45,7 @@ export function IconTilePage() {
                 </div>
             </Specimen>
             <Specimen
-                detail="28px · radius 7 · 18px glyph — the head of a settings row"
+                detail="28px · radius 8 · 18px glyph — the head of a settings row"
                 label="Medium — every tone"
                 number="02"
                 stage="app"

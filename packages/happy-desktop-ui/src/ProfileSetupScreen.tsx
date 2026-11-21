@@ -192,7 +192,7 @@ export function ProfileSetupForm(props: ProfileSetupFormProps) {
                     <TextField
                         aria-label="Name"
                         autoFocus
-                        className="happy-profile-setup__name"
+                        className="happy-profile-setup__name [&_[data-happy-desktop-ui=text-field-control]]:h-14 [&_[data-happy-desktop-ui=text-field-control]]:rounded-[12px] [&_[data-happy-desktop-ui=text-field-input]]:px-4.5 [&_[data-happy-desktop-ui=text-field-input]]:text-xl"
                         disabled={props.busy}
                         fullWidth
                         onSubmit={props.onSubmit}

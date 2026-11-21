@@ -115,10 +115,6 @@
     display: block;
 }
 
-.happy-rail__item-badge > .happy-count-badge {
-    border-radius: 4px;
-}
-
 .happy-rail__item-unread {
     /* The notification intentionally overlaps the icon's top-right corner. */
     position: absolute;

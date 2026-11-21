@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import { page } from "vitest/browser";
 import "./theme.css";
-import "./styles/text-field.css";
+import "./styles.css";
 import "./styles/icon.css";
 import { TextField, type TextFieldSize } from "./TextField";
 import { createRenderer } from "./testing";

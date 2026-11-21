@@ -5,7 +5,7 @@ import type { TerminalCellSnapshot, TerminalGridSnapshot } from "happy-desktop-s
 import "./theme.css";
 import "./styles/scrollbar.css";
 import "./styles/terminal-panel.css";
-import "./styles/button.css";
+import "./styles.css";
 import "./styles/icon.css";
 import { TerminalPanel } from "./TerminalPanel";
 import { createRenderer } from "./testing";

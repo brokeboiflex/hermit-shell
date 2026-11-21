@@ -25,7 +25,7 @@ export function ToolbarPage() {
     return (
         <ComponentPage
             number={componentNumber}
-            summary="Panel/section header bar — a 48px strip with a title, optional subtitle, an optional leading slot, and a right-pinned actions cluster holding an inset search well and a trailing slot."
+            summary="Panel/section header bar — a 48px strip with a title, optional subtitle, an optional leading slot, and a right-pinned actions cluster holding a search field (shadcn InputGroup) and a trailing slot."
             title="Toolbar"
         >
             <Specimen

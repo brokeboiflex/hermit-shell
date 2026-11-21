@@ -25,6 +25,16 @@ import { Box, Button } from "happy-desktop-ui";
 </Box>;
 ```
 
+## shadcn/ui components
+
+`src/components/ui/` holds shadcn/ui components from the `radix-nova` registry style, vendored by
+hand: each file names its upstream page and what was adapted. There is deliberately no
+`components.json`. The shadcn CLI writes `@/` imports, and this package has no path alias:
+`happy-desktop-app` and the Electron renderer compile its source directly, so every import inside
+it is relative. To add a component, copy its `radix-nova` source from the registry, rewrite its
+imports to relative paths (`../../lib/utils`, `./button`), and adapt it as the existing files are.
+Vendor a component only when a converted surface uses it.
+
 ## Product state surfaces
 
 `StoreSurface` is the React adapter for product-sized UI composition. It reads the vanilla Zustand

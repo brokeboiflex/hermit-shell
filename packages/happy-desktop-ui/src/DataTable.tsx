@@ -1,6 +1,15 @@
 import { partitionComponentProps } from "./componentProps";
 import { type CSSProperties, type ReactNode } from "react";
-import { Icon } from "./Icon";
+import { Checkbox } from "./components/ui/checkbox";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "./components/ui/table";
+import { cn } from "./lib/utils";
 export type DataTableAlign = "start" | "end" | "center";
 export type DataTableColumn = {
     id: string;
@@ -35,11 +44,16 @@ function colWidth(width?: number | string) {
     if (width === undefined) return undefined;
     return typeof width === "number" ? `${width}px` : width;
 }
+const alignClass: Record<DataTableAlign, string> = {
+    start: "text-left",
+    center: "text-center",
+    end: "text-right",
+};
 /*
- * Selection control. Built from the already-tuned `check` Icon glyph (optically
- * centered to ≤0.4px in every engine) inside a fixed 18px box rather than the
- * sibling Checkbox component, so DataTable stays self-contained. Indeterminate
- * draws a plain bar (a shape, not a glyph) because the icon set has no minus.
+ * Selection control: shadcn's Checkbox. Its own indicator draws the tick for
+ * both checked and mixed, so a mixed box hides that tick and draws a bar in
+ * its place (the icon set has no minus), and fills the way a checked one does.
+ * A press never reaches the row's own click.
  */
 function TableCheckbox(props: {
     checked: boolean;
@@ -49,38 +63,24 @@ function TableCheckbox(props: {
     onChange: (checked: boolean) => void;
 }) {
     return (
-        <button
-            aria-checked={props.indeterminate ? "mixed" : props.checked ? "true" : "false"}
+        <Checkbox
             aria-label={props.label}
-            className="happy-data-table__check"
-            data-checked={props.checked ? "" : undefined}
-            data-indeterminate={props.indeterminate ? "" : undefined}
+            checked={props.indeterminate ? "indeterminate" : props.checked}
+            className="happy-data-table__check mx-auto data-[state=indeterminate]:border-primary data-[state=indeterminate]:bg-primary data-[state=indeterminate]:text-primary-foreground data-[state=indeterminate]:before:h-0.5 data-[state=indeterminate]:before:w-2 data-[state=indeterminate]:before:rounded-full data-[state=indeterminate]:before:bg-current data-[state=indeterminate]:before:content-[''] data-[state=indeterminate]:[&_[data-slot=icon]]:hidden"
             data-happy-desktop-ui={props.testid}
-            onClick={(event) => {
-                event.stopPropagation();
-                props.onChange(!props.checked);
-            }}
-            role="checkbox"
-            type="button"
-        >
-            <span
-                className="happy-data-table__check-box"
-                data-happy-desktop-ui="data-table-check-box"
-            >
-                {props.indeterminate ? (
-                    <span className="happy-data-table__check-bar" aria-hidden="true" />
-                ) : props.checked ? (
-                    <Icon name="check" size={14} />
-                ) : null}
-            </span>
-        </button>
+            onCheckedChange={(checked) => props.onChange(checked === true)}
+            onClick={(event) => event.stopPropagation()}
+        />
     );
 }
 /**
- * C-030 DataTable — Happy admin table. Column headers with alignment, body rows
- * with optional selection checkboxes, a trailing row-actions slot, dense mode,
- * and an empty slot. Renders a real <table> so column widths, alignment,
- * truncation, and a sticky header all resolve to exact geometry.
+ * C-030 DataTable — Happy admin table, on shadcn's Table. Column headers with
+ * alignment, body rows with optional selection checkboxes, a trailing
+ * row-actions slot, dense mode, and an empty slot. Renders a real <table>
+ * (tabular data, the genuine two-dimensional case) with fixed column widths,
+ * so alignment and truncation resolve to exact geometry. Header and body rows
+ * have explicit heights (40/48, 36 dense), and the 16px cell inset matches the
+ * text's distance from the frame's top edge.
  */
 export function DataTable(props: DataTableProps) {
     const [local] = partitionComponentProps(props, [
@@ -102,15 +102,23 @@ export function DataTable(props: DataTableProps) {
         local.columns.length + (local.selectable ? 1 : 0) + (local.rowActions ? 1 : 0);
     const allSelected = () => local.rows.length > 0 && local.rows.every((row) => row.selected);
     const someSelected = () => local.rows.some((row) => row.selected);
+    const headHeight = local.dense ? "h-9" : "h-10";
+    const cellHeight = local.dense ? "h-9" : "h-12";
     return (
         <div
-            className={["happy-data-table", local.className].filter(Boolean).join(" ")}
+            className={cn(
+                "happy-data-table overflow-hidden rounded-lg border bg-card font-sans text-card-foreground",
+                local.className,
+            )}
             data-dense={local.dense ? "" : undefined}
             data-happy-desktop-ui="data-table"
             data-testid={local["data-testid"]}
             style={local.style}
         >
-            <table className="happy-data-table__table" data-happy-desktop-ui="data-table-table">
+            <Table
+                className="happy-data-table__table table-fixed"
+                data-happy-desktop-ui="data-table-table"
+            >
                 <colgroup>
                     {local.selectable ? <col style={{ width: "44px" }} /> : null}
                     {local.columns.map((column) => {
@@ -126,14 +134,20 @@ export function DataTable(props: DataTableProps) {
                         <col style={{ width: `${local.actionsWidth ?? 96}px` }} />
                     ) : null}
                 </colgroup>
-                <thead className="happy-data-table__head" data-happy-desktop-ui="data-table-head">
-                    <tr
-                        className="happy-data-table__head-row"
+                <TableHeader
+                    className="happy-data-table__head"
+                    data-happy-desktop-ui="data-table-head"
+                >
+                    <TableRow
+                        className="happy-data-table__head-row hover:bg-transparent"
                         data-happy-desktop-ui="data-table-head-row"
                     >
                         {local.selectable ? (
-                            <th
-                                className="happy-data-table__th happy-data-table__th--select"
+                            <TableHead
+                                className={cn(
+                                    "happy-data-table__th happy-data-table__th--select px-0 text-center",
+                                    headHeight,
+                                )}
                                 data-align="center"
                                 scope="col"
                             >
@@ -144,55 +158,72 @@ export function DataTable(props: DataTableProps) {
                                     onChange={(checked) => local.onToggleAll?.(checked)}
                                     testid="data-table-select-all"
                                 />
-                            </th>
+                            </TableHead>
                         ) : null}
                         {local.columns.map((column) => (
-                            <th
-                                className="happy-data-table__th"
+                            <TableHead
+                                className={cn(
+                                    "happy-data-table__th px-4",
+                                    headHeight,
+                                    alignClass[column.align ?? "start"],
+                                )}
                                 key={column.id}
                                 data-align={column.align ?? "start"}
                                 data-column-id={column.id}
                                 scope="col"
                             >
                                 <span
-                                    className="happy-data-table__head-label"
+                                    className="happy-data-table__head-label block max-w-full truncate"
                                     data-happy-desktop-ui="data-table-header"
                                 >
                                     {column.header}
                                 </span>
-                            </th>
+                            </TableHead>
                         ))}
                         {local.rowActions ? (
-                            <th
-                                className="happy-data-table__th happy-data-table__th--actions"
+                            <TableHead
+                                className={cn(
+                                    "happy-data-table__th happy-data-table__th--actions px-4 text-right",
+                                    headHeight,
+                                )}
                                 data-align="end"
                                 scope="col"
                             >
                                 <span
-                                    className="happy-data-table__sr"
+                                    className="happy-data-table__sr sr-only"
                                     data-happy-desktop-ui="data-table-actions-header"
                                 >
                                     Actions
                                 </span>
-                            </th>
+                            </TableHead>
                         ) : null}
-                    </tr>
-                </thead>
-                <tbody className="happy-data-table__body" data-happy-desktop-ui="data-table-body">
+                    </TableRow>
+                </TableHeader>
+                <TableBody
+                    className="happy-data-table__body"
+                    data-happy-desktop-ui="data-table-body"
+                >
                     {local.rows.length > 0 ? (
                         local.rows.map((row) => (
-                            <tr
-                                className="happy-data-table__row"
+                            <TableRow
+                                className={cn(
+                                    "happy-data-table__row",
+                                    row.onClick && "cursor-pointer",
+                                )}
                                 key={row.id}
                                 data-clickable={row.onClick ? "" : undefined}
                                 data-happy-desktop-ui="data-table-row"
                                 data-row-id={row.id}
                                 data-selected={row.selected ? "" : undefined}
+                                data-state={row.selected ? "selected" : undefined}
                                 onClick={() => row.onClick?.()}
                             >
                                 {local.selectable ? (
-                                    <td
-                                        className="happy-data-table__td happy-data-table__td--select"
+                                    <TableCell
+                                        className={cn(
+                                            "happy-data-table__td happy-data-table__td--select px-0 py-0 text-center",
+                                            cellHeight,
+                                        )}
                                         data-align="center"
                                     >
                                         <TableCheckbox
@@ -203,51 +234,58 @@ export function DataTable(props: DataTableProps) {
                                             }
                                             testid="data-table-select-row"
                                         />
-                                    </td>
+                                    </TableCell>
                                 ) : null}
                                 {local.columns.map((column) => (
-                                    <td
-                                        className="happy-data-table__td"
+                                    <TableCell
+                                        className={cn(
+                                            "happy-data-table__td px-4 py-0",
+                                            cellHeight,
+                                            alignClass[column.align ?? "start"],
+                                        )}
                                         key={column.id}
                                         data-align={column.align ?? "start"}
                                         data-column-id={column.id}
                                     >
                                         <span
-                                            className="happy-data-table__cell"
+                                            className="happy-data-table__cell block max-w-full truncate"
                                             data-happy-desktop-ui="data-table-cell"
                                         >
                                             {row.cells[column.id]}
                                         </span>
-                                    </td>
+                                    </TableCell>
                                 ))}
                                 {local.rowActions ? (
-                                    <td
-                                        className="happy-data-table__td happy-data-table__td--actions"
+                                    <TableCell
+                                        className={cn(
+                                            "happy-data-table__td happy-data-table__td--actions px-4 py-0 text-right",
+                                            cellHeight,
+                                        )}
                                         data-align="end"
                                     >
                                         <span
-                                            className="happy-data-table__actions"
+                                            className="happy-data-table__actions inline-flex items-center justify-end gap-1 align-middle"
                                             data-happy-desktop-ui="data-table-actions"
                                         >
                                             {local.rowActions!(row)}
                                         </span>
-                                    </td>
+                                    </TableCell>
                                 ) : null}
-                            </tr>
+                            </TableRow>
                         ))
                     ) : (
-                        <tr className="happy-data-table__empty-row">
-                            <td
-                                className="happy-data-table__empty-cell"
+                        <TableRow className="happy-data-table__empty-row hover:bg-transparent">
+                            <TableCell
+                                className="happy-data-table__empty-cell px-4 py-8 text-center whitespace-normal text-muted-foreground"
                                 colSpan={columnCount()}
                                 data-happy-desktop-ui="data-table-empty"
                             >
                                 {local.empty}
-                            </td>
-                        </tr>
+                            </TableCell>
+                        </TableRow>
                     )}
-                </tbody>
-            </table>
+                </TableBody>
+            </Table>
         </div>
     );
 }

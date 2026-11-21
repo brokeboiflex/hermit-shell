@@ -108,7 +108,9 @@
 .happy-desktop-app-shell[data-navigation-chrome="integrated"]
     .happy-tabbed-pane
     .happy-tabbed-pane__bar {
-    height: var(--happy-integrated-band-height);
+    /* See tabbed-pane.css: the tab row is drawn at the band's height. */
+    --happy-tabbed-pane-band-height: var(--happy-integrated-band-height);
+    height: var(--happy-tabbed-pane-band-height);
     align-items: center;
     background: var(--groupped-background);
 }
@@ -483,7 +485,6 @@
     button:not(
         .happy-agent-control__backdrop,
         .happy-composer-model-control__notice-backdrop,
-        .happy-menu-button__backdrop,
         .happy-context-menu__backdrop,
         .happy-slot-backdrop
     ),
@@ -658,27 +659,6 @@
         calc(var(--happy-desktop-app-shell-chrome-inset) + 44px),
         var(--happy-agent-surface-header-inline)
     );
-}
-
-/* And on the surface that takes the whole window. A `fill` overlay covers the
-   native title bar as well, so the Lightbox's header is the row the traffic
-   lights land on: it becomes the same 40px band of window furniture as every
-   other heading here, which puts the file's name and the controls beside it on
-   the lights' own axis rather than 6px under it. Its 28px controls keep the
-   band's y=6, exactly as the sidebar toggle does. */
-.happy-desktop-app-shell[data-window-controls] .happy-lightbox__header {
-    min-height: 40px;
-    padding-top: 0;
-    padding-bottom: 0;
-}
-
-/* The lane held clear of the lights themselves. The overlay covers the whole
-   window, a connection rail included, so it holds the full safe area rather
-   than the shell's own inset. In full screen the lights are gone and the header
-   keeps its own 16px inset, which is why only this half of the reservation is
-   scoped away from it. */
-.happy-desktop-app-shell[data-window-traffic-lights] .happy-lightbox__header {
-    padding-left: var(--happy-window-controls-width);
 }
 
 /* The window's overlay lane: a place in the shell's own stacking context for a

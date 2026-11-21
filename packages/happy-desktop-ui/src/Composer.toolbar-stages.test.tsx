@@ -1,10 +1,8 @@
 import { expect, it } from "vitest";
 import "./theme.css";
-import "./styles/avatar.css";
+import "./styles.css";
 import "./styles/badge.css";
-import "./styles/button.css";
 import "./styles/composer.css";
-import "./styles/menu.css";
 import "./styles/audience-toggle.css";
 import { Composer, type Mentionable } from "./Composer";
 import { createRenderer } from "./testing";

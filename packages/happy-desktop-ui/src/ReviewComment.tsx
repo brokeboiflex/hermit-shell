@@ -125,7 +125,7 @@ export function ReviewComment(props: ReviewCommentProps) {
                     <TextField
                         aria-label={`Comment on ${place}`}
                         autoFocus
-                        className="happy-review-comment__field"
+                        className="happy-review-comment__field w-full"
                         multiline
                         onValueChange={(value) => local.onDraftChange?.(value)}
                         placeholder="Request a change"

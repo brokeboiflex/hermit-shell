@@ -32,12 +32,12 @@ export function EmptyStatePage() {
     return (
         <ComponentPage
             number={componentNumber}
-            summary="Centered icon medallion + title + description + action. Panel fills and vertically centers its host region; inline is a compact content-sized block. Replaces the app's raw .feature-empty."
+            summary="shadcn's Empty: centered icon medallion + title + description + action. Panel fills and vertically centers its host region; inline is a compact content-sized block. Replaces the app's raw .feature-empty."
             title="Empty state"
         >
             <div className="specimen-grid">
                 <Specimen
-                    detail="panel · 48px medallion · title 15/20 · description 13/18 · medium action"
+                    detail="panel · 40px medallion · title 14/20 · description 14/23 · default outline action"
                     label="Panel — full"
                     number="E-01"
                     stage="app"
@@ -70,14 +70,14 @@ export function EmptyStatePage() {
                         <div style={{ width: "440px", height: "320px" }}>
                             <EmptyState icon="search" size="panel" title="No results found" />
                         </div>
-                        <DimensionRule label="medallion 48 · title only" />
+                        <DimensionRule label="medallion 40 · title only" />
                     </div>
                 </Specimen>
             </div>
 
             <div className="specimen-grid">
                 <Specimen
-                    detail="inline · 40px medallion · title 14/18 · small action"
+                    detail="inline · 32px medallion · title 14/20 · small outline action"
                     label="Inline — full"
                     number="E-03"
                     stage="surface"

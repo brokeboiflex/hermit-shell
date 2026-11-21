@@ -1,5 +1,6 @@
 import { AssistantMark, type AssistantMarkName } from "./AssistantMark";
 import { Icon, type IconName } from "./Icon";
+import { cn } from "./lib/utils";
 import { Ionicon, type IoniconName } from "./vectorIcons/VectorIcon";
 
 /** The tile hues: iOS's system colours, from the `--happy-tile-*` roles. */
@@ -29,6 +30,19 @@ export type IconTileProps = IconTileGlyph & {
 };
 
 const GLYPH_SIZE = { small: 14, medium: 18 } as const;
+/** 20px in a sidebar's glyph lane, 28px at the head of a settings row; rounded about 0.3 of the side. */
+const BOX_CLASS_NAME = { small: "size-5 rounded-sm", medium: "size-7 rounded-md" } as const;
+/* The tile carries white ink in every appearance, the avatar tones' own. */
+const TONE_CLASS_NAME: Record<IconTileTone, string> = {
+    blue: "bg-tile-blue",
+    green: "bg-tile-green",
+    orange: "bg-tile-orange",
+    indigo: "bg-tile-indigo",
+    purple: "bg-tile-purple",
+    red: "bg-tile-red",
+    teal: "bg-tile-teal",
+    gray: "bg-tile-gray",
+};
 const MARK_SIZE = { small: 12, medium: 16 } as const;
 
 /**
@@ -42,7 +56,12 @@ export function IconTile(props: IconTileProps) {
     return (
         <span
             aria-hidden="true"
-            className={["happy-icon-tile", props.className].filter(Boolean).join(" ")}
+            className={cn(
+                "happy-icon-tile flex shrink-0 items-center justify-center text-avatar-ink",
+                BOX_CLASS_NAME[size],
+                TONE_CLASS_NAME[props.tone],
+                props.className,
+            )}
             data-happy-desktop-ui="icon-tile"
             data-size={size}
             data-tone={props.tone}

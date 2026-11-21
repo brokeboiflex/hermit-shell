@@ -220,7 +220,7 @@ function DaysField(props: { label: string; value: number; onChange: (value: numb
     return (
         <TextField
             aria-label={props.label}
-            className="happy-vault-settings__number"
+            className="happy-vault-settings__number w-18"
             onValueChange={(value) => props.onChange(numberRead(value))}
             size="small"
             value={numberText(props.value)}

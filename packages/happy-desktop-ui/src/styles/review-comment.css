@@ -32,7 +32,7 @@
 }
 
 .happy-review-comment[data-stale] .happy-review-comment__place {
-    color: var(--warning);
+    color: var(--quiet-ink);
 }
 
 .happy-review-comment__header {
@@ -62,10 +62,6 @@
     text-align: right;
     text-overflow: ellipsis;
     white-space: nowrap;
-}
-
-.happy-review-comment__field {
-    width: 100%;
 }
 
 .happy-review-comment__actions {

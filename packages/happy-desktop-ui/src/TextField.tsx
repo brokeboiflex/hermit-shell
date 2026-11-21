@@ -1,6 +1,16 @@
 import { partitionComponentProps } from "./componentProps";
-import { useCallback, useId, useRef, type CSSProperties } from "react";
+import { useId, useRef, type CSSProperties, type ReactNode } from "react";
+import { cva } from "class-variance-authority";
+import { Field, FieldDescription, FieldError, FieldLabel } from "./components/ui/field";
+import {
+    InputGroup,
+    InputGroupAddon,
+    InputGroupInput,
+    InputGroupText,
+    InputGroupTextarea,
+} from "./components/ui/input-group";
 import { Icon, type IconName } from "./Icon";
+import { cn } from "./lib/utils";
 import { useFocusOnType } from "./useFocusOnType";
 export type TextFieldType = "text" | "email" | "password" | "search";
 export type TextFieldSize = "small" | "medium" | "large";
@@ -45,6 +55,11 @@ export type TextFieldProps = {
     leadingIcon?: IconName;
     /** Fixed text before the value, such as `@` before a handle; not part of the value. */
     leadingText?: string;
+    /**
+     * A small control inside the field's box after the value, such as the
+     * show/hide toggle of `SecretValueField`: an `InputGroupButton`.
+     */
+    trailing?: ReactNode;
     fullWidth?: boolean;
     id?: string;
     name?: string;
@@ -52,28 +67,43 @@ export type TextFieldProps = {
     /** The on-screen keyboard and input hint, such as `numeric` for a code. */
     inputMode?: "text" | "email" | "numeric";
 };
-/** Leading-icon glyph box by control size (matches Button's 14/16/18 ramp). */
-const iconSizes: Record<TextFieldSize, 14 | 16 | 18> = {
+/** Leading-icon glyph by control size: shadcn's 16px, 14px in the 28px control. */
+const iconSizes: Record<TextFieldSize, 14 | 16> = {
     small: 14,
     medium: 16,
-    large: 18,
+    large: 16,
 };
 /*
- * Multiline line box. The textarea is given an explicit height of
- * rows × MULTILINE_LINE_HEIGHT so its box is deterministic across engines
- * (native `rows` sizing drifts a pixel or two between Blink/Gecko/WebKit).
+ * The control box's height by size: shadcn's 32px input in the middle, with the
+ * 28px and 36px steps its small and large buttons use, so a field and a button
+ * of the same size stand level in one row. A multiline field grows with its
+ * rows instead.
+ */
+const controlVariants = cva("happy-text-field__control", {
+    variants: {
+        size: {
+            small: "h-7",
+            medium: "h-8",
+            large: "h-9",
+        },
+    },
+});
+/*
+ * Multiline height. The textarea gets an explicit height of rows × the 20px
+ * line of `text-sm` plus its 8px top and bottom padding, so its box is the same
+ * in every engine (native `rows` sizing drifts a pixel or two between
+ * Blink/Gecko/WebKit, and `field-sizing: content` exists only in some).
  */
 const MULTILINE_LINE_HEIGHT = 20;
+const MULTILINE_PADDING = 16;
 /**
- * C-018 TextField — labeled text input / textarea on the Happy inset well.
- * Three contract heights (28/36/44), optional label with required marker,
- * leading icon, hint, and error message. Props-only and fully controlled.
+ * C-018 TextField — shadcn's Field around an InputGroup: an optional label with
+ * a required marker, the input or textarea with an optional leading icon or
+ * text and a trailing control, and a hint or error below. Three heights
+ * (28/32/36). Props-only and fully controlled.
  */
 export function TextField(props: TextFieldProps) {
     const controlEl = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
-    const textareaAttach = useCallback((element: HTMLTextAreaElement | null) => {
-        controlEl.current = element;
-    }, []);
     const [local] = partitionComponentProps(props, [
         "aria-label",
         "autoComplete",
@@ -102,120 +132,137 @@ export function TextField(props: TextFieldProps) {
         "rows",
         "size",
         "style",
+        "trailing",
         "type",
         "value",
     ]);
-    const size = () => local.size ?? "medium";
-    const invalid = () => local.error !== undefined && local.error !== "";
-    const message = () => (invalid() ? local.error : local.hint);
-    const rows = () => local.rows ?? 3;
+    const size = local.size ?? "medium";
+    const invalid = local.error !== undefined && local.error !== "";
+    const message = invalid ? local.error : local.hint;
+    const rows = local.rows ?? 3;
     const generatedId = useId();
-    const fallbackId = `happy-text-field-${generatedId}`;
-    const fieldId = () => local.id ?? fallbackId;
-    const messageId = () => `${fieldId()}-message`;
-    const describedBy = () => (message() ? messageId() : undefined);
+    const fieldId = local.id ?? `happy-text-field-${generatedId}`;
+    const messageId = `${fieldId}-message`;
+    const describedBy = message ? messageId : undefined;
+    // A multiline field's addons sit on its first line rather than its middle.
+    const addonAlign = local.multiline ? "self-start" : undefined;
     useFocusOnType(
         controlEl,
         local.focusOnType === true && !local.disabled,
         local.disabled ? undefined : local.focusKey,
     );
     return (
-        <div
-            className={["happy-text-field", local.className].filter(Boolean).join(" ")}
-            data-disabled={local.disabled ? "" : undefined}
+        <Field
+            className={cn(
+                "happy-text-field",
+                local.fullWidth ? "w-full" : "inline-flex w-60",
+                local.className,
+            )}
+            data-disabled={local.disabled ? "true" : undefined}
             data-full-width={local.fullWidth ? "" : undefined}
-            data-invalid={invalid() ? "" : undefined}
+            data-invalid={invalid ? "true" : undefined}
             data-multiline={local.multiline ? "" : undefined}
             data-happy-desktop-ui="text-field"
-            data-size={size()}
+            data-size={size}
             data-testid={local["data-testid"]}
             style={local.style}
         >
             {local.label ? (
-                <label
-                    className="happy-text-field__label"
+                <FieldLabel
+                    className="happy-text-field__label gap-0.5"
                     data-happy-desktop-ui="text-field-label"
-                    htmlFor={fieldId()}
+                    htmlFor={fieldId}
                 >
                     {local.label}
                     {local.required ? (
                         <span
                             aria-hidden="true"
-                            className="happy-text-field__required"
+                            className="happy-text-field__required text-destructive"
                             data-happy-desktop-ui="text-field-required"
                         >
                             *
                         </span>
                     ) : null}
-                </label>
+                </FieldLabel>
             ) : null}
 
-            <div
-                className="happy-text-field__control"
-                data-invalid={invalid() ? "" : undefined}
+            <InputGroup
+                className={controlVariants({ size: local.multiline ? null : size })}
+                data-invalid={invalid ? "" : undefined}
                 data-multiline={local.multiline ? "" : undefined}
                 data-happy-desktop-ui="text-field-control"
-                data-size={size()}
+                data-size={size}
             >
-                {local.leadingIcon
-                    ? ((name) => (
-                          <span
-                              aria-hidden="true"
-                              className="happy-text-field__icon"
-                              data-happy-desktop-ui="text-field-icon"
-                          >
-                              <Icon name={name} size={iconSizes[size()]} />
-                          </span>
-                      ))(local.leadingIcon)
-                    : null}
-                {local.leadingText ? (
-                    <span
+                {local.leadingIcon ? (
+                    <InputGroupAddon
                         aria-hidden="true"
-                        className="happy-text-field__leading-text"
-                        data-happy-desktop-ui="text-field-leading-text"
+                        className={cn(
+                            "happy-text-field__icon",
+                            local.multiline && "self-start pt-2.5",
+                        )}
+                        data-happy-desktop-ui="text-field-icon"
                     >
-                        {local.leadingText}
-                    </span>
+                        <Icon name={local.leadingIcon} size={iconSizes[size]} />
+                    </InputGroupAddon>
+                ) : null}
+                {local.leadingText ? (
+                    <InputGroupAddon
+                        aria-hidden="true"
+                        className={cn(local.multiline && "self-start pt-2")}
+                    >
+                        <InputGroupText
+                            className="happy-text-field__leading-text whitespace-pre"
+                            data-happy-desktop-ui="text-field-leading-text"
+                        >
+                            {local.leadingText}
+                        </InputGroupText>
+                    </InputGroupAddon>
                 ) : null}
 
                 {local.multiline ? (
-                    <div className="happy-text-field__textarea-scroll">
-                        <textarea
-                            aria-label={local["aria-label"]}
-                            aria-describedby={describedBy()}
-                            aria-invalid={invalid() ? "true" : undefined}
-                            className="happy-text-field__input"
-                            data-happy-desktop-ui="text-field-input"
-                            data-scrollbar-axes="vertical"
-                            data-scrollbar-viewport=""
-                            disabled={local.disabled}
-                            id={fieldId()}
-                            name={local.name}
-                            onBlur={() => local.onBlur?.()}
-                            onInput={(event) => local.onValueChange?.(event.currentTarget.value)}
-                            placeholder={local.placeholder}
-                            ref={textareaAttach}
-                            required={local.required}
-                            rows={rows()}
-                            style={{ height: `${rows() * MULTILINE_LINE_HEIGHT}px` }}
-                            value={local.value ?? ""}
-                        />
-                    </div>
-                ) : (
-                    <input
+                    <InputGroupTextarea
                         aria-label={local["aria-label"]}
-                        aria-describedby={describedBy()}
-                        aria-invalid={invalid() ? "true" : undefined}
+                        aria-describedby={describedBy}
+                        aria-invalid={invalid ? "true" : undefined}
+                        className="happy-text-field__input min-h-0 field-sizing-fixed overflow-y-auto"
+                        data-happy-desktop-ui="text-field-input"
+                        data-scrollbar-axes="vertical"
+                        data-scrollbar-viewport=""
+                        disabled={local.disabled}
+                        id={fieldId}
+                        name={local.name}
+                        onBlur={() => local.onBlur?.()}
+                        onChange={(event) => local.onValueChange?.(event.currentTarget.value)}
+                        placeholder={local.placeholder}
+                        ref={(element) => {
+                            controlEl.current = element;
+                        }}
+                        required={local.required}
+                        rows={rows}
+                        style={{
+                            height: `${rows * MULTILINE_LINE_HEIGHT + MULTILINE_PADDING}px`,
+                        }}
+                        value={local.value ?? ""}
+                    />
+                ) : (
+                    <InputGroupInput
+                        aria-label={local["aria-label"]}
+                        aria-describedby={describedBy}
+                        aria-invalid={invalid ? "true" : undefined}
                         autoComplete={local.autoComplete}
                         autoFocus={local.autoFocus}
-                        className="happy-text-field__input"
+                        className={cn(
+                            "happy-text-field__input h-full [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none",
+                            // The fixed text reads as the start of the value.
+                            local.leadingText && "pl-0!",
+                        )}
                         inputMode={local.inputMode}
                         data-happy-desktop-ui="text-field-input"
                         disabled={local.disabled}
-                        id={fieldId()}
+                        id={fieldId}
                         name={local.name}
                         onBlur={() => local.onBlur?.()}
-                        onInput={(event) => local.onValueChange?.(event.currentTarget.value)}
+                        onChange={(event) => local.onValueChange?.(event.currentTarget.value)}
                         onKeyDown={(event) => {
                             if (event.key !== "Enter" || local.onSubmit === undefined) return;
                             // The Enter is the submit's. Left to the browser, it
@@ -234,18 +281,39 @@ export function TextField(props: TextFieldProps) {
                         value={local.value ?? ""}
                     />
                 )}
-            </div>
 
-            {message() ? (
-                <div
-                    className="happy-text-field__message"
-                    data-happy-desktop-ui={invalid() ? "text-field-error" : "text-field-hint"}
-                    data-tone={invalid() ? "error" : "hint"}
-                    id={messageId()}
-                >
-                    {message()}
-                </div>
+                {local.trailing ? (
+                    <InputGroupAddon
+                        align="inline-end"
+                        className={cn("happy-text-field__trailing", addonAlign)}
+                        data-happy-desktop-ui="text-field-trailing"
+                    >
+                        {local.trailing}
+                    </InputGroupAddon>
+                ) : null}
+            </InputGroup>
+
+            {message ? (
+                invalid ? (
+                    <FieldError
+                        className="happy-text-field__message"
+                        data-happy-desktop-ui="text-field-error"
+                        data-tone="error"
+                        id={messageId}
+                    >
+                        {message}
+                    </FieldError>
+                ) : (
+                    <FieldDescription
+                        className="happy-text-field__message"
+                        data-happy-desktop-ui="text-field-hint"
+                        data-tone="hint"
+                        id={messageId}
+                    >
+                        {message}
+                    </FieldDescription>
+                )
             ) : null}
-        </div>
+        </Field>
     );
 }

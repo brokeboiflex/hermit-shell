@@ -3,7 +3,7 @@ import { server } from "vitest/browser";
 import "./theme.css";
 import "./styles/scrollbar.css";
 import "./styles/badge.css";
-import "./styles/button.css";
+import "./styles.css";
 import "./styles/icon.css";
 import "./styles/build-progress-panel.css";
 import { BuildProgressPanel } from "./BuildProgressPanel";

@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 import "./theme.css";
 import "./styles/search-results.css";
 import "./styles/icon.css";
-import "./styles/avatar.css";
+import "./styles.css";
 import { SearchResults, type SearchResultGroup } from "./SearchResults";
 import { createRenderer, type RenderedElement } from "./testing";
 

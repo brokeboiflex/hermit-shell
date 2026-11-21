@@ -1323,6 +1323,7 @@ export function Composer(props: ComposerProps) {
                         {hasAttachmentAction() ? (
                             <Button
                                 aria-label="Attach file"
+                                className="size-8 rounded-full"
                                 disabled={busy}
                                 icon="plus"
                                 iconOnly
@@ -1334,6 +1335,7 @@ export function Composer(props: ComposerProps) {
                         {mentionsSupported() ? (
                             <Button
                                 aria-label="Mention someone"
+                                className="size-8 rounded-full"
                                 disabled={busy}
                                 icon="at"
                                 iconOnly
@@ -1347,6 +1349,7 @@ export function Composer(props: ComposerProps) {
                                 aria-expanded={emojiOpen ? "true" : "false"}
                                 aria-haspopup="dialog"
                                 aria-label="Add emoji"
+                                className="size-8 rounded-full"
                                 disabled={busy}
                                 icon="smile"
                                 iconOnly
@@ -1377,7 +1380,7 @@ export function Composer(props: ComposerProps) {
                                 {props.running ? (
                                     <Button
                                         aria-label="Stop the agent"
-                                        className="happy-composer__send happy-composer__stop"
+                                        className="happy-composer__send happy-composer__stop size-8 rounded-full"
                                         data-action="stop"
                                         icon="stop"
                                         iconOnly
@@ -1390,7 +1393,7 @@ export function Composer(props: ComposerProps) {
                                         aria-expanded={stopConfirmOpen}
                                         aria-haspopup="dialog"
                                         aria-label="Stop subagents"
-                                        className="happy-composer__send happy-composer__stop"
+                                        className="happy-composer__send happy-composer__stop size-8 rounded-full"
                                         data-action="stop"
                                         icon="stop"
                                         iconOnly
@@ -1425,7 +1428,7 @@ export function Composer(props: ComposerProps) {
                         ) : (
                             <Button
                                 aria-label="Send message"
-                                className="happy-composer__send"
+                                className="happy-composer__send size-8 rounded-full"
                                 disabled={!canSend()}
                                 icon="arrow-up"
                                 iconOnly

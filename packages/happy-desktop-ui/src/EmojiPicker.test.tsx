@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 import { server } from "vitest/browser";
 import "./theme.css";
 import "./styles/emoji-picker.css";
-import "./styles/text-field.css";
+import "./styles.css";
 import "./styles/icon.css";
 import { EmojiPicker, type EmojiItem } from "./EmojiPicker";
 import { createRenderer } from "./testing";

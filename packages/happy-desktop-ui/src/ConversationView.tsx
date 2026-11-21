@@ -780,7 +780,8 @@ export function ConversationView(props: ConversationViewProps) {
               switchSource,
               switchUsage,
               conversationSwitchFailed(transcript, currentFailureId),
-              switchUsage?.now ?? props.now ?? Date.now(),
+              // An unset time falls back to the clock inside the helper, not during render.
+              switchUsage?.now ?? props.now,
           )
         : undefined;
     const switchPreferred = switchTargets

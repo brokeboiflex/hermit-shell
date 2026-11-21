@@ -58,20 +58,22 @@
 
 /* The copy action belongs to the terminal rather than to the page around it,
    so it takes its ink from the terminal's own foreground. */
+/* `!important` where CopyButton's utilities set the same property: the legacy
+   layer sits under utilities until this sheet converts. */
 .happy-setup-command__copy {
     flex: none;
-    width: 28px;
-    height: 28px;
+    width: 28px !important;
+    height: 28px !important;
     margin-right: 3px;
     /* 8px well radius minus the 4px border-box inset. */
-    border-radius: 4px;
-    color: color-mix(in srgb, var(--terminal-command) 70%, transparent);
+    border-radius: 4px !important;
+    color: color-mix(in srgb, var(--terminal-command) 70%, transparent) !important;
     /* Always present: the well exists so this command can be taken. */
     opacity: 1;
 }
 
 .happy-setup-command__copy:hover,
 .happy-setup-command__copy:focus-visible {
-    color: var(--terminal-command);
-    background: color-mix(in srgb, var(--terminal-command) 8%, transparent);
+    color: var(--terminal-command) !important;
+    background: color-mix(in srgb, var(--terminal-command) 8%, transparent) !important;
 }

@@ -879,10 +879,6 @@
     right: 8px;
 }
 
-.gen-ui-scroll__arrow .happy-button[data-variant="secondary"] {
-    background-color: var(--surface);
-}
-
 /* On a narrow card the status label drops under its title line's text. */
 .gen-ui-scroll__item .gen-ui-box[data-direction="row"][data-justify="between"] {
     flex-wrap: wrap;
@@ -949,23 +945,6 @@ button.gen-ui-press[data-role="tile"]:hover:not(:disabled) .gen-ui-image {
     min-width: 0;
     text-overflow: ellipsis;
     white-space: nowrap;
-}
-
-/* A pressed button is busy or done, not unavailable: it keeps its full face. */
-.gen-ui-button.happy-button:disabled:not([data-press="idle"]) {
-    cursor: default;
-    opacity: 1;
-}
-
-/* Chips are outlined pills; the picked one fills in and keeps its mark. */
-.gen-ui-button[data-chip].happy-button[data-variant="secondary"] {
-    background-color: transparent;
-}
-
-.gen-ui-button[data-chip][data-picked].happy-button {
-    border-color: var(--text);
-    background-color: var(--surface-high);
-    opacity: 1;
 }
 
 .gen-ui-button .happy-button__label {

@@ -1,4 +1,4 @@
-import { Button } from "../../src/Button";
+import { Button } from "../../src/components/ui/button";
 import { Modal } from "../../src/Modal";
 import { ComponentPage, DimensionRule, Specimen } from "../kit";
 
@@ -8,12 +8,8 @@ export const componentNumber = "C-028";
 function ConfirmFooter(props: { confirmLabel: string; danger?: boolean }) {
     return (
         <>
-            <Button size="medium" variant="ghost">
-                Cancel
-            </Button>
-            <Button size="medium" variant={props.danger ? "danger" : "primary"}>
-                {props.confirmLabel}
-            </Button>
+            <Button variant="outline">Cancel</Button>
+            <Button variant={props.danger ? "destructive" : "default"}>{props.confirmLabel}</Button>
         </>
     );
 }
@@ -22,7 +18,7 @@ export function ModalPage() {
     return (
         <ComponentPage
             number={componentNumber}
-            summary="Dialog card — header (leading icon chip · title · close) / body / right-aligned footer actions, three fixed widths on a 14px shell radius. Rendered as a specimen card; a host portals it over its own backdrop."
+            summary="Dialog card in shadcn's dialog look — header (leading icon chip · title · ghost close) / body / right-aligned footer actions on the muted footer band, three fixed widths on the xl radius with one 16px inset. Rendered as a specimen card; a host puts it on a ModalOverlay."
             title="Modal"
         >
             <div className="specimen-grid specimen-grid--sizes">
@@ -56,12 +52,8 @@ export function ModalPage() {
                         <Modal
                             footer={
                                 <>
-                                    <Button size="medium" variant="ghost">
-                                        Back
-                                    </Button>
-                                    <Button size="medium" variant="primary">
-                                        Save changes
-                                    </Button>
+                                    <Button variant="outline">Back</Button>
+                                    <Button>Save changes</Button>
                                 </>
                             }
                             icon="settings"
@@ -78,7 +70,7 @@ export function ModalPage() {
 
             <div className="specimen-grid">
                 <Specimen
-                    detail="tone default (accent chip) vs danger (danger chip + danger action)"
+                    detail="tone default (muted chip) vs danger (destructive chip + destructive action)"
                     label="Tone"
                     number="M-04"
                     stage="app"
@@ -117,13 +109,13 @@ export function ModalPage() {
 
             <div className="specimen-grid">
                 <Specimen
-                    detail="header 60 · body · footer 69 (with 1px top hairline)"
+                    detail="header 60 · body · footer 65 (muted band under a 1px top hairline)"
                     label="Anatomy"
                     number="M-05"
                     stage="app"
                 >
                     <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                        <DimensionRule label="header 60 · footer 69" />
+                        <DimensionRule label="header 60 · footer 65" />
                         <Modal
                             footer={<ConfirmFooter confirmLabel="Confirm" />}
                             icon="spark"
@@ -131,8 +123,8 @@ export function ModalPage() {
                             size="medium"
                             title="Header, body, footer"
                         >
-                            The header is a fixed 60px control row; the body is a scrollable slot
-                            with a 20px inset; the footer right-aligns its action buttons.
+                            The header is a 60px control row; the body is a scrollable slot with a
+                            16px inset; the footer right-aligns its action buttons.
                         </Modal>
                     </div>
                 </Specimen>

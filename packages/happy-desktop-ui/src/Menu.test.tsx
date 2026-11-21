@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import "./theme.css";
-import "./styles/menu.css";
+import "./styles.css";
 import "./styles/icon.css";
 import "./styles/badge.css";
 import { Menu, type MenuItem } from "./Menu";

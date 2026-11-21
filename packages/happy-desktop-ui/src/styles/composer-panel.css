@@ -50,13 +50,6 @@
     min-width: 0;
 }
 
-/* The close control sits 7px inside the card's top/right curve (1px border +
-   6px header inset), so its 3px corner remains parallel to the card's 10px
-   corner instead of drawing a second, unrelated curve. */
-.happy-composer-panel__header > .happy-button {
-    border-radius: 3px;
-}
-
 .happy-composer-panel__title {
     flex: none;
     font-size: 13px;

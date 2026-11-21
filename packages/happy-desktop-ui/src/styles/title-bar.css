@@ -176,7 +176,3 @@
 .happy-search-field__hint {
     flex: none;
 }
-
-.happy-search-field__hint.happy-key-cap {
-    border-radius: 2px;
-}

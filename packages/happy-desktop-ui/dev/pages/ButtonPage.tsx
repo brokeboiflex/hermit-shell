@@ -10,23 +10,28 @@ export function ButtonPage() {
     return (
         <ComponentPage
             number={componentNumber}
-            summary="Relay action control — five variants, three contract heights, leading-icon and icon-only forms."
+            summary="Relay action control on shadcn/ui's Button — five variants, three contract heights, leading-icon and icon-only forms."
             title="Button"
         >
             <div className="specimen-grid specimen-grid--sizes">
-                <Specimen detail="28px high · 12px label" label="Small" number="B-01" stage="app">
+                <Specimen detail="28px high · shadcn sm" label="Small" number="B-01" stage="app">
                     <div className="dimensioned-button">
                         <DimensionRule label="height 28" />
                         <Button size="small">Request changes</Button>
                     </div>
                 </Specimen>
-                <Specimen detail="36px high · 13px label" label="Medium" number="B-02" stage="app">
+                <Specimen detail="36px high · shadcn lg" label="Medium" number="B-02" stage="app">
                     <div className="dimensioned-button">
                         <DimensionRule label="height 36" />
                         <Button size="medium">Request changes</Button>
                     </div>
                 </Specimen>
-                <Specimen detail="44px high · 14px label" label="Large" number="B-03" stage="app">
+                <Specimen
+                    detail="44px high · lg raised to 44"
+                    label="Large"
+                    number="B-03"
+                    stage="app"
+                >
                     <div className="dimensioned-button">
                         <DimensionRule label="height 44" />
                         <Button size="large">Request changes</Button>
@@ -36,7 +41,7 @@ export function ButtonPage() {
 
             <div className="specimen-grid">
                 <Specimen
-                    detail="primary · secondary · ghost · danger · success"
+                    detail="primary (default) · secondary (outline) · ghost · danger (destructive) · success"
                     label="Variants"
                     number="B-04"
                     stage="surface"
@@ -60,7 +65,7 @@ export function ButtonPage() {
 
             <div className="specimen-grid">
                 <Specimen
-                    detail="leading icon 14/16/18 by size · 6px gap"
+                    detail="leading icon 14/16/18 by size · shadcn gap and inline-start padding"
                     label="Leading icon"
                     number="B-05"
                     stage="app"
@@ -85,7 +90,7 @@ export function ButtonPage() {
                     </div>
                 </Specimen>
                 <Specimen
-                    detail="square 28/36/44 · glyph optically centered"
+                    detail="square 28/36/44 · shadcn icon-sm and icon-lg"
                     label="Icon only"
                     number="B-06"
                     stage="app"

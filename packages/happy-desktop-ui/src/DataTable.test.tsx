@@ -1,9 +1,8 @@
 import { expect, it } from "vitest";
 import { server } from "vitest/browser";
 import "./theme.css";
-import "./styles/data-table.css";
+import "./styles.css";
 import "./styles/icon.css";
-import "./styles/button.css";
 import { Button } from "./Button";
 import { DataTable, type DataTableColumn, type DataTableRow } from "./DataTable";
 import { createRenderer } from "./testing";

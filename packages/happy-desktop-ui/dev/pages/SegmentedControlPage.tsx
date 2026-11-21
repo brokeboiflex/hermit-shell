@@ -28,6 +28,12 @@ const SCOPE = [
     { value: "team", label: "Team" },
 ];
 
+const ENGINE = [
+    { value: "stable", label: "Stable" },
+    { value: "next", label: "Next", badge: "Experimental" },
+    { value: "legacy", label: "Legacy", disabled: true, title: "No longer offered" },
+];
+
 const CONNECTION = [
     { value: "direct", label: "Direct connection", tag: { label: "New" } },
     { value: "relay", label: "Relay connection", tag: { label: "Older clients" } },
@@ -37,7 +43,7 @@ export function SegmentedControlPage() {
     return (
         <ComponentPage
             number={componentNumber}
-            summary="Inline exclusive choice group (2–5 segments): the group is transparent, inactive choices sit directly on the surface, and only the selected choice uses the shared selection fill."
+            summary="Inline exclusive choice group (2–5 segments) on a single shadcn ToggleGroup: no track, inactive choices sit directly on the surface, and only the selected choice carries the quiet muted fill."
             title="Segmented control"
         >
             <div className="specimen-grid specimen-grid--sizes">
@@ -52,21 +58,26 @@ export function SegmentedControlPage() {
                         <SegmentedControl segments={RANGE} size="compact" value="week" />
                     </div>
                 </Specimen>
-                <Specimen detail="28px high · 12px label" label="Small" number="SC-01" stage="app">
+                <Specimen
+                    detail="28px high · 12.8px label"
+                    label="Small"
+                    number="SC-01"
+                    stage="app"
+                >
                     <div style={{ display: "grid", gap: "8px" }}>
                         <DimensionRule label="height 28" />
                         <SegmentedControl segments={RANGE} size="small" value="week" />
                     </div>
                 </Specimen>
-                <Specimen detail="36px high · 13px label" label="Medium" number="SC-02" stage="app">
+                <Specimen detail="32px high · 14px label" label="Medium" number="SC-02" stage="app">
                     <div style={{ display: "grid", gap: "8px" }}>
-                        <DimensionRule label="height 36" />
+                        <DimensionRule label="height 32" />
                         <SegmentedControl segments={RANGE} size="medium" value="week" />
                     </div>
                 </Specimen>
-                <Specimen detail="44px high · 14px label" label="Large" number="SC-03" stage="app">
+                <Specimen detail="36px high · 14px label" label="Large" number="SC-03" stage="app">
                     <div style={{ display: "grid", gap: "8px" }}>
-                        <DimensionRule label="height 44" />
+                        <DimensionRule label="height 36" />
                         <SegmentedControl segments={RANGE} size="large" value="week" />
                     </div>
                 </Specimen>
@@ -97,7 +108,7 @@ export function SegmentedControlPage() {
 
             <div className="specimen-grid">
                 <Specimen
-                    detail="leading icon 14/16/18 by size · 6px gap"
+                    detail="leading icon 14/16/16 by size"
                     label="Icon + label"
                     number="SC-05"
                     stage="app"
@@ -142,7 +153,7 @@ export function SegmentedControlPage() {
 
             <div className="specimen-grid">
                 <Specimen
-                    detail="fullWidth fills the container · disabled 0.48"
+                    detail="fullWidth fills the container · disabled 0.5"
                     label="Full width and disabled"
                     number="SC-07"
                     stage="surface"
@@ -168,6 +179,20 @@ export function SegmentedControlPage() {
                         <DimensionRule label="height 28" />
                         <SegmentedControl segments={CONNECTION} size="small" value="direct" />
                         <SegmentedControl segments={CONNECTION} size="small" value="relay" />
+                    </div>
+                </Specimen>
+            </div>
+
+            <div className="specimen-grid">
+                <Specimen
+                    detail="inline badge after a label · one disabled segment with a title"
+                    label="Badges and disabled segments"
+                    number="SC-09"
+                    stage="surface"
+                >
+                    <div style={{ display: "grid", gap: "16px", padding: "28px" }}>
+                        <SegmentedControl segments={ENGINE} size="small" value="stable" />
+                        <SegmentedControl segments={ENGINE} value="next" />
                     </div>
                 </Specimen>
             </div>

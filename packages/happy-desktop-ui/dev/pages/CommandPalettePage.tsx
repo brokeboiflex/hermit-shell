@@ -381,7 +381,7 @@ function PaletteSpecimen(props: {
     return (
         <Specimen detail={props.detail} label={props.label} number={props.number} stage="app">
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                <DimensionRule label="640 wide · fits its rows up to 461 · 56px field · 40px rows · 36px key footer" />
+                <DimensionRule label="640 wide · fits its rows, scrolls past 365 · 32px field · 32px rows · 36px key footer" />
                 <PaletteFrame query={props.query}>{props.children}</PaletteFrame>
             </div>
         </Specimen>
@@ -545,7 +545,7 @@ export function CommandPalettePage() {
     return (
         <ComponentPage
             number={componentNumber}
-            summary="The ⌘K palette in Linear's and Slack's proportions — a 640px card on the 14px shell radius that fits its rows — its results scroll only past 365px, a 461px card, opaque, with a hairline edge and a soft dissolving shadow. A 56px borderless search field, a hairline, the scrolling results in compact 40px rows under sentence-case captions, a hairline, and a 36px footer naming the keys: ↑↓ navigate, ↵ open, ESC close. Closed by Escape, ⌘K again, or a press outside it; ⌘1…⌘9 open the numbered rows. Renders the card only; ModalOverlay hangs it from the top gutter over a soft dim."
+            summary="The ⌘K palette, drawn as shadcn's Command dialog — a 640px popover card on the XL corner, with a quiet ring and shadow, that fits its rows; its results scroll only past 365px. A soft search field, the scrolling results in compact 32px rows under sentence-case captions, and a 36px footer naming the keys: ↑↓ navigate, ↵ open, ESC close. Closed by Escape, ⌘K again, or a press outside it; ⌘1…⌘9 open the numbered rows. Renders the card only; ModalOverlay hangs it from the top gutter over a soft dim."
             title="Command palette"
         >
             <FullScreenSpecimen

@@ -203,7 +203,7 @@ export function HappyAgentProfileSettings(props: HappyAgentProfileSettingsProps)
                         <FormRow
                             control={
                                 <TextField
-                                    className="happy-agent-profile__field"
+                                    className="happy-agent-profile__field w-65"
                                     disabled={blocked}
                                     onValueChange={props.onNameChange}
                                     placeholder="Your name"
@@ -217,7 +217,7 @@ export function HappyAgentProfileSettings(props: HappyAgentProfileSettingsProps)
                         <FormRow
                             control={
                                 <TextField
-                                    className="happy-agent-profile__field"
+                                    className="happy-agent-profile__field w-65"
                                     disabled={blocked}
                                     onValueChange={props.onEmailChange}
                                     placeholder="you@example.com"

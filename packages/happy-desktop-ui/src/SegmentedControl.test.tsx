@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import { server, userEvent } from "vitest/browser";
 import "./theme.css";
-import "./styles/segmented-control.css";
+import "./styles.css";
 import "./styles/icon.css";
 import { SegmentedControl } from "./SegmentedControl";
 import { createRenderer } from "./testing";

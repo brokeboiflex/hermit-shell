@@ -1,5 +1,7 @@
 import { useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { Button } from "./components/ui/button";
 import { Icon } from "./Icon";
+import { cn } from "./lib/utils";
 
 export interface CopyButtonProps {
     readonly className?: string;
@@ -32,11 +34,15 @@ const COPIED_MS = 1_600;
 
 /**
  * CopyButton — the quiet clipboard action for a line whose full text is longer
- * than the row showing it. It confirms itself with a check for a moment, so a
- * reader knows the copy landed without a toast interrupting the surface.
+ * than the row showing it: a shadcn/ui ghost Button, a 20px glyph square, or a
+ * small (28px) glyph-and-caption button when it names itself. It confirms
+ * itself with a check for a moment, so a reader knows the copy landed without
+ * a toast interrupting the surface.
  *
- * The surrounding row decides when the button is visible; the button only owns
- * its own copied state.
+ * The surrounding row decides when the bare glyph is visible; the button only
+ * owns its own copied state. Its resting transparency is the one rule left in
+ * styles/copy-button.css, below Tailwind's utilities, because each row that
+ * reveals it does so with its own stylesheet rule there.
  */
 export function CopyButton(props: CopyButtonProps) {
     const [copied, setCopied] = useState(false);
@@ -57,9 +63,13 @@ export function CopyButton(props: CopyButtonProps) {
         }
     };
     return (
-        <button
+        <Button
             aria-label={copied ? "Copied" : props.label}
-            className={["happy-copy-button", props.className].filter(Boolean).join(" ")}
+            className={cn(
+                "happy-copy-button text-muted-foreground focus-visible:opacity-100 data-copied:text-success data-copied:opacity-100 data-copied:hover:text-success",
+                props.caption === undefined ? "size-5" : undefined,
+                props.className,
+            )}
             data-captioned={props.caption === undefined ? undefined : ""}
             data-copied={copied ? "" : undefined}
             data-happy-desktop-ui={props["data-happy-desktop-ui"] ?? "copy-button"}
@@ -70,19 +80,25 @@ export function CopyButton(props: CopyButtonProps) {
                 void copy();
             }}
             style={props.style}
+            size={props.caption === undefined ? "icon-xs" : "sm"}
             title={copied ? "Copied" : props.label}
             type="button"
+            variant="ghost"
         >
             {props.glyph ? (
                 props.glyph(copied)
             ) : (
-                <Icon name={copied ? "check" : "copy"} size={14} />
+                <Icon
+                    data-icon={props.caption === undefined ? undefined : "inline-start"}
+                    name={copied ? "check" : "copy"}
+                    size={14}
+                />
             )}
             {props.caption === undefined ? null : (
                 <span aria-atomic="true" aria-live="polite" className="happy-copy-button__caption">
                     {copied ? (props.copiedCaption ?? props.caption) : props.caption}
                 </span>
             )}
-        </button>
+        </Button>
     );
 }

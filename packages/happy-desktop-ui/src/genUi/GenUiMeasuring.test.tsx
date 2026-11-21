@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 import "../theme.css";
 import "../styles/icon.css";
 import "../styles/vector-icon.css";
-import "../styles/button.css";
+import "../styles.css";
 import "../styles/copy-button.css";
 import "../styles/code-block.css";
 import "../styles/gen-ui.css";

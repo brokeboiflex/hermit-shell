@@ -1,59 +1,16 @@
 /*
- * CopyButton — a 20px clipboard action beside a line of transcript text.
+ * CopyButton is drawn by shadcn/ui (CopyButton.tsx). The bare glyph rests
+ * transparent until the row it sits on reveals it, and every such row reveals
+ * it with a rule in its own stylesheet (agent-activity-row.css, message.css,
+ * conversation.css, conversation-compute-event.css). Those rules sit in this
+ * same legacy layer, so the resting rule must stay here too: as a utility it
+ * would outrank every one of them. Move it to a `group-hover` utility once
+ * those rows have converted. Copied and focused states are utilities.
  *
- * It is invisible until its row is hovered or holds focus, the way the row's
- * timestamp is, so a long transcript keeps one column of verbs and subjects
- * rather than a rail of repeated icons.
+ * `:where()` keeps this at one class of specificity, as the rule always was,
+ * so a host's single-class `opacity: 1` (review-file-actions.css) still wins.
  */
 
-.happy-copy-button {
-    display: flex;
-    flex: none;
-    align-items: center;
-    justify-content: center;
-    width: 20px;
-    height: 20px;
-    margin: 0;
-    padding: 0;
-    border: 0;
-    border-radius: var(--happy-radius-sm);
-    background: transparent;
-    color: var(--text-secondary);
-    appearance: none;
-    cursor: pointer;
+.happy-copy-button:not(:where([data-captioned])) {
     opacity: 0;
-    transition: opacity 100ms ease;
-}
-
-.happy-copy-button:hover {
-    background: var(--surface-pressed);
-    color: var(--text);
-}
-
-.happy-copy-button:focus-visible {
-    opacity: 1;
-    outline: 2px solid var(--radio-active);
-    outline-offset: 1px;
-}
-
-.happy-copy-button[data-copied] {
-    opacity: 1;
-    color: var(--success);
-}
-
-/*
- * The same action standing on its own rather than beside a row that already
- * says what it holds: it names itself, so it is always visible and sized to
- * its own words.
- */
-.happy-copy-button[data-captioned] {
-    gap: 6px;
-    width: auto;
-    height: 28px;
-    padding: 0 10px;
-    font-family: var(--happy-font-ui);
-    font-size: 13px;
-    font-weight: 500;
-    line-height: 20px;
-    opacity: 1;
 }

@@ -120,7 +120,12 @@ export function EmojiPicker(props: EmojiPickerProps) {
             data-happy-desktop-ui="emoji-picker"
             style={{ ...local.style, width: `${columns() * CELL + CHROME}px` }}
         >
-            <div className="happy-emoji-picker__search" data-happy-desktop-ui="emoji-picker-search">
+            {/* The search control is 9px inside the card's top edge (1px border + 8px
+                padding), so its top curve is the remaining 1px of the 10px card curve. */}
+            <div
+                className="happy-emoji-picker__search [&_[data-happy-desktop-ui=text-field-control]]:rounded-t-[1px]"
+                data-happy-desktop-ui="emoji-picker-search"
+            >
                 <TextField
                     fullWidth
                     leadingIcon="search"

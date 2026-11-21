@@ -1,5 +1,6 @@
 import { type CSSProperties } from "react";
 import { partitionComponentProps } from "../componentProps";
+import type { IconInlinePosition } from "../Icon";
 import { ioniconsGlyphs, type IoniconName } from "./ioniconsGlyphs";
 import { octiconsGlyphs, type OcticonName } from "./octiconsGlyphs";
 
@@ -22,12 +23,22 @@ type VectorIconBaseProps = {
     style?: CSSProperties;
     "aria-label"?: string;
     "data-testid"?: string;
+    /* Which end of a shadcn control the glyph sits at, as on `Icon`. */
+    "data-icon"?: IconInlinePosition;
 };
 
 export type IoniconProps = VectorIconBaseProps & { name: IoniconName };
 export type OcticonProps = VectorIconBaseProps & { name: OcticonName };
 
-const FORWARDED = ["aria-label", "className", "color", "data-testid", "size", "style"] as const;
+const FORWARDED = [
+    "aria-label",
+    "className",
+    "color",
+    "data-icon",
+    "data-testid",
+    "size",
+    "style",
+] as const;
 
 function renderVectorIcon(
     set: "ionicons" | "octicons",
@@ -44,7 +55,10 @@ function renderVectorIcon(
             className={["happy-vector-icon", local.className].filter(Boolean).join(" ")}
             data-glyph={name}
             data-happy-desktop-ui="vector-icon"
+            data-icon={local["data-icon"]}
             data-set={set}
+            /* The same shadcn styling hook `Icon` carries; it never sizes the box. */
+            data-slot="icon"
             data-testid={local["data-testid"]}
             role={local["aria-label"] ? "img" : undefined}
             style={{

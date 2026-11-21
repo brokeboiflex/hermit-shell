@@ -3,7 +3,7 @@ import type { HappyAgentMenusSnapshot, HappyAgentModelSelection } from "happy-de
 import "./theme.css";
 import "./styles/icon.css";
 import "./styles/badge.css";
-import "./styles/menu.css";
+import "./styles.css";
 import "./styles/happy-agent-chat.css";
 import { HappyAgentSessionControls } from "./HappyAgentSessionControls";
 import { createRenderer } from "./testing";

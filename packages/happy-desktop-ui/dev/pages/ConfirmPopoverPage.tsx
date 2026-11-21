@@ -9,12 +9,12 @@ export function ConfirmPopoverPage() {
     return (
         <ComponentPage
             number={componentNumber}
-            summary="A question asked in place, above the control that raised it: title, optional message, and right-aligned Cancel and confirm actions on the menus' raised surface. Focus starts on Cancel unless the host asks for the confirm action, Escape cancels, and Tab cycles between the two actions. The host anchors it and decides what an outside press does."
+            summary="A question asked in place, above the control that raised it: shadcn's popover surface with its header (title over a muted description) and right-aligned small Cancel and confirm buttons. Focus starts on Cancel unless the host asks for the confirm action, Escape cancels, and Tab cycles between the two actions. The host anchors it and decides what an outside press does."
             title="Confirm popover"
         >
             <div className="specimen-grid">
                 <Specimen
-                    detail="280px card · 12px padding · 28px actions · destructive confirm"
+                    detail="280px card · 10px padding · 28px actions · destructive confirm"
                     label="Danger"
                     number="CP-01"
                     stage="app"
@@ -32,7 +32,7 @@ export function ConfirmPopoverPage() {
                     </div>
                 </Specimen>
                 <Specimen
-                    detail="title only · primary confirm"
+                    detail="title only · default confirm"
                     label="Default"
                     number="CP-02"
                     stage="surface"
@@ -45,7 +45,7 @@ export function ConfirmPopoverPage() {
                     />
                 </Specimen>
                 <Specimen
-                    detail="title only · amber confirm · focus starts on confirm, so Enter answers"
+                    detail="title only · warning-tinted confirm · focus starts on confirm, so Enter answers"
                     label="Warning"
                     number="CP-04"
                     stage="app"

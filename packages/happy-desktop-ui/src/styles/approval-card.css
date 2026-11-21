@@ -127,7 +127,7 @@
     height: 26px;
     background: var(--box-warning-background);
     border-radius: 8px;
-    color: var(--warning);
+    color: var(--quiet-ink);
 }
 
 .happy-desktop-approval-card[data-resolution="approved"] .happy-desktop-approval-card__chip {

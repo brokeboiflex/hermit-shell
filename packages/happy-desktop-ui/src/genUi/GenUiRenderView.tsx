@@ -1,5 +1,6 @@
 import { Children, createContext, useContext, useRef, useState, type ReactNode } from "react";
 import { Button } from "../Button";
+import { cn } from "../lib/utils";
 import { CodeBlock } from "../CodeBlock";
 import { CopyButton } from "../CopyButton";
 import { Lightbox } from "../Lightbox";
@@ -455,6 +456,8 @@ function ScrollView(props: { node: GenUiScroll }) {
         <span className="gen-ui-scroll__arrow" data-side={side}>
             <Button
                 aria-label={side === "start" ? "Previous" : "Next"}
+                // Opaque over the cards it scrolls past, in either appearance.
+                className="bg-background dark:bg-background"
                 iconOnly
                 onClick={() => page(side === "start" ? -1 : 1)}
                 size="small"
@@ -518,7 +521,16 @@ function ButtonView(props: { node: GenUiButton }) {
     return (
         <Button
             aria-pressed={chosen || press !== "idle" ? true : undefined}
-            className="gen-ui-button"
+            className={cn(
+                "gen-ui-button",
+                // A pressed button is busy or done, not unavailable: it keeps its full face.
+                press !== "idle" && "disabled:cursor-default disabled:opacity-100",
+                // Chips are outlined pills; the picked one fills in and keeps its mark.
+                chip && "bg-transparent dark:bg-transparent",
+                chip &&
+                    chosen &&
+                    "border-foreground bg-muted opacity-100 disabled:opacity-100 dark:border-foreground dark:bg-muted",
+            )}
             data-button-tone={node.tone}
             data-chip={chip ? "" : undefined}
             data-gen-ui-key={node.key}

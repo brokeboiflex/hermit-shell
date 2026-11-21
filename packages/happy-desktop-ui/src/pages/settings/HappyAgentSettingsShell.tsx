@@ -235,7 +235,10 @@ export interface HappyAgentSettingsGroupProps {
 export function HappyAgentSettingsGroup(props: HappyAgentSettingsGroupProps) {
     return (
         <Box
-            className="happy-agent-settings__group"
+            // Rows are 12px from the card's top and bottom where they meet it, so
+            // their words sit as far from those edges as from its side. A row names
+            // its setting in the body weight; the description carries the hierarchy.
+            className="happy-agent-settings__group [&_.happy-form-row]:py-3 [&_[data-happy-desktop-ui=form-row-label]]:font-normal"
             data-happy-desktop-ui="happy-agent-settings-group"
         >
             {props.children}

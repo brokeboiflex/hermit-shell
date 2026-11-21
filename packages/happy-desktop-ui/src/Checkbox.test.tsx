@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import "./theme.css";
 import "./styles/icon.css";
-import "./styles/checkbox.css";
+import "./styles.css";
 import { Checkbox } from "./Checkbox";
 import { createRenderer } from "./testing";
 

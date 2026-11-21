@@ -87,6 +87,7 @@ export type IconName =
     | "repeat"
     | "location"
     | "dot"
+    | "loading"
     | "pulse"
     | "feed"
     | "width-expand"
@@ -108,7 +109,15 @@ export type IconProps = {
     style?: CSSProperties;
     "aria-label"?: string;
     "data-testid"?: string;
+    /*
+     * Which end of a shadcn control the icon leads or trails, as shadcn's own
+     * markup marks it (`<Icon data-icon="inline-start" />`): the control trims
+     * its padding on that side. Presentation only; the icon itself is unchanged.
+     */
+    "data-icon"?: IconInlinePosition;
 };
+/** Where an icon sits in a shadcn control's row; see `IconProps["data-icon"]`. */
+export type IconInlinePosition = "inline-start" | "inline-end";
 /*
  * The curated house icon vocabulary, backed by the font-based vector sets ported
  * verbatim from Happy's `@expo/vector-icons` usage (Ionicons and Octicons). Each
@@ -332,6 +341,10 @@ const glyphs: Record<IconName, IconGlyph> = {
     // Chance, asked for: rolling a new set of faces for a bot.
     dice: { set: "ionicons", name: "dice-outline" },
     dot: { set: "ionicons", name: "ellipse" },
+    // Work in progress with no measure of how far along it is: the open
+    // circular arrow a spinner turns, as shadcn's Spinner turns Lucide's
+    // loader. It reads only while it rotates.
+    loading: { set: "ionicons", name: "reload-outline" },
     pulse: { set: "ionicons", name: "pulse-outline" },
     // What happened on the installation: Activity, as GitHub draws its pulse.
     feed: { set: "octicons", name: "pulse" },
@@ -390,6 +403,7 @@ export function Icon(props: IconProps) {
         "aria-label",
         "className",
         "color",
+        "data-icon",
         "data-testid",
         "name",
         "size",
@@ -404,9 +418,18 @@ export function Icon(props: IconProps) {
             className={["happy-icon", local.className].filter(Boolean).join(" ")}
             data-glyph={glyph.name}
             data-happy-desktop-ui="icon"
+            data-icon={local["data-icon"]}
             data-mirrored={glyph.mirrored ? "" : undefined}
             data-name={local.name}
             data-set={glyph.set}
+            /*
+             * The one hook a shadcn component (src/components/ui) styles its
+             * icons by: `[&_[data-slot=icon]]` and `*:data-[slot=icon]` take
+             * the place of shadcn's `[&_svg]`. They may set pointer events,
+             * shrink, colour, and opacity, never the box: Icon owns its box
+             * through `size` (16 by default, shadcn's `size-4`).
+             */
+            data-slot="icon"
             data-testid={local["data-testid"]}
             role={local["aria-label"] ? "img" : undefined}
             style={{

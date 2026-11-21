@@ -7,13 +7,17 @@ import {
     useRef,
     useState,
 } from "react";
-import { Button } from "./Button";
+import { Button } from "./components/ui/button";
+import { Spinner } from "./components/ui/spinner";
 import { ContextMenu } from "./ContextMenu";
+import { Icon } from "./Icon";
 import { ImageViewer, type ImageViewerProps } from "./ImageViewer";
 import { commandShortcut, commandShortcutMatches } from "./keyboardShortcut";
+import { cn } from "./lib/utils";
 import type { MenuItem } from "./Menu";
 import { VideoViewer } from "./VideoViewer";
 import { thumbhashDataUrl } from "./thumbhashDataUrl";
+import { Tooltip } from "./Tooltip";
 import { Ionicon } from "./vectorIcons/VectorIcon";
 
 type LightboxSharedProps = {
@@ -97,8 +101,10 @@ export type LightboxProps = LightboxSharedProps &
  * is the inner `data-happy-desktop-ui="lightbox-dialog"`: an optional
  * caption/detail + actions header above the shared viewer.
  *
- * The surface, caption, controls, and viewer inherit the surrounding app's
- * resolved appearance. Theme tokens keep them current when the app or system
+ * It is drawn in shadcn's language: the background surface, the caption in
+ * the foreground over a muted mono detail, and ghost icon buttons for its
+ * controls. The surface, caption, controls, and viewer inherit the surrounding
+ * app's resolved appearance. Theme tokens keep them current when the app or system
  * changes between light and dark while a picture is open.
  *
  * The media inside uses the same image and video viewers as file preview and
@@ -254,34 +260,57 @@ export function Lightbox(props: LightboxProps) {
         else return;
         event.preventDefault();
     };
+    const copyLabel =
+        copyStatus === "done"
+            ? "Copied"
+            : copyStatus === "failed"
+              ? "Couldn't copy image"
+              : "Copy image";
+    const downloadLabel =
+        downloadStatus === "failed" ? `Couldn't download ${mediaNoun}` : `Download ${mediaNoun}`;
     return (
         <div
             {...rest}
-            className={["happy-lightbox", local.className].filter(Boolean).join(" ")}
+            className={cn(
+                // The full-window picture owns focus for pan/zoom and set
+                // navigation; its frame is not a control to outline when an
+                // arrow key is pressed. The buttons keep their own rings.
+                "happy-lightbox m-0 flex size-full min-h-0 min-w-0 flex-auto items-stretch justify-stretch font-sans text-foreground [&_[data-happy-desktop-ui=image-viewer-frame]:focus-visible]:outline-none",
+                local.className,
+            )}
             data-happy-desktop-ui="lightbox"
             style={local.style}
         >
+            {/* One flat room, edge to edge: no radius, no ring, and no shadow,
+                because there is nothing for it to be raised above. */}
             <div
                 aria-label={local.caption ?? local.alt ?? `${mediaName} preview`}
                 aria-modal="true"
-                className="happy-lightbox__dialog"
+                className="happy-lightbox__dialog flex size-full min-h-0 min-w-0 flex-auto flex-col overflow-hidden bg-background"
                 data-happy-desktop-ui="lightbox-dialog"
                 onClick={click}
                 onKeyDown={keyDown}
                 role="dialog"
             >
                 {hasHeader() ? (
+                    /* Chrome-less: the name of the picture and the controls for
+                       it float on the surface with no bar and no rule under
+                       them. Inside the app shell a `fill` overlay covers the
+                       native title bar too, so the header becomes the 40px band
+                       of window furniture the traffic lights sit on, holds their
+                       lane clear, and keeps the caption buttons' reservation on
+                       the right, exactly as every other heading in the window. */
                     <header
-                        className="happy-lightbox__header"
+                        className="happy-lightbox__header flex min-h-13 flex-none items-center gap-3 py-2.5 pr-3 pl-4 in-[.happy-desktop-app-shell[data-window-controls]]:min-h-10 in-[.happy-desktop-app-shell[data-window-controls]]:py-0 in-[.happy-desktop-app-shell[data-window-controls]]:pr-[calc(16px+var(--happy-window-caption-right))] in-[.happy-desktop-app-shell[data-window-traffic-lights]]:pl-(--happy-window-controls-width)"
                         data-happy-desktop-ui="lightbox-header"
                     >
                         <div
-                            className="happy-lightbox__caption"
+                            className="happy-lightbox__caption flex min-w-0 flex-auto items-baseline gap-2"
                             data-happy-desktop-ui="lightbox-caption"
                         >
                             {local.caption ? (
                                 <span
-                                    className="happy-lightbox__caption-title"
+                                    className="happy-lightbox__caption-title min-w-0 shrink truncate text-sm leading-5 font-medium text-foreground"
                                     data-happy-desktop-ui="lightbox-caption-title"
                                 >
                                     {local.caption}
@@ -289,7 +318,7 @@ export function Lightbox(props: LightboxProps) {
                             ) : null}
                             {local.detail ? (
                                 <span
-                                    className="happy-lightbox__caption-detail"
+                                    className="happy-lightbox__caption-detail flex-none font-mono text-xs leading-5 font-medium whitespace-nowrap text-muted-foreground"
                                     data-happy-desktop-ui="lightbox-caption-detail"
                                 >
                                     {local.detail}
@@ -297,23 +326,24 @@ export function Lightbox(props: LightboxProps) {
                             ) : null}
                         </div>
                         <div
-                            className="happy-lightbox__tools"
+                            className="happy-lightbox__tools flex flex-none items-center gap-1"
                             data-happy-desktop-ui="lightbox-tools"
                         >
                             {stepping ? (
                                 <Button
                                     aria-label={`Previous ${navigationLabel}`}
-                                    iconOnly
                                     onClick={() => local.onPrevious?.()}
-                                    size="small"
+                                    size="icon-sm"
                                     variant="ghost"
                                 >
-                                    <Ionicon name="chevron-back-outline" size={14} />
+                                    <Icon name="chevron-left" size={16} />
                                 </Button>
                             ) : null}
                             {stepping && local.position ? (
+                                /* Tabular, so the count does not shuffle the
+                                   controls beside it through the set. */
                                 <span
-                                    className="happy-lightbox__position"
+                                    className="happy-lightbox__position flex-none px-0.5 font-mono text-xs leading-5 font-medium whitespace-nowrap text-muted-foreground tabular-nums"
                                     data-happy-desktop-ui="lightbox-position"
                                 >
                                     {`${String(local.position.index + 1)} of ${String(local.position.total)}`}
@@ -322,77 +352,83 @@ export function Lightbox(props: LightboxProps) {
                             {stepping ? (
                                 <Button
                                     aria-label={`Next ${navigationLabel}`}
-                                    iconOnly
                                     onClick={() => local.onNext?.()}
-                                    size="small"
+                                    size="icon-sm"
                                     variant="ghost"
                                 >
-                                    <Ionicon name="chevron-forward-outline" size={14} />
+                                    <Icon name="chevron-right" size={16} />
                                 </Button>
                             ) : null}
                             {canCopy ? (
-                                <Button
-                                    aria-label={
-                                        copyStatus === "done"
-                                            ? "Copied"
-                                            : copyStatus === "failed"
-                                              ? "Couldn't copy image"
-                                              : "Copy image"
-                                    }
-                                    data-testid="lightbox-copy"
-                                    icon={
-                                        copyStatus === "done"
-                                            ? "check"
-                                            : copyStatus === "failed"
-                                              ? "alert"
-                                              : "copy"
-                                    }
-                                    iconOnly
-                                    loading={copyStatus === "pending"}
-                                    onClick={() => run("copy", local.onCopy)}
+                                <Tooltip
+                                    label={copyLabel}
+                                    placement="bottom"
                                     shortcut={COPY_SHORTCUT}
-                                    size="small"
-                                    variant="ghost"
-                                />
+                                >
+                                    <Button
+                                        aria-keyshortcuts={COPY_SHORTCUT.aria}
+                                        aria-label={copyLabel}
+                                        data-loading={copyStatus === "pending" ? "" : undefined}
+                                        data-testid="lightbox-copy"
+                                        disabled={copyStatus === "pending"}
+                                        onClick={() => run("copy", local.onCopy)}
+                                        size="icon-sm"
+                                        variant="ghost"
+                                    >
+                                        {copyStatus === "pending" ? (
+                                            <Spinner aria-label="Copying" />
+                                        ) : (
+                                            <Icon
+                                                name={
+                                                    copyStatus === "done"
+                                                        ? "check"
+                                                        : copyStatus === "failed"
+                                                          ? "alert"
+                                                          : "copy"
+                                                }
+                                                size={16}
+                                            />
+                                        )}
+                                    </Button>
+                                </Tooltip>
                             ) : null}
                             {local.onDownload ? (
-                                <Button
-                                    aria-label={
-                                        downloadStatus === "failed"
-                                            ? `Couldn't download ${mediaNoun}`
-                                            : `Download ${mediaNoun}`
-                                    }
-                                    data-testid="lightbox-download"
-                                    iconOnly
-                                    loading={downloadStatus === "pending"}
-                                    onClick={() => run("download", local.onDownload)}
-                                    size="small"
-                                    title={`Download ${mediaNoun}`}
-                                    variant="ghost"
-                                >
-                                    {downloadStatus === "failed" ? (
-                                        <Ionicon name="alert-circle-outline" size={14} />
-                                    ) : (
-                                        <Ionicon name="download-outline" size={14} />
-                                    )}
-                                </Button>
+                                <Tooltip label={downloadLabel} placement="bottom">
+                                    <Button
+                                        aria-label={downloadLabel}
+                                        data-loading={downloadStatus === "pending" ? "" : undefined}
+                                        data-testid="lightbox-download"
+                                        disabled={downloadStatus === "pending"}
+                                        onClick={() => run("download", local.onDownload)}
+                                        size="icon-sm"
+                                        variant="ghost"
+                                    >
+                                        {downloadStatus === "pending" ? (
+                                            <Spinner aria-label="Downloading" />
+                                        ) : downloadStatus === "failed" ? (
+                                            <Ionicon name="alert-circle-outline" size={16} />
+                                        ) : (
+                                            <Ionicon name="download-outline" size={16} />
+                                        )}
+                                    </Button>
+                                </Tooltip>
                             ) : null}
                             {local.actions}
                             {local.onClose ? (
                                 <Button
                                     aria-label={local.closeLabel ?? "Close"}
-                                    icon="close"
-                                    iconOnly
                                     onClick={() => local.onClose?.()}
-                                    size="small"
+                                    size="icon-sm"
                                     variant="ghost"
-                                />
+                                >
+                                    <Icon name="close" size={16} />
+                                </Button>
                             ) : null}
                         </div>
                     </header>
                 ) : null}
                 <div
-                    className="happy-lightbox__frame"
+                    className="happy-lightbox__frame flex min-h-0 min-w-0 flex-[1_1_0%] items-stretch justify-stretch"
                     data-happy-desktop-ui="lightbox-frame"
                     onContextMenu={contextMenu}
                 >

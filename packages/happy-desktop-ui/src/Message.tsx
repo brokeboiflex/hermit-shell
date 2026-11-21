@@ -327,7 +327,7 @@ function hasRenderableChild(value: ReactNode): boolean {
  */
 /**
  * Edge of the mark in the identity gutter. An `Avatar` is shrunk to this by
- * `.happy-message__avatar-dangling` in `message.css`; a generated mark carries
+ * its `size-3` class (see `renderAvatar`); a generated mark carries
  * its size inline, where a stylesheet cannot reach it, so it is stated here and
  * the two must stay equal or the gutter's marks will not match.
  */
@@ -436,7 +436,7 @@ export function Message(props: MessageProps) {
        its Happy Agent gives it. */
     const happyAgent = () =>
         local.agent && local.brandAvatar === true && local.imageUrl === undefined;
-    const renderAvatar = (size: AvatarSize) =>
+    const renderAvatar = (size: AvatarSize, className?: string) =>
         local.imageMark ? (
             <img
                 alt={local.imageMark.alt ?? ""}
@@ -446,6 +446,7 @@ export function Message(props: MessageProps) {
             />
         ) : (
             <Avatar
+                className={className}
                 imageTheme={happyAgent() ? "brand" : undefined}
                 imageUrl={happyAgent() ? happyLogoBlackUrl : local.imageUrl}
                 initials={local.initials ?? deriveInitials(local.author)}
@@ -464,10 +465,10 @@ export function Message(props: MessageProps) {
                 onClick={() => local.onAuthorSelect?.()}
                 type="button"
             >
-                {renderAvatar("xs")}
+                {renderAvatar("xs", "size-3")}
             </button>
         ) : (
-            <span className="happy-message__avatar-dangling">{renderAvatar("xs")}</span>
+            <span className="happy-message__avatar-dangling">{renderAvatar("xs", "size-3")}</span>
         );
     const deliveryState = () => local.deliveryState ?? "sent";
     /* A failed-generation marker is painted at the end of the final rendered
@@ -3817,6 +3818,7 @@ export function MessageList(props: MessageListProps) {
                             <div className="happy-message-list__jump" hidden ref={jump}>
                                 <Button
                                     aria-label="Jump to latest"
+                                    className="size-8 rounded-full"
                                     iconOnly
                                     onClick={jumpToEnd}
                                     size="small"

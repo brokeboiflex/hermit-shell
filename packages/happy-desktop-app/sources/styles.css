@@ -1,4 +1,8 @@
-@import "tailwindcss" source(".");
+/* Tailwind is compiled once per document, by happy-desktop-ui's stylesheet
+ * (src/styles.css), which every host reaches through the package. It scans the
+ * design system's sources, not this package's: the app composes components and
+ * draws nothing of its own. Importing tailwindcss here again would add a second
+ * preflight. These rules are plain, unlayered document CSS. */
 
 /* The AppShell fills its host; both hosts mount into #root, which must own
  * the window height for `height: 100%` to resolve. The neutral chrome surface

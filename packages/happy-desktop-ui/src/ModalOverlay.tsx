@@ -1,5 +1,5 @@
-import { partitionComponentProps } from "./componentProps";
-import { CLOSE_SHORTCUT, commandShortcutMatches } from "./keyboardShortcut";
+import { cva } from "class-variance-authority";
+import { Dialog as DialogPrimitive } from "radix-ui";
 import {
     createContext,
     use,
@@ -10,6 +10,10 @@ import {
     type CSSProperties,
     type ReactNode,
 } from "react";
+import { partitionComponentProps } from "./componentProps";
+import { Dialog } from "./components/ui/dialog";
+import { CLOSE_SHORTCUT, commandShortcutMatches } from "./keyboardShortcut";
+import { cn } from "./lib/utils";
 export type ModalOverlayProps = {
     className?: string;
     "data-testid"?: string;
@@ -41,8 +45,8 @@ export type ModalOverlayProps = {
      * dim, and pointers pass through to it. A press anywhere outside the hosted
      * card — the app behind it, or chrome outside the overlay such as the
      * connection rail — calls `onDismiss`, and the press still reaches what it
-     * landed on. `soft` is the dim at a fraction of its weight, still the
-     * click target that dismisses: for a transient type-ahead such as the ⌘K
+     * landed on. `soft` is the same tint without the blur, still the click
+     * target that dismisses: for a transient type-ahead such as the ⌘K
      * palette, which sets itself apart from the window without hiding it.
      */
     backdrop?: "dim" | "soft" | "clear";
@@ -95,26 +99,124 @@ export function ModalOverlayPresence(props: ModalOverlayPresenceProps) {
 }
 const FOCUSABLE =
     'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/*
+ * Escape presses Radix handed to an overlay as the top layer, which the overlay
+ * claimed in the capture phase and answers in the bubble phase; and the presses
+ * an overlay has already answered, so an enclosing one does not close too. A
+ * press that was claimed by anything else — a Radix menu, select, or popover
+ * open in the card — is not the overlay's to answer.
+ */
+const overlayEscapes = new WeakSet<Event>();
+const answeredEscapes = new WeakSet<Event>();
+
 /**
- * C-058 ModalOverlay — the single backdrop every modal-class surface sits on.
+ * Hands an Escape press on to the overlay beneath, for a Radix layer that
+ * answers Escape only by closing itself — a tooltip bubble. Radix gives the
+ * press to the highest layer alone, so an open tooltip would otherwise take the
+ * press the person meant for the dialog under it; the bubble still closes, and
+ * the overlay then answers the same press as its own.
+ */
+export function modalOverlayEscapeHandOn(event: KeyboardEvent): void {
+    overlayEscapes.add(event);
+}
+
+/*
+ * The window-covering layer: shadcn's dialog overlay (the theme's soft scrim
+ * under a light blur) as a flex box that hosts one card inside a 24px gutter.
+ * A hosted Modal is capped short of the gutter box so a tall one keeps a clear
+ * margin above and below and scrolls its own body; the clearance form keeps
+ * every resolved height on whole pixels for an integer window, so the card's
+ * hairlines land on physical pixels at 2×. Cards that bound themselves
+ * (Lightbox, an editor panel) are left alone.
+ */
+const overlayVariants = cva(
+    "happy-modal-overlay fixed inset-0 z-(--happy-z-overlay) box-border flex outline-none",
+    {
+        variants: {
+            placement: {
+                center: "items-center justify-center p-6 [&>[data-happy-desktop-ui=modal]]:max-h-[min(calc(100%-80px),760px)]",
+                /* A container cannot resolve cqh units against itself, so the
+                   top layout inside owns the adaptive gutter. */
+                top: "@container-size items-start justify-center p-0",
+                /* One immersive surface instead of a card: no gutter, and the
+                   hosted surface stretches to every edge of the window. */
+                fill: "items-stretch justify-stretch p-0",
+            },
+            backdrop: {
+                dim: "bg-overlay supports-backdrop-filter:backdrop-blur-xs",
+                soft: "bg-overlay",
+                /* Nothing painted, and pointers pass through every box the
+                   overlay draws; only the hosted card takes presses. */
+                clear: "pointer-events-none bg-transparent",
+            },
+        },
+        compoundVariants: [
+            /* The immersive surface paints over the whole window, so a blur
+               under it would cost a frame and show nothing. */
+            {
+                placement: "fill",
+                backdrop: "dim",
+                class: "supports-backdrop-filter:backdrop-blur-none",
+            },
+            {
+                placement: "center",
+                backdrop: "clear",
+                class: "*:pointer-events-auto",
+            },
+            { placement: "fill", backdrop: "clear", class: "*:pointer-events-auto" },
+        ],
+    },
+);
+
+/*
+ * Presence motion, as transitions rather than keyframes so an overlay opened
+ * again while it is still leaving turns round from wherever it stands. The dim
+ * fades in; the card fades in while it settles a few pixels down from just
+ * under its size; leaving runs faster and the other way. The open and closing
+ * states are exclusive selectors, so neither depends on the order Tailwind
+ * writes them in.
+ */
+const OVERLAY_MOTION =
+    "data-[presence=open]:transition-opacity data-[presence=open]:duration-(--happy-motion-backdrop-enter) data-[presence=open]:ease-(--happy-motion-ease-out) data-[presence=open]:starting:opacity-0 data-[presence=closing]:pointer-events-none data-[presence=closing]:opacity-0 data-[presence=closing]:transition-opacity data-[presence=closing]:duration-(--happy-motion-pop-exit) data-[presence=closing]:ease-(--happy-motion-ease-in)";
+
+/* Applied by whichever box is the hosted card's parent: the overlay itself, or
+   its top layout. */
+const CARD_MOTION =
+    "data-[presence=open]:*:origin-top data-[presence=open]:*:transition-[opacity,transform] data-[presence=open]:*:duration-(--happy-motion-pop-enter) data-[presence=open]:*:ease-(--happy-motion-ease-out) data-[presence=open]:starting:*:opacity-0 data-[presence=open]:starting:*:transform-(--happy-motion-pop-enter-transform) data-[presence=closing]:*:origin-top data-[presence=closing]:*:opacity-0 data-[presence=closing]:*:transform-(--happy-motion-pop-exit-transform) data-[presence=closing]:*:transition-[opacity,transform] data-[presence=closing]:*:duration-(--happy-motion-pop-exit) data-[presence=closing]:*:ease-(--happy-motion-ease-in)";
+
+/**
+ * C-058 ModalOverlay — the single backdrop every modal-class surface sits on,
+ * built on the shadcn/Radix dialog: the overlay box is the dialog's content
+ * layer, so it takes its place in Radix's layer stack, loops Tab inside
+ * itself, and lets a Radix menu, select, or popover opened in the card answer
+ * Escape before the overlay does.
  *
- * One dim (`Happy primary-background scrim`), one stacking level (`--happy-z-overlay`), fixed
- * to the app window, and a flex box that hosts exactly one card (Modal,
- * Lightbox, editor panel, or transient type-ahead) inside a 24px safe-area
- * gutter. The default placement centers dialogs and forms; `top` anchors a
- * transient type-ahead below an adaptive top gutter; `fill` hands the whole
- * window to one immersive surface with no gutter at all. Clicking the dim
- * outside the card calls `onDismiss` when wired; clicks inside never dismiss.
+ * One scrim, one stacking level (`--happy-z-overlay`), fixed to the app window,
+ * and a flex box that hosts exactly one card (Modal, Lightbox, editor panel, or
+ * transient type-ahead) inside a 24px safe-area gutter. The default placement
+ * centers dialogs and forms; `top` anchors a transient type-ahead below an
+ * adaptive top gutter; `fill` hands the whole window to one immersive surface
+ * with no gutter at all. Clicking the scrim outside the card calls `onDismiss`
+ * when wired; clicks inside never dismiss.
+ *
+ * The dialog is non-modal on purpose: menus and pickers that have not moved to
+ * Radix still hang off the shell's overlay lane, outside this box, and a modal
+ * Radix dialog would freeze pointer events on the page and pull focus back from
+ * them. The overlay draws its own scrim for the same reason, since Radix only
+ * draws one for a modal dialog. The hosted card names itself (Modal carries
+ * `role="dialog"`), so the overlay box takes no role of its own.
  *
  * A `clear` backdrop paints nothing and lets pointers through: the window
  * stays exactly as it was, and a press anywhere outside the card dismisses it.
- * A `soft` one dims the window lightly, for a transient type-ahead such as the
- * ⌘K palette.
+ * A `soft` one is the scrim without its blur, for a transient type-ahead such
+ * as the ⌘K palette.
  *
  * The overlay owns modal focus: on mount it moves focus to the hosted card's
  * first focusable control (unless the card already focused itself, as the
  * command palette does), so Escape works immediately without a preceding
- * click; on unmount it hands focus back to the control that opened it.
+ * click; on unmount it hands focus back to the control that opened it. Radix's
+ * own open and close focus moves are turned off, because they run a frame late.
  */
 export function ModalOverlay(props: ModalOverlayProps) {
     const [local, rest] = partitionComponentProps(props, [
@@ -201,7 +303,9 @@ export function ModalOverlay(props: ModalOverlayProps) {
             current = false;
         };
     }, [closing, present]);
-    const clear = local.backdrop === "clear";
+    const placement = local.placement ?? "center";
+    const backdrop = local.backdrop ?? "dim";
+    const clear = backdrop === "clear";
     const dismissOutside = useEffectEvent((event: PointerEvent) => {
         const overlay = overlayEl.current;
         // Pointers pass through the clear overlay's own boxes, so a press that
@@ -209,60 +313,107 @@ export function ModalOverlay(props: ModalOverlayProps) {
         if (!overlay || (event.target instanceof Node && overlay.contains(event.target))) return;
         local.onDismiss?.();
     });
-    // eslint-disable-next-line happy-react/no-layout-effect -- a clear overlay lets presses through to the window, so dismissing on a press outside the card can only be read from the document itself
+    // eslint-disable-next-line happy-react/no-layout-effect -- a clear overlay lets presses through to the window, so dismissing on a press outside the card can only be read from the document itself, at once and whether or not what was pressed stops the event
     useLayoutEffect(() => {
         if (!clear) return;
         const onPointerDown = (event: PointerEvent) => dismissOutside(event);
         document.addEventListener("pointerdown", onPointerDown, true);
         return () => document.removeEventListener("pointerdown", onPointerDown, true);
     }, [clear]);
+    const presenceState = presence ? (closing ? "closing" : "open") : undefined;
+    const close = local.onEscape ?? local.onDismiss;
     return (
-        <div
-            {...rest}
-            className={["happy-modal-overlay", local.className].filter(Boolean).join(" ")}
-            data-happy-desktop-ui="modal-overlay"
-            data-backdrop={local.backdrop === "dim" ? undefined : local.backdrop}
-            data-placement={local.placement === "center" ? undefined : local.placement}
-            data-presence={presence ? (closing ? "closing" : "open") : undefined}
-            inert={closing || undefined}
-            onClick={(event) => {
-                if (
-                    local.onDismiss &&
-                    (event.target === event.currentTarget ||
-                        (local.placement === "top" &&
-                            event.target instanceof HTMLElement &&
-                            event.target.dataset.happyDesktopUi === "modal-overlay-top-layout"))
-                )
-                    local.onDismiss();
+        <Dialog
+            modal={false}
+            // A hosted shadcn DialogClose closes the surface as Escape does.
+            onOpenChange={(open) => {
+                if (!open) close?.();
             }}
-            onKeyDown={(event) => {
-                if (event.key === "Escape") {
-                    (local.onEscape ?? local.onDismiss)?.();
-                    return;
-                }
-                // The close chord means the innermost thing that is up, and
-                // while an overlay is up that is the overlay: it leaves as it
-                // does on Escape. Claiming the event keeps the same press from
-                // reaching the window, which would close what is behind it too.
-                const close = local.onEscape ?? local.onDismiss;
-                if (!close || !commandShortcutMatches(event.nativeEvent, CLOSE_SHORTCUT)) return;
-                event.preventDefault();
-                close();
-            }}
-            ref={overlayEl}
-            style={local.style}
-            tabIndex={-1}
+            open
         >
-            {local.placement === "top" ? (
-                <div
-                    className="happy-modal-overlay__top-layout"
-                    data-happy-desktop-ui="modal-overlay-top-layout"
-                >
-                    {local.children}
-                </div>
-            ) : (
-                local.children
-            )}
-        </div>
+            <DialogPrimitive.Content
+                {...rest}
+                aria-describedby={undefined}
+                className={cn(
+                    overlayVariants({ placement, backdrop }),
+                    OVERLAY_MOTION,
+                    placement === "top" ? undefined : CARD_MOTION,
+                    local.className,
+                )}
+                data-backdrop={backdrop === "dim" ? undefined : backdrop}
+                data-happy-desktop-ui="modal-overlay"
+                data-placement={placement === "center" ? undefined : placement}
+                data-presence={presenceState}
+                inert={closing || undefined}
+                onClick={(event) => {
+                    if (
+                        local.onDismiss &&
+                        (event.target === event.currentTarget ||
+                            (placement === "top" &&
+                                event.target instanceof HTMLElement &&
+                                event.target.dataset.happyDesktopUi === "modal-overlay-top-layout"))
+                    )
+                        local.onDismiss();
+                }}
+                // The overlay moves focus itself, in the same commit (see above).
+                onCloseAutoFocus={(event) => event.preventDefault()}
+                // Escape is answered in the bubble phase below, so a control in
+                // the card that keeps Escape for itself — a video's speed list,
+                // a context menu — still can. Radix would answer it here, in the
+                // capture phase, before any of them.
+                onEscapeKeyDown={(event) => {
+                    overlayEscapes.add(event);
+                    event.preventDefault();
+                }}
+                // Focus leaving never dismisses; a press outside dismisses only
+                // where this overlay says so (the scrim's click, or the clear
+                // backdrop's document listener).
+                onFocusOutside={(event) => event.preventDefault()}
+                onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                        const press = event.nativeEvent;
+                        // A nested overlay already closed for this press, or a
+                        // Radix layer above this one answered it.
+                        if (answeredEscapes.has(press)) return;
+                        if (press.defaultPrevented && !overlayEscapes.has(press)) return;
+                        if (!close) return;
+                        answeredEscapes.add(press);
+                        close();
+                        return;
+                    }
+                    // The close chord means the innermost thing that is up, and
+                    // while an overlay is up that is the overlay: it leaves as
+                    // it does on Escape. Claiming the event keeps the same press
+                    // from reaching the window, which would close what is behind
+                    // it too.
+                    if (!close || !commandShortcutMatches(event.nativeEvent, CLOSE_SHORTCUT))
+                        return;
+                    event.preventDefault();
+                    close();
+                }}
+                onOpenAutoFocus={(event) => event.preventDefault()}
+                onPointerDownOutside={(event) => event.preventDefault()}
+                ref={overlayEl}
+                role={undefined}
+                style={local.style}
+                tabIndex={-1}
+            >
+                {placement === "top" ? (
+                    <div
+                        className={cn(
+                            "happy-modal-overlay__top-layout box-border flex h-full w-full flex-none items-start justify-center px-6 pt-[min(128px,max(24px,calc(100cqh-485px)))] pb-6",
+                            CARD_MOTION,
+                            clear && "*:pointer-events-auto",
+                        )}
+                        data-happy-desktop-ui="modal-overlay-top-layout"
+                        data-presence={presenceState}
+                    >
+                        {local.children}
+                    </div>
+                ) : (
+                    local.children
+                )}
+            </DialogPrimitive.Content>
+        </Dialog>
     );
 }

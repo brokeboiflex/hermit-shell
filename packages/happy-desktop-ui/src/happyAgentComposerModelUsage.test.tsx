@@ -6,10 +6,9 @@ import type {
     HappyAgentProviderUsageSnapshot,
 } from "happy-desktop-state";
 import "./theme.css";
-import "./styles/button.css";
+import "./styles.css";
 import "./styles/composer-model-control.css";
 import "./styles/icon.css";
-import "./styles/tooltip.css";
 import {
     ComposerModelControl,
     type ComposerModelAccountUsage,

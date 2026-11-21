@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import { server } from "vitest/browser";
 import "./theme.css";
-import "./styles/switch.css";
+import "./styles.css";
 import { Switch, type SwitchSize } from "./Switch";
 import { createRenderer } from "./testing";
 

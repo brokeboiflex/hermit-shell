@@ -468,7 +468,7 @@
     font-family: var(--happy-font-ui);
     font-size: 14px;
     font-weight: 400;
-    color: var(--warning);
+    color: var(--quiet-ink);
 }
 
 /* A step its producer marked as code keeps the monospace. */

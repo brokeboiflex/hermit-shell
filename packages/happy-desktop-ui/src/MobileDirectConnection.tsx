@@ -468,7 +468,8 @@ function EmojiVerification(
                     <>
                         <Button
                             aria-pressed="true"
-                            className="happy-mobile-direct-pairing__chosen"
+                            // The answer given, kept in place: drawn as chosen, not as unavailable.
+                            className="happy-mobile-direct-pairing__chosen disabled:cursor-default disabled:opacity-100"
                             data-chosen=""
                             disabled
                             icon="check"

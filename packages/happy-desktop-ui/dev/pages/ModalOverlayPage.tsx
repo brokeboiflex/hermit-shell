@@ -1,5 +1,5 @@
 import { type ReactNode } from "react";
-import { Button } from "../../src/Button";
+import { Button } from "../../src/components/ui/button";
 import { CommandPalette } from "../../src/CommandPalette";
 import { EmptyState } from "../../src/EmptyState";
 import { Modal } from "../../src/Modal";
@@ -76,12 +76,12 @@ export function ModalOverlayPage() {
     return (
         <ComponentPage
             number={componentNumber}
-            summary="The single backdrop every modal-class surface sits on — one dim and stacking level with a 24px minimum safe area, a soft dim for a transient type-ahead such as the ⌘K palette, or a clear backdrop that dims nothing. Dialogs center by default; transient type-ahead surfaces may use the adaptive top placement."
+            summary="The single backdrop every modal-class surface sits on — shadcn's dialog scrim (the soft overlay tint under a light blur) at one stacking level with a 24px minimum safe area, the same tint without the blur for a transient type-ahead such as the ⌘K palette, or a clear backdrop that dims nothing. Dialogs center by default; transient type-ahead surfaces may use the adaptive top placement, and one immersive surface may fill the window."
             title="Modal overlay"
         >
             <div className="specimen-grid">
                 <Specimen
-                    detail="scrim dim · card centered · 24px safe-area gutter"
+                    detail="scrim tint + blur · card centered · 24px safe-area gutter"
                     label="Backdrop"
                     number="O-01"
                     stage="app"
@@ -91,12 +91,8 @@ export function ModalOverlayPage() {
                             <Modal
                                 footer={
                                     <>
-                                        <Button size="medium" variant="ghost">
-                                            Cancel
-                                        </Button>
-                                        <Button size="medium" variant="primary">
-                                            Create channel
-                                        </Button>
+                                        <Button variant="outline">Cancel</Button>
+                                        <Button>Create channel</Button>
                                     </>
                                 }
                                 icon="hash"
@@ -183,7 +179,7 @@ export function ModalOverlayPage() {
 
             <div className="specimen-grid">
                 <Specimen
-                    detail="soft backdrop · a light dim behind the ⌘K palette at the top placement · a press on it dismisses"
+                    detail="soft backdrop · the tint without the blur behind the ⌘K palette at the top placement · a press on it dismisses"
                     label="Soft — command palette"
                     number="O-06"
                     stage="app"
@@ -235,6 +231,23 @@ export function ModalOverlayPage() {
                         </div>
                         <ModalOverlay backdrop="clear" onDismiss={() => {}}>
                             <TopPalette />
+                        </ModalOverlay>
+                    </WindowFrame>
+                </Specimen>
+            </div>
+
+            <div className="specimen-grid">
+                <Specimen
+                    detail="fill placement · no gutter · one immersive surface (the Lightbox) paints over the whole window, so no blur is drawn under it"
+                    label="Fill — immersive surface"
+                    number="O-07"
+                    stage="app"
+                >
+                    <WindowFrame height={420} width={720}>
+                        <ModalOverlay onDismiss={() => {}} placement="fill">
+                            <div className="flex flex-1 items-center justify-center bg-background text-sm text-muted-foreground">
+                                The hosted surface takes every edge of the window.
+                            </div>
                         </ModalOverlay>
                     </WindowFrame>
                 </Specimen>

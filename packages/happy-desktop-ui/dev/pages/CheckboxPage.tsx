@@ -8,7 +8,7 @@ export function CheckboxPage() {
     return (
         <ComponentPage
             number={componentNumber}
-            summary="18px control box on the 4px grid — reused Icon check glyph, symmetric indeterminate bar, accent fill, focus ring; the real state rides a hidden native checkbox."
+            summary="shadcn Checkbox (Radix) in a horizontal shadcn Field — 16px box, check glyph, symmetric indeterminate bar, primary fill, focus ring; the label is the control's own."
             title="Checkbox"
         >
             <div className="specimen-grid">
@@ -36,7 +36,7 @@ export function CheckboxPage() {
                 </Specimen>
 
                 <Specimen
-                    detail="18×18 box · 6px radius · 1px hairline · accent fill"
+                    detail="16×16 box · 4px radius · 1px input border · primary fill"
                     label="Control box"
                     number="C-021b"
                     stage="surface"
@@ -49,7 +49,7 @@ export function CheckboxPage() {
                             padding: "28px",
                         }}
                     >
-                        <DimensionRule label="box 18 · gap 8" />
+                        <DimensionRule label="box 16 · gap 8" />
                         <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
                             <Checkbox aria-label="Unchecked" checked={false} />
                             <Checkbox aria-label="Checked" checked />

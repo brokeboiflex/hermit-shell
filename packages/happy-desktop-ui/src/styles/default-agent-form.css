@@ -38,9 +38,3 @@
     font-size: 13px;
     line-height: 20px;
 }
-
-/* The 16px spark has the same one-backing-pixel low raster centroid in the
- * medium preset button across Blink, Gecko, and WebKit. */
-.happy-default-agent-form__preset .happy-button__icon svg {
-    transform: translateY(-0.5px);
-}

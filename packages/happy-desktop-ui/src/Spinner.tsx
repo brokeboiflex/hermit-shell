@@ -1,5 +1,13 @@
-import { type CSSProperties, type ReactNode } from "react";
+import { type CSSProperties } from "react";
+import { Icon } from "./Icon";
+import { cn } from "./lib/utils";
 
+/**
+ * The names of the terminal ASCII loaders Spinner used to draw. Every one now
+ * draws shadcn's Spinner, so a variant no longer changes the mark; the names
+ * stay only so existing callers and `SPINNER_FRAMES` keep compiling until they
+ * are removed.
+ */
 export type SpinnerVariant =
     | "braille-2"
     | "braille-9"
@@ -27,7 +35,7 @@ export type SpinnerVariant =
 
 export type SpinnerTone = "default" | "muted" | "accent" | "inverse";
 
-/** Every variant in the order the blueprint presents them. */
+/** Every variant name, in the order the blueprint used to present them. */
 export const SPINNER_VARIANTS: readonly SpinnerVariant[] = [
     "braille-2",
     "braille-9",
@@ -55,9 +63,9 @@ export const SPINNER_VARIANTS: readonly SpinnerVariant[] = [
 ];
 
 /**
- * Discrete frame count of each loop, matching the ASCII original it reproduces
- * (braille ⣾⣽⣻⢿⡿⣟⣯⣷ is 8 frames, |/-\ is 4, ▮▯ is 2…). `frame` is taken
- * modulo this so a fixture can hold any variant on a known cell.
+ * How many parked positions one turn of the glyph is divided into for each
+ * variant name: `frame` k of n holds the glyph k/n of the way round, so a
+ * fixture can freeze it on a known angle.
  */
 export const SPINNER_FRAMES: Record<SpinnerVariant, number> = {
     "braille-2": 8,
@@ -87,132 +95,78 @@ export const SPINNER_FRAMES: Record<SpinnerVariant, number> = {
 
 export type SpinnerProps = {
     className?: string;
-    /** Freeze the loop on one discrete frame — for fixtures and screenshots. */
+    /** Holds the glyph still on one position of its turn — for fixtures and screenshots. */
     frame?: number;
     /** Accessible name; the spinner is a live `status` region. */
     label?: string;
-    /** Line height of the spinner box in CSS pixels. Width follows the variant. */
+    /** Edge of the square glyph box in CSS pixels; 16 by default, shadcn's `size-4`. */
     size?: number;
     tone?: SpinnerTone;
+    /**
+     * @deprecated Every variant draws the same turning glyph since the move to
+     * shadcn's Spinner. It only picks how many parked positions `frame` divides
+     * a turn into. Stop passing it.
+     */
     variant?: SpinnerVariant;
 };
 
-function cells(count: number, part: string) {
-    return Array.from({ length: count }, (_, index) => (
-        <span
-            className={`happy-spinner__${part}`}
-            data-happy-desktop-ui={`spinner-${part}`}
-            key={index}
-        />
-    ));
-}
-
-function bracketed(track: ReactNode) {
-    return (
-        <>
-            <span
-                className="happy-spinner__bracket"
-                data-happy-desktop-ui="spinner-bracket"
-                data-side="left"
-            />
-            {track}
-            <span
-                className="happy-spinner__bracket"
-                data-happy-desktop-ui="spinner-bracket"
-                data-side="right"
-            />
-        </>
-    );
-}
-
-function variantParts(variant: SpinnerVariant) {
-    if (variant.startsWith("braille")) {
-        /* Always the full 2x4 cell: left column top to bottom is dots 1,2,3,7
-         * and right column is dots 4,5,6,8 — the order spinner-braille.css
-         * addresses. A spinner that never lights a dot leaves it unanimated at
-         * the cell's resting opacity. */
-        return (
-            <>
-                <span className="happy-spinner__column" data-happy-desktop-ui="spinner-column">
-                    {cells(4, "dot")}
-                </span>
-                <span className="happy-spinner__column" data-happy-desktop-ui="spinner-column">
-                    {cells(4, "dot")}
-                </span>
-            </>
-        );
-    }
-    switch (variant) {
-        case "blocks":
-            return cells(4, "bar");
-        case "hamburger":
-            return cells(3, "bar");
-        case "dots":
-            return cells(3, "dot");
-        case "bar":
-            return bracketed(
-                <span className="happy-spinner__track" data-happy-desktop-ui="spinner-track">
-                    <span className="happy-spinner__fill" data-happy-desktop-ui="spinner-fill" />
-                </span>,
-            );
-        case "circle":
-            /* The four phases of ◐◓◑◒ as four still layers inside one still
-               outline; only their opacity changes. */
-            return (
-                <span className="happy-spinner__glyph" data-happy-desktop-ui="spinner-glyph">
-                    {cells(4, "phase")}
-                </span>
-            );
-        case "bounce":
-            return bracketed(
-                <span className="happy-spinner__track" data-happy-desktop-ui="spinner-track">
-                    <span className="happy-spinner__block" data-happy-desktop-ui="spinner-block" />
-                </span>,
-            );
-        default:
-            return <span className="happy-spinner__glyph" data-happy-desktop-ui="spinner-glyph" />;
-    }
-}
+/*
+ * `default` inherits the surrounding ink, as shadcn's Spinner does, so a
+ * spinner standing in for a button's icon is drawn in the button's own colour.
+ */
+const toneClassName: Record<SpinnerTone, string | undefined> = {
+    default: undefined,
+    muted: "text-muted-foreground",
+    accent: "text-primary",
+    inverse: "text-primary-foreground",
+};
 
 /**
- * Spinner — the ASCII terminal loaders (braille cells, |/-\, ◜◝◞◟, ◐◓◑◒,
- * ▁▃▅▇, [####  ], [ =  ], …, ▮▯, .oO@, ▁▄▆█, ▏▍▊█, ◢◣◤◥, ◰◳◲◱, ▖▘▝▗, ☱☲☴,
- * ▓▒░, ←↖↑↗) redrawn as CSS shapes. The component renders static markup
- * only; no script runs while a loader turns.
+ * Spinner — shadcn/ui's Spinner (https://ui.shadcn.com/docs/components/radix/spinner)
+ * with the curated `loading` font glyph turning in place of Lucide's loader.
  *
- * Every loop moves only `transform` and `opacity`, so it runs on the
- * compositor and keeps turning while the page's main thread is busy.
+ * It is built here rather than by wrapping `components/ui/spinner`, because
+ * that wrapper puts every prop on the glyph and none on its `status` root, and
+ * this root carries the `happy-spinner` hooks that tests and surfaces address.
+ * The glyph turns with a CSS animation on `transform` alone, so it keeps
+ * turning on the compositor while the main thread is busy; under reduced
+ * motion it turns at a slower rate rather than freezing.
  */
 export function Spinner(props: SpinnerProps) {
     const variant = props.variant ?? "braille-2";
     const frames = SPINNER_FRAMES[variant];
     const paused = props.frame !== undefined;
     const index = paused ? (((props.frame ?? 0) % frames) + frames) % frames : 0;
-    /*
-     * Park three quarters into the requested cell rather than on its leading
-     * edge: a negative delay that lands exactly on a `steps()` boundary is
-     * resolved inconsistently, and by 75% of a cell the braille family's fade
-     * ramps have also finished, so a parked frame is the settled glyph.
-     */
-    const offset = paused ? (index + 0.75) / frames : 0;
+    const side = props.size ?? 16;
+    const glyphStyle: CSSProperties = {
+        fontSize: `${side}px`,
+        height: `${side}px`,
+        width: `${side}px`,
+        ...(paused ? { rotate: `${(index / frames) * 360}deg` } : null),
+    };
     return (
         <span
             aria-label={props.label ?? "Loading"}
-            className={["happy-spinner", props.className].filter(Boolean).join(" ")}
+            className={cn(
+                "happy-spinner inline-flex shrink-0 items-center justify-center align-middle",
+                toneClassName[props.tone ?? "default"],
+                props.className,
+            )}
             data-frame={paused ? index : undefined}
             data-happy-desktop-ui="spinner"
             data-paused={paused ? "" : undefined}
+            data-slot="spinner"
             data-tone={props.tone ?? "default"}
             data-variant={variant}
             role="status"
-            style={
-                {
-                    "--happy-spinner-size": `${props.size ?? 16}px`,
-                    "--happy-spinner-offset": `${offset}`,
-                } as CSSProperties
-            }
         >
-            {variantParts(variant)}
+            <Icon
+                className={
+                    paused ? undefined : "animate-spin motion-reduce:[animation-duration:2s]"
+                }
+                name="loading"
+                style={glyphStyle}
+            />
         </span>
     );
 }

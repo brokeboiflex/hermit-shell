@@ -358,7 +358,7 @@ export function CommandPaletteResultsPage() {
     return (
         <ComponentPage
             number={componentNumber}
-            summary="The ⌘K palette's body: sentence-case captioned sections of compact one-line 40px command rows — glyph, title, then muted secondary text on its baseline — and live settings rows at the settings page's compact 56px, with one rounded highlighted row that Enter commits. Props only — the owner holds the flat index and moves it."
+            summary="The ⌘K palette's body: sentence-case captioned sections of compact one-line 32px command rows — glyph, title, then muted secondary text on its baseline — and live settings rows at the settings page's compact 56px, with one rounded highlighted row that Enter commits. Props only — the owner holds the flat index and moves it."
             title="Command palette results"
         >
             <div className="specimen-grid">
@@ -366,7 +366,7 @@ export function CommandPaletteResultsPage() {
                     detail="empty query · the waiting update, then the sidebar's tasks, bots, and projects in their sidebar marks, last opened first, then other live work · no subtasks or archived work · ⌘1…⌘9 on the rows · highlight on the first row"
                     label="Suggestions"
                     number="PR-01"
-                    rule="622px body width · 40px one-line rows · 20px sidebar marks · 28px captions"
+                    rule="622px body width · 32px one-line rows · 20px sidebar marks · 28px captions"
                 >
                     <CommandPaletteResults activeIndex={0} sections={suggestions} />
                 </BodySpecimen>
@@ -388,7 +388,7 @@ export function CommandPaletteResultsPage() {
                     detail="a typed query such as “search” · live work first, archived tasks and closed sessions last however well they match · ⌘1…⌘9 count on across sections"
                     label="Work and archived"
                     number="PR-07"
-                    rule="40px rows · ⌘-number caps on rows that open something"
+                    rule="32px rows · ⌘-number caps on rows that open something"
                 >
                     <CommandPaletteResults activeIndex={0} sections={searched} />
                 </BodySpecimen>
@@ -399,7 +399,7 @@ export function CommandPaletteResultsPage() {
                     detail="a typed query such as “launch” · documents, joined or not; a todo list with what is left in it, and an open todo by its own words; artifacts by title and type"
                     label="Documents, todos, artifacts"
                     number="PR-08"
-                    rule="40px rows · the type or place as secondary text"
+                    rule="32px rows · the type or place as secondary text"
                 >
                     <CommandPaletteResults activeIndex={0} sections={shared} />
                 </BodySpecimen>
@@ -410,7 +410,7 @@ export function CommandPaletteResultsPage() {
                     detail="a typed query such as “fold sidebar” finds the window's acts, each with the chord that does the same"
                     label="Actions"
                     number="PR-06"
-                    rule="40px rows · trailing cap"
+                    rule="32px rows · trailing cap"
                 >
                     <CommandPaletteResults activeIndex={0} sections={actions} />
                 </BodySpecimen>

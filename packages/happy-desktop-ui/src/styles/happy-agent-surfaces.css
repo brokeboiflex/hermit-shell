@@ -218,14 +218,6 @@
     line-height: 20px;
 }
 
-/* The add field is a card of its own, the same surface as the todos below it. */
-.happy-agent-todo-surface__add .happy-text-field__control {
-    border-color: transparent;
-    border-radius: var(--happy-radius-md);
-    background: var(--surface);
-    box-shadow: 0 1px 3px var(--shadow-color);
-}
-
 /* The rows, then the completed section below them. */
 .happy-agent-todo-surface__list {
     gap: 16px;

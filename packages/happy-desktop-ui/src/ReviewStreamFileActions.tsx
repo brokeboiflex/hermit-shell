@@ -34,7 +34,7 @@ export function ReviewStreamFileActions(props: ReviewStreamFileActionsProps) {
         >
             <span className="happy-review-file-actions__quiet">
                 <CopyButton
-                    className="happy-review-file-actions__copy"
+                    className="happy-review-file-actions__copy size-6"
                     data-testid="review-stream-file-copy"
                     label="Copy path"
                     text={props.path}

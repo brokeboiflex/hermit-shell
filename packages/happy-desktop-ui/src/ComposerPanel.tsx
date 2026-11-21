@@ -61,8 +61,12 @@ export function ComposerPanel(props: ComposerPanelProps) {
                         </span>
                     )}
                 </div>
+                {/* The close control sits 7px inside the card's top/right curve (1px
+                    border + 6px header inset), so its 3px corner stays parallel to
+                    the card's 10px corner. */}
                 <Button
                     aria-label={`Close ${props.title}`}
+                    className="rounded-[3px]"
                     icon="close"
                     iconOnly
                     onClick={props.onClose}

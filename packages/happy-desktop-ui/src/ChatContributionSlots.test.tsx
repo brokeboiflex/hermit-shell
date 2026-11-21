@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import "./theme.css";
 import "./styles/icon.css";
-import "./styles/button.css";
+import "./styles.css";
 import "./styles/composer.css";
 import { Composer } from "./Composer";
 import { createRenderer } from "./testing";

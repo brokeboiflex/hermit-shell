@@ -202,13 +202,6 @@
     gap: 8px;
 }
 
-/* The answer given, kept in place: drawn as chosen, not as unavailable. */
-.happy-mobile-direct-pairing__chosen.happy-button:disabled {
-    background-color: var(--button-primary-background);
-    opacity: 1;
-    cursor: default;
-}
-
 .happy-mobile-direct-pairing__verify[data-density="compact"]
     .happy-mobile-direct-pairing__instruction {
     color: var(--text);

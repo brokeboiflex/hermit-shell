@@ -166,19 +166,6 @@
     background: var(--surface);
 }
 
-/* Rows inside a group are 12px from the card's top and bottom where they meet
-   it, so their words sit as far from those edges as from its side. */
-.happy-agent-settings__group .happy-form-row {
-    padding-block: 12px;
-}
-
-/* A row names its setting in the body face and weight; the description under
-   it and the colour between them carry the hierarchy. */
-.happy-agent-settings__group .happy-form-row__label {
-    font-size: 14px;
-    font-weight: 400;
-}
-
 /* Every row draws the hairline under it, however deep a list nests it. The
    card's own edge closes the group, so a 1px strip of the card's fill is laid
    over the last row's hairline: whichever row ends the card, it keeps its
@@ -598,10 +585,6 @@
 
 /* Wide enough for an email address, which is the longest thing either field
    holds, and fixed so the two rows' controls line up with each other. */
-.happy-agent-profile__field {
-    width: 260px;
-}
-
 /* The revealed secret key. It is the one piece of text on this screen that must
    be transcribed exactly, so it is set in the mono face and given a frame of its
    own rather than sitting inline in a row's description. */

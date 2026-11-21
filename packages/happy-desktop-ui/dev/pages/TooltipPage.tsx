@@ -1,5 +1,5 @@
 import { type CSSProperties } from "react";
-import { Button } from "../../src/Button";
+import { Button } from "../../src/components/ui/button";
 import { Tooltip } from "../../src/Tooltip";
 import { TurnSummary } from "../../src/TurnSummary";
 import { ComponentPage, DimensionRule, Specimen } from "../kit";
@@ -17,11 +17,11 @@ export function TooltipPage() {
     return (
         <ComponentPage
             number={componentNumber}
-            summary="Secondary detail held behind a trigger and revealed on hover or focus — the house replacement for the native title attribute. The bubble is an overlay anchored to its trigger, so the row it explains never changes size. Specimens force it open; in the product it waits out a 180 ms dwell on hover and appears at once on keyboard focus."
+            summary="Secondary detail held behind a trigger and revealed on hover or focus — the house replacement for the native title attribute, drawn as shadcn's tooltip. The bubble hangs off the window's overlay lane, anchored to its trigger, so the row it explains never changes size. Specimens force it open; in the product it waits out a 180 ms dwell on hover and appears at once on keyboard focus."
             title="Tooltip"
         >
             <Specimen
-                detail="24px bubble · 12/16 Figtree in 3/8 padding inside a 1px hairline · 6px control radius · held 4px clear of the trigger and centered on it"
+                detail="28px bubble · 12/16 in 6/12 padding · inverted foreground on the md radius · arrow toward the trigger, centered on it"
                 label="Placement"
                 number="01"
                 stage="surface"
@@ -29,22 +29,22 @@ export function TooltipPage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: "48px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "64px" }}>
                         <Tooltip label="Used 42,781 tokens" open placement="top">
-                            <Button size="small" variant="secondary">
+                            <Button size="sm" variant="secondary">
                                 Above
                             </Button>
                         </Tooltip>
                         <Tooltip label="Used 42,781 tokens" open placement="bottom">
-                            <Button size="small" variant="secondary">
+                            <Button size="sm" variant="secondary">
                                 Below
                             </Button>
                         </Tooltip>
                     </div>
-                    <DimensionRule label="bubble 24 px high · 4 px clear of the trigger · centered on it" />
+                    <DimensionRule label="bubble 28 px high · arrow toward the trigger · centered on it" />
                 </div>
             </Specimen>
 
             <Specimen
-                detail="The bubble takes its content width up to 320px, then wraps. It leaves the flow entirely, so neither trigger moves when it opens."
+                detail="The bubble takes its content width up to 320px (max-w-xs), then wraps. It leaves the flow entirely, so neither trigger moves when it opens."
                 label="Length"
                 number="02"
                 stage="surface"
@@ -87,7 +87,7 @@ export function TooltipPage() {
             </Specimen>
 
             <Specimen
-                detail="A trigger at the window's leading edge, such as the sidebar toggle in full screen, starts its bubble at its own leading edge, so the bubble never runs off the window."
+                detail="A trigger at the window's leading edge, such as the sidebar toggle in full screen, starts its bubble at its own leading edge, so the bubble never runs off the window. A shortcut follows the text as a key cap."
                 label="Start alignment"
                 number="04"
                 stage="surface"
@@ -101,12 +101,12 @@ export function TooltipPage() {
                             placement="bottom"
                             shortcut={{ aria: "Meta+B", caps: "⌘B" }}
                         >
-                            <Button size="small" variant="secondary">
+                            <Button size="sm" variant="secondary">
                                 Start
                             </Button>
                         </Tooltip>
                     </div>
-                    <DimensionRule label="bubble starts at the trigger's leading edge · 4 px clear below it" />
+                    <DimensionRule label="bubble starts at the trigger's leading edge · key cap after the text" />
                 </div>
             </Specimen>
         </ComponentPage>

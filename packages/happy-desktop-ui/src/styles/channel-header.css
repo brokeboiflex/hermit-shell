@@ -96,7 +96,7 @@
 }
 
 .happy-channel-header__star[data-starred] {
-    color: var(--warning);
+    color: var(--quiet-ink);
 }
 
 /* Lead = icon + title. As a button it opens channel/user details. */

@@ -22,12 +22,12 @@ export function SelectPage() {
     return (
         <ComponentPage
             number={componentNumber}
-            summary="Styled native single-select — three contract heights, placeholder / selected / error / disabled states, and truncating long options with a tuned chevron."
+            summary="shadcn Select (Radix) in a shadcn Field — three heights, placeholder / selected / error / disabled states, disabled options, and truncating long options; the list keeps a visible native scrollbar."
             title="Select"
         >
             <div className="specimen-grid specimen-grid--sizes">
                 <Specimen
-                    detail="28px high · 12px value"
+                    detail="28px high · 14px value"
                     label="Small"
                     number="S-01"
                     stage="surface"
@@ -38,24 +38,24 @@ export function SelectPage() {
                     </div>
                 </Specimen>
                 <Specimen
-                    detail="36px high · 13px value"
+                    detail="32px high · 14px value"
                     label="Medium"
                     number="S-02"
                     stage="surface"
                 >
                     <div style={{ display: "grid", gap: "6px", width: "224px" }}>
-                        <DimensionRule label="height 36" />
+                        <DimensionRule label="height 32" />
                         <Select options={roles} size="medium" value="admin" width={224} />
                     </div>
                 </Specimen>
                 <Specimen
-                    detail="44px high · 14px value"
+                    detail="36px high · 14px value"
                     label="Large"
                     number="S-03"
                     stage="surface"
                 >
                     <div style={{ display: "grid", gap: "6px", width: "224px" }}>
-                        <DimensionRule label="height 44" />
+                        <DimensionRule label="height 36" />
                         <Select options={roles} size="large" value="admin" width={224} />
                     </div>
                 </Specimen>

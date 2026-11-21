@@ -2,7 +2,7 @@ import { useState } from "react";
 import { expect, it } from "vitest";
 import { userEvent } from "vitest/browser";
 import "./theme.css";
-import "./styles/button.css";
+import "./styles.css";
 import "./styles/composer.css";
 import "./styles/composer-model-control.css";
 import "./styles/icon.css";

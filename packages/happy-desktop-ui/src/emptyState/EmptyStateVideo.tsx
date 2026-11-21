@@ -1,7 +1,17 @@
 import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { cn } from "../lib/utils";
 import { reducedMotionGet, reducedMotionSubscribe } from "../lottie/dotLottieRuntime";
 
-/** A silent, rounded illustration with the same play-once/replay behavior as Lottie scenes. */
+/* Both images fill the frame and stay hidden until they can be shown. */
+const imageClassName =
+    "size-full min-w-0 rounded-[calc(var(--radius)*1.4-1px)] object-cover opacity-0";
+
+/**
+ * A silent, rounded illustration with the same play-once/replay behavior as
+ * Lottie scenes. The frame is shadcn's: a hairline, the muted fill under the
+ * thumbhash preview, and the XL corner, with the images inside rounded one
+ * pixel tighter so the curves stay parallel.
+ */
 export function EmptyStateVideo(props: {
     src: string;
     poster: string;
@@ -77,7 +87,7 @@ export function EmptyStateVideo(props: {
     return (
         <button
             aria-label="Play the illustration again"
-            className="happy-empty-state-video"
+            className="happy-empty-state-video group/video relative flex flex-none cursor-pointer overflow-hidden rounded-xl border bg-muted bg-cover bg-center p-0 outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-default"
             data-happy-desktop-ui="empty-state-video"
             data-motion={reducedMotion ? "reduced" : "full"}
             data-playing-image={
@@ -96,14 +106,22 @@ export function EmptyStateVideo(props: {
         >
             <img
                 alt=""
-                className="happy-empty-state-video__poster"
+                className={cn(
+                    imageClassName,
+                    "happy-empty-state-video__poster group-data-[poster-ready=true]/video:opacity-100",
+                )}
                 onError={() => setPosterReady(false)}
                 onLoad={() => setPosterReady(true)}
                 src={props.poster}
             />
             <video
                 aria-hidden="true"
-                className="happy-empty-state-video__clip"
+                className={cn(
+                    imageClassName,
+                    /* The video overlays its always-available poster in the same
+                       border box; flexbox cannot place both images in one slot. */
+                    "happy-empty-state-video__clip pointer-events-none absolute inset-0 group-data-[playing-image=video]/video:opacity-100",
+                )}
                 disablePictureInPicture
                 loop={false}
                 muted

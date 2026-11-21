@@ -36,5 +36,8 @@
    after it. The canvas is transparent until then, and the two are the same
    frame, so the hand-over does not show. */
 .happy-lottie-scene[data-still="shown"] {
-    background: var(--happy-lottie-scene-still) center / contain no-repeat;
+    background-image: var(--happy-lottie-scene-still);
+    background-position: center;
+    background-size: contain;
+    background-repeat: no-repeat;
 }
