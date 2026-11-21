@@ -1,0 +1,217 @@
+/*
+ * PanelNewTab — a side pane's new tab: one search field, then the reader's
+ * shortcut tiles or, while something is typed, what it found.
+ *
+ * The page is a size container so the field can stand at a fixed share of the
+ * pane's height: the content below it — tiles, results, a note — grows and
+ * shrinks downwards and never moves the field. The column is the field's width
+ * and everything under it lines up on its edges.
+ */
+
+.happy-panel-new-tab {
+    container-type: size;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    background: var(--surface);
+    font-family: var(--happy-font-ui);
+    font-synthesis: none;
+}
+
+.happy-panel-new-tab__scroller {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+}
+
+.happy-panel-new-tab__content {
+    box-sizing: border-box;
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    align-items: center;
+    padding: clamp(24px, 24cqh, 240px) 24px 24px;
+}
+
+.happy-panel-new-tab__column {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    width: min(100%, 520px);
+}
+
+/* The field is the page's one control, so it is drawn as a pill. */
+.happy-panel-new-tab__search .happy-text-field__control {
+    padding: 0 20px 0 16px;
+    column-gap: 12px;
+    border-radius: var(--happy-radius-pill);
+    background: var(--surface-highest);
+}
+
+.happy-panel-new-tab__search .happy-text-field__input {
+    font-size: 14px;
+    font-weight: 400;
+}
+
+.happy-panel-new-tab__section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* The heading keeps the menu's 28px height whether or not anything is pinned. */
+.happy-panel-new-tab__heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 28px;
+}
+
+.happy-panel-new-tab__title {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 16px;
+}
+
+.happy-panel-new-tab__tiles {
+    display: flex;
+    gap: 8px;
+}
+
+/*
+ * A tile's mark and title sit 16px inside every edge of the card: the mark in
+ * its top-left corner, the title on its bottom-left (DESIGN.md, frames).
+ */
+.happy-panel-new-tab__tile {
+    box-sizing: border-box;
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: space-between;
+    min-width: 0;
+    height: 80px;
+    margin: 0;
+    padding: 16px;
+    border: 0;
+    border-radius: var(--happy-radius-shell);
+    background: var(--surface-highest);
+    color: var(--text);
+    font-family: inherit;
+    text-align: left;
+    appearance: none;
+    cursor: pointer;
+}
+
+.happy-panel-new-tab__tile:hover:not(:disabled) {
+    background: var(--surface-selected);
+}
+
+.happy-panel-new-tab__tile:focus-visible {
+    outline: 2px solid var(--radio-active);
+    outline-offset: 1px;
+}
+
+.happy-panel-new-tab__tile:disabled {
+    color: var(--text-secondary);
+    cursor: default;
+}
+
+.happy-panel-new-tab__tile-icon {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+}
+
+.happy-panel-new-tab__tile-label {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 16px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.happy-panel-new-tab__results {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.happy-panel-new-tab__result {
+    box-sizing: border-box;
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    height: 36px;
+    margin: 0;
+    padding: 0 12px;
+    border: 0;
+    border-radius: var(--happy-radius-md);
+    background: transparent;
+    color: var(--text);
+    font-family: inherit;
+    text-align: left;
+    appearance: none;
+    cursor: pointer;
+}
+
+.happy-panel-new-tab__result[data-highlighted] {
+    background: var(--happy-hover-fill);
+}
+
+.happy-panel-new-tab__result-icon {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+}
+
+/* The name is the bright part and stays whole; the gray detail gives way. */
+.happy-panel-new-tab__result-name {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 16px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.happy-panel-new-tab__result-detail {
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 16px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.happy-panel-new-tab__note {
+    margin: 0;
+    padding: 10px 12px;
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 16px;
+}

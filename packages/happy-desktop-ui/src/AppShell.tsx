@@ -32,6 +32,12 @@ export type AppShellProps = Omit<HTMLAttributes<HTMLDivElement>, "style"> & {
     panelWidth?: number;
     /** One persistent header control at the window's right edge. */
     panelToggleAction?: { open: boolean; onClick: () => void; shortcut?: KeyboardShortcut };
+    /**
+     * Widens the open panel over the main content and gives it back, from a
+     * control beside the pane toggle. While `expanded`, the panel takes the
+     * workspace's whole width the way a narrow window makes it.
+     */
+    panelExpandAction?: { expanded: boolean; onClick: () => void };
     /** Optional 64px feature rail. When omitted the content spans the full body. */
     rail?: ReactNode;
     sidebar?: ReactNode;
@@ -366,6 +372,7 @@ export function AppShell(props: AppShellProps) {
         "panel",
         "panelWidth",
         "panelToggleAction",
+        "panelExpandAction",
         "rail",
         "sidebar",
         "style",
@@ -501,11 +508,13 @@ export function AppShell(props: AppShellProps) {
     const panelWidth = panelWidthControlled ? (panelDragWidth ?? panelWidthBase) : panelWidthState;
     const panelPresent = local.panel !== undefined && local.panel !== null;
     // Nothing in the shell animates: a panel is there or it is not.
+    const panelExpandShown = panelPresent && local.panelExpandAction !== undefined;
     const panelTakeover =
         panelPresent &&
-        workspaceReadableWidth !== undefined &&
-        contentWidth > 0 &&
-        contentWidth < sidebarOccupied + panelMin + workspaceReadableWidth;
+        (local.panelExpandAction?.expanded === true ||
+            (workspaceReadableWidth !== undefined &&
+                contentWidth > 0 &&
+                contentWidth < sidebarOccupied + panelMin + workspaceReadableWidth));
     // eslint-disable-next-line happy-react/no-layout-effect -- takeover changes real browser focus after inert commits; the prior focused node is recorded by focus events before that commit so the mounted draft and selection can be restored
     useLayoutEffect(() => {
         if (panelTakeover) {
@@ -785,6 +794,7 @@ export function AppShell(props: AppShellProps) {
                 data-navigation-chrome={local.navigationChrome}
                 data-panel-toggle={local.panelToggleAction ? "" : undefined}
                 data-panel-open={panelPresent ? "" : undefined}
+                data-panel-expand={panelExpandShown ? "" : undefined}
                 onFocusCapture={(event) => {
                     if (!panelTakeover && event.target instanceof HTMLElement)
                         lastFocus.current = event.target;
@@ -966,6 +976,39 @@ export function AppShell(props: AppShellProps) {
                         className="happy-desktop-app-shell__panel-controls"
                         data-happy-desktop-ui="app-shell-panel-controls"
                     >
+                        {panelExpandShown && local.panelExpandAction ? (
+                            <Tooltip
+                                align="end"
+                                label={
+                                    local.panelExpandAction.expanded
+                                        ? "Restore secondary pane"
+                                        : "Expand secondary pane"
+                                }
+                                placement="bottom"
+                            >
+                                <button
+                                    aria-label={
+                                        local.panelExpandAction.expanded
+                                            ? "Restore secondary pane"
+                                            : "Expand secondary pane"
+                                    }
+                                    aria-pressed={local.panelExpandAction.expanded}
+                                    className="happy-desktop-app-shell__panel-toggle"
+                                    data-happy-desktop-ui="app-shell-panel-expand"
+                                    onClick={local.panelExpandAction.onClick}
+                                    type="button"
+                                >
+                                    <Icon
+                                        name={
+                                            local.panelExpandAction.expanded
+                                                ? "width-center"
+                                                : "width-expand"
+                                        }
+                                        size={16}
+                                    />
+                                </button>
+                            </Tooltip>
+                        ) : null}
                         <Tooltip
                             align="end"
                             label={

@@ -20,4 +20,11 @@ export const APP_SHORTCUTS = {
     tabClose: commandShortcut("w"),
     /** Opens the new-task surface on the active Happy Agent, as its Tasks heading's + does. */
     taskCreate: commandShortcut("n"),
+    /**
+     * Selects the side pane's tabs by position, first to ninth. Command and a
+     * digit already go to the sidebar's projects, so the pane's take Option too.
+     */
+    panelTabSelect: ["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((digit) =>
+        commandShortcut(digit, { alt: true }),
+    ),
 } as const;

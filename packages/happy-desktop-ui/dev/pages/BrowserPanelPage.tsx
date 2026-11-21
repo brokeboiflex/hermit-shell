@@ -113,40 +113,7 @@ export function BrowserPanelPage() {
                     />
                 </div>
             </Specimen>
-            <Specimen
-                detail="opened on nothing · the address takes the caret · tools it can become, then this browser's recent pages"
-                label="New tab"
-                number="02"
-                stage="app"
-            >
-                <div style={frame}>
-                    <BrowserPanel
-                        active
-                        initialUrl="about:blank"
-                        renderContent={BrowserPreview}
-                        start={{
-                            tools: [
-                                {
-                                    id: "terminal",
-                                    icon: "terminal",
-                                    label: "Terminal",
-                                    onSelect: () => undefined,
-                                },
-                                {
-                                    id: "artifact",
-                                    icon: "package",
-                                    label: "New artifact",
-                                    onSelect: () => undefined,
-                                },
-                            ],
-                            recent: [
-                                { url: "http://localhost:5173/", label: "localhost" },
-                                { url: "https://happy.engineering/", label: "Happy" },
-                            ],
-                        }}
-                    />
-                </div>
-            </Specimen>
+
             <Specimen
                 detail="network failure · named host · retry from the error page or the toolbar"
                 label="Site unreachable"

@@ -147,6 +147,16 @@
     margin-left: 8px;
 }
 
+.happy-menu__item-trailing {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    color: var(--text-secondary);
+}
+
 /* A fixed word beside unbounded text: it stays whole and the label ends in an
    ellipsis before it (DESIGN.md, "Text that does not fit"). Figures share one
    width so a column of times lines up on its right edge. */

@@ -69,6 +69,8 @@ export type HappyAgentPanelViewMemory =
  */
 export interface HappyAgentPanelMemory {
     readonly open: boolean;
+    /** Whether Files was in the strip; absent when it was not. */
+    readonly files?: boolean;
     readonly browsers: readonly HappyAgentPanelBrowserMemory[];
     readonly active: HappyAgentPanelViewMemory;
     /** Pages the group's browser visited, most recent first. */
@@ -134,6 +136,8 @@ export interface HappyAgentWorkspaceMemoryDocument {
     readonly surfaceChatsShown?: readonly string[];
     /** The Surfaces the reader widened to the whole pane, oldest first. */
     readonly surfacesExpanded?: readonly string[];
+    /** The shortcuts the reader pinned to every new tab; absent until they first chose. */
+    readonly panelShortcuts?: readonly string[];
 }
 
 /**
@@ -193,6 +197,9 @@ export interface HappyAgentWorkspaceMemoryStore {
     /** The Surfaces the reader widened to the whole pane. */
     surfacesExpandedRead(): readonly string[];
     surfacesExpandedWrite(surfaceIds: readonly string[]): void;
+    /** The shortcuts pinned to every new tab, or absent until the reader first chose. */
+    panelShortcutsRead(): readonly string[] | undefined;
+    panelShortcutsWrite(ids: readonly string[]): void;
 }
 
 const FILE_KINDS: readonly HappyAgentFileTabKind[] = ["file", "diff", "document", "media"];
@@ -204,6 +211,8 @@ const FLOATY_OPENED_LIMIT = 500;
 /** Surfaces remembered with their chat open, or widened; the oldest is forgotten first. */
 const SURFACE_CHATS_SHOWN_LIMIT = 500;
 const SURFACES_EXPANDED_LIMIT = 500;
+/** Far more than a new tab has; it only bounds what a hand-edited file can hold. */
+const PANEL_SHORTCUTS_LIMIT = 32;
 
 /** The distinct non-empty strings of a stored list, newest `limit` kept. */
 function storedKeysParse(value: unknown, limit: number): readonly string[] {
@@ -343,6 +352,7 @@ function panelParse(value: unknown): HappyAgentPanelMemory | undefined {
     );
     const panel: HappyAgentPanelMemory = {
         open: record.open === true,
+        ...(record.files === true ? { files: true } : {}),
         browsers,
         active,
         ...(recent.length === 0 ? {} : { recent }),
@@ -355,7 +365,7 @@ function panelParse(value: unknown): HappyAgentPanelMemory | undefined {
  * every group anyone ever opened would only grow the document.
  */
 function panelMemoryEmpty(panel: HappyAgentPanelMemory): boolean {
-    return !panel.open && panel.browsers.length === 0 && !panel.recent?.length;
+    return !panel.open && !panel.files && panel.browsers.length === 0 && !panel.recent?.length;
 }
 
 function groupParse(value: unknown): HappyAgentGroupTabMemory | undefined {
@@ -420,6 +430,7 @@ export function happyAgentWorkspaceMemoryStoreCreate(
     let floatyOpened: readonly string[] = [];
     let surfaceChatsShown: readonly string[] = [];
     let surfacesExpanded: readonly string[] = [];
+    let panelShortcuts: readonly string[] | undefined;
     const stored = (() => {
         try {
             return persistence?.read();
@@ -451,6 +462,10 @@ export function happyAgentWorkspaceMemoryStoreCreate(
         floatyOpened = storedKeysParse(document.floatyOpened, FLOATY_OPENED_LIMIT);
         surfaceChatsShown = storedKeysParse(document.surfaceChatsShown, SURFACE_CHATS_SHOWN_LIMIT);
         surfacesExpanded = storedKeysParse(document.surfacesExpanded, SURFACES_EXPANDED_LIMIT);
+        // An empty list is a choice — no shortcuts — so only a missing one
+        // falls back to the defaults.
+        if (Array.isArray(document.panelShortcuts))
+            panelShortcuts = storedKeysParse(document.panelShortcuts, PANEL_SHORTCUTS_LIMIT);
     }
 
     const flush = (): void => {
@@ -462,6 +477,7 @@ export function happyAgentWorkspaceMemoryStoreCreate(
                 ...(floatyOpened.length === 0 ? {} : { floatyOpened }),
                 ...(surfaceChatsShown.length === 0 ? {} : { surfaceChatsShown }),
                 ...(surfacesExpanded.length === 0 ? {} : { surfacesExpanded }),
+                ...(panelShortcuts === undefined ? {} : { panelShortcuts }),
             });
         } catch {
             // Storage the host refused still keeps this client's memory alive.
@@ -552,6 +568,11 @@ export function happyAgentWorkspaceMemoryStoreCreate(
         surfacesExpandedRead: () => surfacesExpanded,
         surfacesExpandedWrite(surfaceIds) {
             surfacesExpanded = [...new Set(surfaceIds)].slice(-SURFACES_EXPANDED_LIMIT);
+            flush();
+        },
+        panelShortcutsRead: () => panelShortcuts,
+        panelShortcutsWrite(ids) {
+            panelShortcuts = [...new Set(ids)].slice(0, PANEL_SHORTCUTS_LIMIT);
             flush();
         },
     };

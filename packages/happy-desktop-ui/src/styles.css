@@ -141,6 +141,7 @@
 @import "./styles/permission-checklist.css";
 @import "./styles/admin-page.css";
 @import "./styles/panel-header.css";
+@import "./styles/panel-new-tab.css";
 @import "./styles/sidebar-apps.css";
 @import "./styles/happy-agent-install.css";
 @import "./styles/happy-agent-client.css";

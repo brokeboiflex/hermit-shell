@@ -20,9 +20,10 @@ export type HappyAgentPanelTabId = string & { readonly [happyAgentPanelTabIdBran
  * What a tool tab holds. An artifact is one only once the reader moved it out
  * of the panel's artifact tab into the main content; in the panel it is that
  * one replaceable tab rather than a tool tab of its own. A chat is another
- * conversation read beside the open one.
+ * conversation read beside the open one. A new tab is not anything yet: it
+ * offers what it can become, and whatever is opened from it takes its place.
  */
-export type HappyAgentPanelTabKind = "terminal" | "browser" | "artifact" | "chat";
+export type HappyAgentPanelTabKind = "newTab" | "terminal" | "browser" | "artifact" | "chat";
 
 /**
  * Which of the workspace's two tab strips a view is being shown in.
@@ -44,6 +45,9 @@ interface HappyAgentPanelTabSnapshotBase {
 }
 
 export type HappyAgentPanelTabSnapshot =
+    | (HappyAgentPanelTabSnapshotBase & {
+          readonly kind: "newTab";
+      })
     | (HappyAgentPanelTabSnapshotBase & {
           readonly kind: "terminal";
       })
@@ -90,6 +94,43 @@ export interface HappyAgentBrowserRecent {
     readonly label: string;
 }
 
+/**
+ * Something a new tab can open. The reader pins a few of them to every new tab
+ * as its shortcuts; the rest are a menu away.
+ */
+export type HappyAgentPanelShortcutId =
+    | "terminal"
+    | "files"
+    | "chat"
+    | "artifact"
+    | "artifacts"
+    | "activity"
+    | "usage"
+    | "devices";
+
+/** Every shortcut, in the order a new tab lists them. */
+export const HAPPY_AGENT_PANEL_SHORTCUTS: readonly HappyAgentPanelShortcutId[] = [
+    "terminal",
+    "files",
+    "chat",
+    "artifact",
+    "artifacts",
+    "activity",
+    "usage",
+    "devices",
+];
+
+/** How many shortcuts a new tab shows. */
+export const HAPPY_AGENT_PANEL_SHORTCUT_LIMIT = 4;
+
+/** What a new tab shows before the reader has chosen. */
+const SHORTCUTS_DEFAULT: readonly HappyAgentPanelShortcutId[] = [
+    "terminal",
+    "files",
+    "chat",
+    "artifact",
+];
+
 export interface HappyAgentBrowserUpdate {
     /** Last committed main-frame location. */
     readonly url?: string;
@@ -107,14 +148,22 @@ export interface HappyAgentBrowserUpdate {
  */
 export interface HappyAgentPanelSnapshot {
     readonly open: boolean;
+    /**
+     * Whether the open panel is widened over the main content, the way a
+     * maximized pane is. Closing the panel gives the main content back.
+     */
+    readonly expanded: boolean;
     readonly tabs: readonly HappyAgentPanelTabSnapshot[];
     /** Every live browser, including other groups, until its tab truly closes. */
     readonly browserTabs: readonly Extract<HappyAgentPanelTabSnapshot, { kind: "browser" }>[];
     /**
-     * Whether Files is in the strip. It is closed like any other tab, and the
-     * pane closes with the last of them; opening the pane again brings it back.
+     * Whether Files is in the strip. It is a tab like any other: a new tab
+     * opens it, closing it takes it away, and each group remembers whether it
+     * had one.
      */
     readonly filesViewOpen: boolean;
+    /** The shortcuts every new tab shows, in the order it shows them. */
+    readonly shortcuts: readonly HappyAgentPanelShortcutId[];
     /**
      * Pages the addressed group's browser visited, most recent first. Pages
      * share one browser per group, so this is that browser's history.
@@ -200,31 +249,45 @@ export interface HappyAgentPanelStore {
     /**
      * Shows or hides the panel. It never starts anything: a terminal is a process
      * in the user's working directory, and opening a column is not consent to run
-     * one. The panel shows its own content and offers to start a terminal.
+     * one. A panel opened with nothing in it shows a new tab, which offers what
+     * it can become.
      */
     panelToggle(): void;
-    /** Selects the workspace-files tab, bringing it back if closed, and opens the panel. */
-    filesSelect(): void;
+    /** Widens the open panel over the main content, or gives the main content back. */
+    panelExpandToggle(): void;
+    /** Adds a new tab to the open group, selects it, and opens the panel. */
+    newTabAdd(): void;
+    /**
+     * Pins one shortcut to every new tab, or takes it off. A new tab holds
+     * `HAPPY_AGENT_PANEL_SHORTCUT_LIMIT` of them, so pinning past that does
+     * nothing.
+     */
+    shortcutPinnedUpdate(id: HappyAgentPanelShortcutId, pinned: boolean): void;
+    /**
+     * Selects the workspace-files tab, bringing it back if closed, and opens the
+     * panel. Given a new tab, Files takes its place.
+     */
+    filesSelect(replacing?: HappyAgentPanelTabId): void;
     /** Closes the Files tab; the pane closes with it when nothing else is in the strip. */
     filesClose(): void;
     /**
      * Selects the permanent list of what the open chat has published and opens
      * the panel. The owner offers the tab only where the Happy Agent has
-     * artifacts at all.
+     * artifacts at all. Given a new tab, the list takes its place.
      */
-    artifactsSelect(): void;
+    artifactsSelect(replacing?: HappyAgentPanelTabId): void;
     /** Opens or selects the transient Activity tab for the current conversation. */
-    activitySelect(): void;
+    activitySelect(replacing?: HappyAgentPanelTabId): void;
     /** Hides Activity while another panel is shown without dismissing its tab. */
     activityHide(): void;
     /** Closes the transient Activity tab and returns to Files when it was selected. */
     activityClose(): void;
     /** Opens or selects the transient Usage tab for the current conversation. */
-    usageSelect(): void;
+    usageSelect(replacing?: HappyAgentPanelTabId): void;
     /** Closes the transient Usage tab. */
     usageClose(): void;
     /** Opens or selects the workspace's Devices tab. */
-    devicesSelect(): void;
+    devicesSelect(replacing?: HappyAgentPanelTabId): void;
     /** Closes the Devices tab. Nothing it opened is closed with it. */
     devicesClose(): void;
     /**
@@ -252,8 +315,13 @@ export interface HappyAgentPanelStore {
     /**
      * Shows one other conversation in a panel tab of its own and opens the
      * panel, selecting the tab already reading it rather than adding another.
+     * Given a new tab, the chat takes its place.
      */
-    chatTabOpen(agentId: HappyAgentSessionId, label: string): void;
+    chatTabOpen(
+        agentId: HappyAgentSessionId,
+        label: string,
+        replacing?: HappyAgentPanelTabId,
+    ): void;
     /**
      * Shows the permanent Files tab in an open panel the moment `groupId` is
      * the group addressed: the reader is going there to look at its work.
@@ -266,9 +334,14 @@ export interface HappyAgentPanelStore {
     /**
      * Shows one artifact — at one version, when a link named one — in the
      * transient artifact tab and opens the panel. Like the file viewer it is a
-     * replaceable tab: the next artifact link opened lands in it.
+     * replaceable tab: the next artifact link opened lands in it. Given a new
+     * tab, the artifact takes its place.
      */
-    artifactViewOpen(artifactId: HappyAgentArtifactId, version?: number): void;
+    artifactViewOpen(
+        artifactId: HappyAgentArtifactId,
+        version?: number,
+        replacing?: HappyAgentPanelTabId,
+    ): void;
     /** Closes the artifact tab and returns to Files. */
     artifactViewClose(): void;
     /**
@@ -289,18 +362,18 @@ export interface HappyAgentPanelStore {
      * Adds a terminal tab to the open group and selects it. The shell runs in
      * the group's checkout, so it needs no open session; the tab belongs to the
      * group and stays put as the reader moves between that group's sessions.
-     * Given a page's tab, the terminal takes its place, the way a new tab
-     * becomes whatever is opened from it.
+     * Given a new tab, the terminal takes its place, the way a new tab becomes
+     * whatever is opened from it.
      */
     terminalAdd(replacing?: HappyAgentPanelTabId): void;
     /** Runs a saved command in a new named terminal in the active checkout. */
     terminalCommandRun(name: string, command: string): void;
     /**
-     * Adds a browser tab to the open group, optionally at one safe web URL, and
-     * selects it. The page uses the open conversation's agent, so without one
-     * nothing is added.
+     * Adds a browser tab at one safe web URL to the open group and selects it.
+     * The page uses the open conversation's agent, so without one nothing is
+     * added. Given a new tab, the page takes its place.
      */
-    browserAdd(url?: string): void;
+    browserAdd(url: string, replacing?: HappyAgentPanelTabId): void;
     /**
      * Adds a page another page opened. It belongs where its opener does, to the
      * opener's group and on the opener's agent, whichever group is open now.
@@ -388,6 +461,9 @@ export interface HappyAgentPanelDeps {
     /** Which floaties were opened by hand, read once and written on every change. */
     readonly floatyMemoryRead?: () => readonly string[];
     readonly floatyMemoryWrite?: (keys: readonly string[]) => void;
+    /** Which shortcuts the reader pinned, read once; absent until they first chose. */
+    readonly shortcutsMemoryRead?: () => readonly string[] | undefined;
+    readonly shortcutsMemoryWrite?: (ids: readonly HappyAgentPanelShortcutId[]) => void;
 }
 
 interface Tab {
@@ -443,7 +519,19 @@ function tabSame(
             before.version === next.version
         );
     if (before.kind === "chat") return next.kind === "chat" && before.agentId === next.agentId;
+    if (before.kind === "newTab") return next.kind === "newTab";
     return next.kind === "terminal";
+}
+
+/** The pinned shortcuts as stored, in catalog order; the defaults until the reader chose. */
+function shortcutsParse(
+    stored: readonly string[] | undefined,
+): readonly HappyAgentPanelShortcutId[] {
+    if (stored === undefined) return SHORTCUTS_DEFAULT;
+    return HAPPY_AGENT_PANEL_SHORTCUTS.filter((id) => stored.includes(id)).slice(
+        0,
+        HAPPY_AGENT_PANEL_SHORTCUT_LIMIT,
+    );
 }
 
 /**
@@ -469,12 +557,16 @@ export function happyAgentPanelStoreCreate(deps: HappyAgentPanelDeps): HappyAgen
     const chromeByGroup = new Map<HappyAgentGroupId, { open: boolean }>();
     /** Groups whose remembered arrangement has already been read back in this run. */
     const restoredGroupIds = new Set<HappyAgentGroupId>();
+    /** Whether each group that was left had Files in its strip. */
+    const filesByGroup = new Map<HappyAgentGroupId, boolean>();
     const recentByGroup = new Map<HappyAgentGroupId, readonly HappyAgentBrowserRecent[]>();
     let groupId: HappyAgentGroupId | undefined;
     let conversationId: HappyAgentSessionId | undefined;
     /** Why a shell cannot be started in the current scope; supplied by the owner. */
     let terminalRefusal: string | undefined;
     let open = false;
+    let expanded = false;
+    let shortcuts = shortcutsParse(deps.shortcutsMemoryRead?.());
     let activeViewId: HappyAgentPanelSnapshot["activeViewId"] = "files";
     let activityViewShown = false;
     let activityViewDismissed = false;
@@ -486,7 +578,7 @@ export function happyAgentPanelStoreCreate(deps: HappyAgentPanelDeps): HappyAgen
     let changeViewPath: string | undefined;
     let changeConversationId: HappyAgentSessionId | undefined;
     let fileViewShown = false;
-    let filesViewShown = true;
+    let filesViewShown = false;
     let floatyOpened: ReadonlySet<string> = new Set(deps.floatyMemoryRead?.() ?? []);
     let floatyHistoryExpanded = false;
     let artifactView: HappyAgentPanelArtifactView | undefined;
@@ -501,11 +593,13 @@ export function happyAgentPanelStoreCreate(deps: HappyAgentPanelDeps): HappyAgen
         usageViewOpen: false,
         devicesViewOpen: false,
         fileViewOpen: false,
-        filesViewOpen: true,
+        filesViewOpen: false,
+        shortcuts,
         browserRecent: NO_RECENT,
         floatyOpened,
         floatyHistoryExpanded: false,
         open: false,
+        expanded: false,
         tabs: NO_TABS,
         browserTabs: [],
     };
@@ -520,11 +614,13 @@ export function happyAgentPanelStoreCreate(deps: HappyAgentPanelDeps): HappyAgen
             devicesViewOpen: devicesViewShown,
             fileViewOpen: fileViewShown,
             filesViewOpen: filesViewShown,
+            shortcuts,
             browserRecent: (groupId && recentByGroup.get(groupId)) || NO_RECENT,
             floatyOpened,
             floatyHistoryExpanded,
             ...(artifactView === undefined ? {} : { artifactView }),
             open,
+            expanded,
             browserTabs: tabs.flatMap((tab) =>
                 tab.kind === "browser" && tab.agentId !== undefined
                     ? [
@@ -564,6 +660,7 @@ export function happyAgentPanelStoreCreate(deps: HappyAgentPanelDeps): HappyAgen
                                       : { artifactId: tab.artifactId }),
                               },
                           ];
+                if (tab.kind === "newTab") return [{ ...base, kind: tab.kind }];
                 if (tab.kind === "chat" && tab.agentId !== undefined)
                     return [{ ...base, kind: tab.kind, agentId: tab.agentId }];
                 if (tab.kind === "artifact" && tab.artifactId !== undefined)
@@ -599,6 +696,8 @@ export function happyAgentPanelStoreCreate(deps: HappyAgentPanelDeps): HappyAgen
             next.browserTabs.every((tab, index) => tabSame(snapshot.browserTabs[index], tab));
         if (
             next.open === snapshot.open &&
+            next.expanded === snapshot.expanded &&
+            next.shortcuts === snapshot.shortcuts &&
             next.activeViewId === snapshot.activeViewId &&
             next.activityViewDismissed === snapshot.activityViewDismissed &&
             next.activityViewOpen === snapshot.activityViewOpen &&
@@ -634,11 +733,13 @@ export function happyAgentPanelStoreCreate(deps: HappyAgentPanelDeps): HappyAgen
             devicesViewOpen: next.devicesViewOpen,
             fileViewOpen: next.fileViewOpen,
             filesViewOpen: next.filesViewOpen,
+            shortcuts: next.shortcuts,
             browserRecent: next.browserRecent,
             floatyOpened: next.floatyOpened,
             floatyHistoryExpanded: next.floatyHistoryExpanded,
             ...(next.artifactView === undefined ? {} : { artifactView: next.artifactView }),
             open: next.open,
+            expanded: next.expanded,
             tabs: projectedTabs,
             browserTabs: browsersSame
                 ? snapshot.browserTabs
@@ -680,6 +781,7 @@ export function happyAgentPanelStoreCreate(deps: HappyAgentPanelDeps): HappyAgen
         const activeIndex = browsers.findIndex(({ tab }) => tab.id === selected);
         deps.memoryWrite(group, {
             open: addressed ? open : (chromeByGroup.get(group)?.open ?? false),
+            ...((addressed ? filesViewShown : filesByGroup.get(group)) ? { files: true } : {}),
             browsers: browsers.map(({ tab, agentId, networkId }) => ({
                 url: tab.url ?? "about:blank",
                 label: tab.label,
@@ -712,6 +814,34 @@ export function happyAgentPanelStoreCreate(deps: HappyAgentPanelDeps): HappyAgen
         });
         activeByGroup.set(group, id);
         activeViewId = id;
+    };
+
+    const newTabAddTo = (group: HappyAgentGroupId): void => {
+        const id = `tab_${nextTabNumber}` as HappyAgentPanelTabId;
+        nextTabNumber += 1;
+        tabs.push({ id, kind: "newTab", label: "New tab", groupId: group, placement: "panel" });
+        activeByGroup.set(group, id);
+        activeViewId = id;
+    };
+
+    /**
+     * A new tab becomes what was opened from it: `became` takes its place in
+     * the strip, or, when what it became is drawn some other way, the new tab
+     * simply goes. The caller has already selected what it became. Anything
+     * but a new tab is left alone.
+     */
+    const newTabConsume = (
+        replacing: HappyAgentPanelTabId | undefined,
+        became?: HappyAgentPanelTabId,
+    ): void => {
+        if (replacing === undefined) return;
+        const index = tabs.findIndex((tab) => tab.id === replacing && tab.kind === "newTab");
+        if (index < 0) return;
+        const [removed] = tabs.splice(index, 1);
+        const from = became === undefined ? -1 : tabs.findIndex((tab) => tab.id === became);
+        if (from >= index) tabs.splice(index, 0, ...tabs.splice(from, 1));
+        if (removed && activeByGroup.get(removed.groupId) === removed.id)
+            activeByGroup.delete(removed.groupId);
     };
 
     const browserTabAdd = (
@@ -752,6 +882,7 @@ export function happyAgentPanelStoreCreate(deps: HappyAgentPanelDeps): HappyAgen
         restoredGroupIds.add(group);
         const memory = deps.memoryRead?.(group);
         if (!memory) return;
+        if (memory.files) filesByGroup.set(group, true);
         if (memory.recent?.length) recentByGroup.set(group, memory.recent);
         for (const browser of memory.browsers) {
             browserTabAdd(
@@ -785,9 +916,11 @@ export function happyAgentPanelStoreCreate(deps: HappyAgentPanelDeps): HappyAgen
     const readerTabShow = (
         matches: (tab: Tab) => boolean,
         create: (id: HappyAgentPanelTabId, group: HappyAgentGroupId) => Tab,
+        replacing?: HappyAgentPanelTabId,
     ): void => {
         if (!groupId) return;
         let tab = tabs.find((candidate) => candidate.groupId === groupId && matches(candidate));
+        const created = tab === undefined;
         if (!tab) {
             tab = create(`tab_${nextTabNumber}` as HappyAgentPanelTabId, groupId);
             nextTabNumber += 1;
@@ -796,6 +929,7 @@ export function happyAgentPanelStoreCreate(deps: HappyAgentPanelDeps): HappyAgen
         tab.placement = "panel";
         activeByGroup.set(groupId, tab.id);
         activeViewId = tab.id;
+        newTabConsume(replacing, created ? tab.id : undefined);
         open = true;
         remember();
         recompute();
@@ -808,7 +942,7 @@ export function happyAgentPanelStoreCreate(deps: HappyAgentPanelDeps): HappyAgen
     /**
      * Where the addressed panel lands once the view in front is gone: Files,
      * else the next view the strip still draws. With nothing left the pane
-     * closes, and Files is back for the next time it opens.
+     * closes, and opening it again shows a new tab.
      */
     const landing = (): void => {
         if (filesViewShown) {
@@ -830,9 +964,60 @@ export function happyAgentPanelStoreCreate(deps: HappyAgentPanelDeps): HappyAgen
             activeViewId = next;
             return;
         }
-        filesViewShown = true;
         activeViewId = "files";
         open = false;
+        expanded = false;
+    };
+
+    /** Whether the addressed panel's strip has anything `landing` could land on. */
+    const panelHolds = (): boolean =>
+        filesViewShown ||
+        fileViewShown ||
+        artifactView !== undefined ||
+        previewEntryId !== undefined ||
+        changeViewPath !== undefined ||
+        (groupId !== undefined && panelSibling(groupId) !== undefined);
+
+    /** Whether the view in front is one the addressed panel still draws. */
+    const activeShown = (): boolean => {
+        switch (activeViewId) {
+            case "files":
+                return filesViewShown;
+            case "artifacts":
+                return true;
+            case "activity":
+                return activityViewShown;
+            case "usage":
+                return usageViewShown;
+            case "devices":
+                return devicesViewShown;
+            case "preview":
+                return previewEntryId !== undefined;
+            case "change":
+                return changeViewPath !== undefined;
+            case "file":
+                return fileViewShown;
+            case "artifact":
+                return artifactView !== undefined;
+            default:
+                return tabs.some(
+                    (tab) =>
+                        tab.id === activeViewId &&
+                        tab.groupId === groupId &&
+                        tab.placement === "panel",
+                );
+        }
+    };
+
+    /**
+     * Gives an open panel something in front. One holding nothing opens on a
+     * new tab, the way a browser window does; one whose front view went away
+     * lands on what is left.
+     */
+    const panelSettle = (): void => {
+        if (!open || !groupId || activeShown()) return;
+        if (panelHolds()) landing();
+        else newTabAddTo(groupId);
     };
 
     /** Puts a page a group's browser committed at the front of its recent pages. */
@@ -855,13 +1040,16 @@ export function happyAgentPanelStoreCreate(deps: HappyAgentPanelDeps): HappyAgen
         if (!removed) return;
         if (activeByGroup.get(removed.groupId) !== removed.id) return;
         const sibling = panelSibling(removed.groupId);
+        // Only a tab in front of the addressed panel moves what the panel
+        // shows; one behind Files or a file, or in another group, hands its
+        // place in that group's memory to its sibling and nothing else.
+        const inFront = removed.groupId === groupId && activeViewId === removed.id;
         if (sibling) {
             activeByGroup.set(removed.groupId, sibling.id);
-            activeViewId = sibling.id;
+            if (inFront) activeViewId = sibling.id;
         } else {
             activeByGroup.delete(removed.groupId);
-            if (removed.groupId === groupId) landing();
-            else activeViewId = "files";
+            if (inFront) landing();
         }
     };
 
@@ -875,14 +1063,37 @@ export function happyAgentPanelStoreCreate(deps: HappyAgentPanelDeps): HappyAgen
         panelToggle() {
             if (disposed) return;
             open = !open;
-            if (open && !filesViewShown && activeViewId === "files") landing();
+            if (open) panelSettle();
+            else expanded = false;
             remember();
             recompute();
         },
-        filesSelect() {
+        panelExpandToggle() {
+            if (disposed || !open) return;
+            expanded = !expanded;
+            recompute();
+        },
+        newTabAdd() {
+            if (disposed || !groupId) return;
+            newTabAddTo(groupId);
+            open = true;
+            remember();
+            recompute();
+        },
+        shortcutPinnedUpdate(id, pinned) {
+            if (disposed || shortcuts.includes(id) === pinned) return;
+            if (pinned && shortcuts.length >= HAPPY_AGENT_PANEL_SHORTCUT_LIMIT) return;
+            shortcuts = HAPPY_AGENT_PANEL_SHORTCUTS.filter((candidate) =>
+                candidate === id ? pinned : shortcuts.includes(candidate),
+            );
+            deps.shortcutsMemoryWrite?.(shortcuts);
+            recompute();
+        },
+        filesSelect(replacing) {
             if (disposed) return;
             filesViewShown = true;
             activeViewId = "files";
+            newTabConsume(replacing);
             open = true;
             remember();
             recompute();
@@ -894,18 +1105,20 @@ export function happyAgentPanelStoreCreate(deps: HappyAgentPanelDeps): HappyAgen
             remember();
             recompute();
         },
-        artifactsSelect() {
+        artifactsSelect(replacing) {
             if (disposed) return;
             activeViewId = "artifacts";
+            newTabConsume(replacing);
             open = true;
             remember();
             recompute();
         },
-        activitySelect() {
+        activitySelect(replacing) {
             if (disposed || !conversationId) return;
             activityViewShown = true;
             activityViewDismissed = false;
             activeViewId = "activity";
+            newTabConsume(replacing);
             open = true;
             remember();
             recompute();
@@ -933,10 +1146,11 @@ export function happyAgentPanelStoreCreate(deps: HappyAgentPanelDeps): HappyAgen
             remember();
             recompute();
         },
-        usageSelect() {
+        usageSelect(replacing) {
             if (disposed || !conversationId) return;
             usageViewShown = true;
             activeViewId = "usage";
+            newTabConsume(replacing);
             open = true;
             remember();
             recompute();
@@ -951,10 +1165,11 @@ export function happyAgentPanelStoreCreate(deps: HappyAgentPanelDeps): HappyAgen
             remember();
             recompute();
         },
-        devicesSelect() {
+        devicesSelect(replacing) {
             if (disposed || !groupId) return;
             devicesViewShown = true;
             activeViewId = "devices";
+            newTabConsume(replacing);
             open = true;
             remember();
             recompute();
@@ -1031,11 +1246,12 @@ export function happyAgentPanelStoreCreate(deps: HappyAgentPanelDeps): HappyAgen
             floatyHistoryExpanded = next;
             recompute();
         },
-        artifactViewOpen(artifactId, version) {
+        artifactViewOpen(artifactId, version, replacing) {
             if (disposed) return;
             if (artifactView?.artifactId !== artifactId || artifactView.version !== version)
                 artifactView = version === undefined ? { artifactId } : { artifactId, version };
             activeViewId = "artifact";
+            newTabConsume(replacing);
             open = true;
             remember();
             recompute();
@@ -1062,7 +1278,7 @@ export function happyAgentPanelStoreCreate(deps: HappyAgentPanelDeps): HappyAgen
                 ...(version === undefined ? {} : { version }),
             });
             artifactView = undefined;
-            if (activeViewId === "artifact") activeViewId = "files";
+            if (activeViewId === "artifact") landing();
             remember();
             recompute();
             return id;
@@ -1087,10 +1303,7 @@ export function happyAgentPanelStoreCreate(deps: HappyAgentPanelDeps): HappyAgen
         terminalAdd(replacing) {
             if (disposed || !groupId || terminalRefusal !== undefined) return;
             terminalTabAdd(groupId);
-            const replaced = tabs.findIndex(
-                (tab) => tab.id === replacing && tab.kind === "browser" && tab.groupId === groupId,
-            );
-            if (replaced >= 0) tabs.splice(replaced, 1, tabs.pop()!);
+            newTabConsume(replacing, activeViewId as HappyAgentPanelTabId);
             open = true;
             remember();
             recompute();
@@ -1102,9 +1315,10 @@ export function happyAgentPanelStoreCreate(deps: HappyAgentPanelDeps): HappyAgen
             remember();
             recompute();
         },
-        browserAdd(url) {
+        browserAdd(url, replacing) {
             if (disposed || !groupId || !conversationId) return;
             if (!browserTabAdd(groupId, conversationId, undefined, url)) return;
+            newTabConsume(replacing, activeViewId as HappyAgentPanelTabId);
             open = true;
             remember();
             recompute();
@@ -1206,7 +1420,8 @@ export function happyAgentPanelStoreCreate(deps: HappyAgentPanelDeps): HappyAgen
                 !tab ||
                 tab.placement === placement ||
                 tab.kind === "artifact" ||
-                tab.kind === "chat"
+                tab.kind === "chat" ||
+                tab.kind === "newTab"
             )
                 return;
             tab.placement = placement;
@@ -1235,7 +1450,7 @@ export function happyAgentPanelStoreCreate(deps: HappyAgentPanelDeps): HappyAgen
         terminal: (tabId) => tabs.find((tab) => tab.id === tabId)?.terminal,
         chat: (tabId) => tabs.find((tab) => tab.id === tabId)?.chat,
 
-        chatTabOpen(agentId, label) {
+        chatTabOpen(agentId, label, replacing) {
             if (disposed || !groupId || !deps.chatOpen) return;
             readerTabShow(
                 (tab) => tab.kind === "chat" && tab.agentId === agentId,
@@ -1248,6 +1463,7 @@ export function happyAgentPanelStoreCreate(deps: HappyAgentPanelDeps): HappyAgen
                     placement: "panel",
                     chat: deps.chatOpen!(agentId),
                 }),
+                replacing,
             );
         },
         filesSelectOnArrival(group) {
@@ -1256,6 +1472,7 @@ export function happyAgentPanelStoreCreate(deps: HappyAgentPanelDeps): HappyAgen
                 filesArrivalGroupId = group;
                 return;
             }
+            filesViewShown = true;
             activeViewId = "files";
             open = true;
             remember();
@@ -1285,10 +1502,14 @@ export function happyAgentPanelStoreCreate(deps: HappyAgentPanelDeps): HappyAgen
                 if (activeViewId === "change") activeViewId = "files";
             }
             if (nextGroupId === groupId) {
+                panelSettle();
                 recompute();
                 return;
             }
-            if (groupId) chromeByGroup.set(groupId, { open });
+            if (groupId) {
+                chromeByGroup.set(groupId, { open });
+                filesByGroup.set(groupId, filesViewShown);
+            }
             groupId = nextGroupId;
             // A file was opened out of one checkout, and a path only means
             // something inside that checkout, so it does not travel to the next
@@ -1298,9 +1519,10 @@ export function happyAgentPanelStoreCreate(deps: HappyAgentPanelDeps): HappyAgen
             usageViewShown = false;
             devicesViewShown = false;
             fileViewShown = false;
-            filesViewShown = true;
             artifactView = undefined;
+            expanded = false;
             if (nextGroupId) groupRestore(nextGroupId);
+            filesViewShown = nextGroupId ? (filesByGroup.get(nextGroupId) ?? false) : false;
             const chrome = nextGroupId ? chromeByGroup.get(nextGroupId) : undefined;
             open = chrome?.open ?? false;
             const remembered =
@@ -1310,11 +1532,13 @@ export function happyAgentPanelStoreCreate(deps: HappyAgentPanelDeps): HappyAgen
             )?.id;
             activeViewId = drawn ?? "files";
             if (nextGroupId !== undefined && filesArrivalGroupId === nextGroupId) {
+                filesViewShown = true;
                 activeViewId = "files";
                 open = true;
                 remember();
             }
             filesArrivalGroupId = undefined;
+            panelSettle();
             recompute();
         },
 

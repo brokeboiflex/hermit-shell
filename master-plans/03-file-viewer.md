@@ -20,8 +20,9 @@ a main content tab; opened from the main content it opens on the right.
 
 ## How we get there
 
-First the layout. Keep one permanent Files tab in the sidebar, with Changes and
-All Files as a radio-style sub-control inside it. The group has no enclosing
+First the layout. Files is one tab in the sidebar, opened from the new tab the
+sidebar opens on, as in ChatGPT's desktop app, with Changes and All Files as a
+radio-style sub-control inside it. The group has no enclosing
 track, border, or background: unselected options sit directly on the main
 surface, and only the selected option carries the same quiet selected fill as a
 selected file row. Use this same one-layer treatment for the file viewer's other
@@ -65,8 +66,8 @@ of the browser.
 
 ## How we know it is done
 
-- Files remains one permanent sidebar tab, with Changes and All Files inside it
-  as a sub-control rather than separate sidebar tabs.
+- Files is one sidebar tab, opened from the sidebar's new tab, with Changes and
+  All Files inside it as a sub-control rather than separate sidebar tabs.
 - Exclusive file-viewer controls have no enclosing track or background.
   Unselected options sit directly on the surface; only the selected option uses
   the same quiet fill as a selected file row.

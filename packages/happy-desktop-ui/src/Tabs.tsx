@@ -9,7 +9,7 @@ import {
     type MouseEvent,
     type PointerEvent as ReactPointerEvent,
 } from "react";
-import { CountBadge } from "./Badge";
+import { CountBadge, KeyCap } from "./Badge";
 import { fixedBlockMeasure } from "./fixedBlock";
 import { haptic } from "./haptics";
 import { FileKindIcon } from "./FileKindIcon";
@@ -29,6 +29,7 @@ import {
 } from "./tabTransfer";
 import { Ionicon } from "./vectorIcons/VectorIcon";
 export type TabsSize = "small" | "medium" | "large";
+export type TabsAppearance = "underline" | "card";
 export type TabItem = {
     id: string;
     label: string;
@@ -68,6 +69,8 @@ export type TabItem = {
     awaitingInput?: boolean;
     /** Unsaved file content. Drawn as the classic dot in the tab's trailing lane. */
     dirty?: boolean;
+    /** The chord that selects this tab, shown as a key cap after its title. */
+    shortcut?: KeyboardShortcut;
     /** Marks the tab as carrying unread activity with a dot on its leading mark. */
     unread?: boolean;
     /** Unframed artwork for an explicitly opened entity. */
@@ -189,6 +192,12 @@ export type TabsProps = {
     onDoubleClick?: (id: string) => void;
     tabs: TabItem[];
     size?: TabsSize;
+    /**
+     * How a tab is drawn. `underline` marks the selected tab with a bar on the
+     * strip's hairline; `card` draws every tab as a small rounded card on the
+     * band, the selected one filled and edged, the way a side pane's tabs are.
+     */
+    appearance?: TabsAppearance;
     /**
      * Closes a tab. Supplying it gives every tab a trailing close control that
      * appears while the pointer is over that tab, and whenever it holds keyboard
@@ -336,6 +345,7 @@ function tabShift(drag: TabDrag, index: number): number {
  */
 export function Tabs(props: TabsProps) {
     const [local, rest] = partitionComponentProps(props, [
+        "appearance",
         "className",
         "closeLabel",
         "closeShortcut",
@@ -695,6 +705,7 @@ export function Tabs(props: TabsProps) {
             {...rest}
             className={["happy-tabs", local.className].filter(Boolean).join(" ")}
             data-dragging={drag?.moved ? "" : undefined}
+            data-appearance={local.appearance ?? "underline"}
             data-happy-desktop-ui="tabs"
             data-close-presentation={local.closePresentation}
             data-size={size()}
@@ -715,6 +726,7 @@ export function Tabs(props: TabsProps) {
                         data-close-revealed={tab.id === local.closeRevealedId ? "" : undefined}
                         data-carried={dragged() && drag?.carried ? "" : undefined}
                         data-dragged={dragged() ? "" : undefined}
+                        aria-keyshortcuts={tab.shortcut?.aria}
                         data-voice-focus={tab.voiceFocus ? "" : undefined}
                         data-happy-desktop-ui="tab"
                         data-preview={tab.preview ? "" : undefined}
@@ -783,6 +795,13 @@ export function Tabs(props: TabsProps) {
                                 tone={active() ? "accent" : "neutral"}
                             />
                         ) : null}
+                        {tab.shortcut ? (
+                            <KeyCap
+                                className="happy-tabs__tab-shortcut"
+                                decorative
+                                keys={tab.shortcut.caps}
+                            />
+                        ) : null}
                         {((closable, activity) =>
                             /* One lane at the trailing edge, holding what the
                                tab is doing and the control that closes it. They
@@ -845,7 +864,7 @@ export function Tabs(props: TabsProps) {
                             local.onClose !== undefined && tab.closable !== false,
                             tabActivityMark(tab),
                         )}
-                        {active() ? (
+                        {active() && local.appearance !== "card" ? (
                             <span
                                 aria-hidden="true"
                                 className="happy-tabs__tab-underline"

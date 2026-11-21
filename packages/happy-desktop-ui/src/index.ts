@@ -149,6 +149,13 @@ export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from ".
 export { QRCode, type QRCodeMark, type QRCodeProps } from "./QRCode";
 export { ChannelHeader, type ChannelHeaderProps, type ChannelMember } from "./ChannelHeader";
 export { PanelHeader, type PanelHeaderProps } from "./PanelHeader";
+export {
+    PanelNewTab,
+    type PanelNewTabItem,
+    type PanelNewTabPage,
+    type PanelNewTabProps,
+    type PanelNewTabSearch,
+} from "./PanelNewTab";
 export { AudienceToggle, type AudienceToggleProps, type AudienceValue } from "./AudienceToggle";
 export {
     Composer,
@@ -605,7 +612,7 @@ export {
     type LottieScenePlay,
     type LottieSceneProps,
 } from "./LottieScene";
-export { type TabItem, Tabs, type TabsProps, type TabsSize } from "./Tabs";
+export { type TabItem, Tabs, type TabsAppearance, type TabsProps, type TabsSize } from "./Tabs";
 export { TabbedPane, type TabbedPaneProps } from "./TabbedPane";
 export {
     DeferredPane,
@@ -877,8 +884,7 @@ export {
     type BrowserFailure,
     type BrowserPanelProps,
     type BrowserGuestOwner,
-    type BrowserStartPage,
-    type BrowserStartTool,
+    browserAddressUrl,
 } from "./BrowserPanel";
 export { WindowCover } from "./WindowOverlay";
 export { ZoomIndicator } from "./ZoomIndicator";

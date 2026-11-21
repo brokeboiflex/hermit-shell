@@ -170,6 +170,57 @@
     flex: none;
 }
 
+.happy-tabs__tab-shortcut {
+    flex: none;
+}
+
+/*
+ * Card tabs — the strip a side pane wears. Each tab is a small rounded card
+ * standing on the band rather than a cell of one hairline: the selected one is
+ * filled and edged, the rest are bare until the pointer is over them, and
+ * nothing is underlined. The leading mark sits as far inside the card's edge as
+ * from its top (12px of air around a 16px mark in a 28px card), the title takes
+ * whatever width is left, and the key cap and close lane ride the far edge.
+ */
+.happy-tabs[data-appearance="card"] {
+    align-items: center;
+    gap: 4px;
+    border-bottom: 0;
+}
+
+.happy-tabs[data-appearance="card"] .happy-tabs__tab {
+    height: 28px;
+    padding: 0 3px 0 5px;
+    gap: 8px;
+    border: 1px solid transparent;
+    border-radius: var(--happy-radius-md);
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 18px;
+}
+
+.happy-tabs[data-appearance="card"] .happy-tabs__tab:hover:not([data-active]) {
+    background: var(--happy-hover-fill);
+    color: var(--text);
+}
+
+.happy-tabs[data-appearance="card"] .happy-tabs__tab[data-active] {
+    border-color: var(--divider);
+    background: var(--surface-selected);
+    color: var(--text);
+}
+
+.happy-tabs[data-appearance="card"] .happy-tabs__tab-label {
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: start;
+}
+
+.happy-tabs[data-appearance="card"] .happy-tabs__tab-shortcut {
+    background: var(--happy-hover-fill);
+}
+
 /* Where a voice call is pointing: the live call's green as an inset ring and a
    microphone after the title. Inset, so the strip's geometry never moves, and
    distinct from the active tab's ink and the unread dot. */

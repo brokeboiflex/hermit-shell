@@ -16,7 +16,14 @@ export type MenuItem =
           danger?: boolean;
           disabled?: boolean;
           checked?: boolean;
+          /**
+           * Choosing the row leaves its menu open, for a row that changes the
+           * menu itself — a checklist entry, or a heading that unfolds one.
+           */
+          stay?: boolean;
           shortcut?: string;
+          /** A glyph at the row's far edge, such as the chevron of a row that unfolds. */
+          trailingIcon?: IconName;
           /**
            * A quiet word after the label that says something about the row
            * without being part of its name, such as when it was last used. It
@@ -153,6 +160,14 @@ export function Menu(props: MenuProps) {
                                         className="happy-menu__item-shortcut"
                                         keys={item.shortcut}
                                     />
+                                ) : null}
+                                {item.trailingIcon ? (
+                                    <span
+                                        className="happy-menu__item-trailing"
+                                        data-happy-desktop-ui="menu-item-trailing"
+                                    >
+                                        <Icon name={item.trailingIcon} size={16} />
+                                    </span>
                                 ) : null}
                             </button>
                         );

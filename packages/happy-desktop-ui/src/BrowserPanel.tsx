@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { Button } from "./Button";
 import { EmptyState } from "./EmptyState";
-import { Icon, type IconName } from "./Icon";
+import type { IconName } from "./Icon";
 import { Ionicon } from "./vectorIcons/VectorIcon";
 import type { InlinePageFit } from "./inlinePageFit";
 import { TextField } from "./TextField";
@@ -104,20 +104,6 @@ export interface BrowserGuestOwner {
 /** Native browser-content adapter supplied by the host (Electron in production). */
 export type BrowserContentRenderer = (props: BrowserContentProps) => ReactNode;
 
-/** One thing a new tab can become instead of a page. */
-export interface BrowserStartTool {
-    readonly id: string;
-    readonly icon: IconName;
-    readonly label: string;
-    onSelect(): void;
-}
-
-/** A page this browser visited, offered again on a new tab. */
-export interface BrowserStartPage {
-    readonly url: string;
-    readonly label: string;
-}
-
 export interface BrowserPanelProps {
     /** Keeps inactive browser guests mounted so page/history state survives tab switches. */
     active: boolean;
@@ -132,14 +118,6 @@ export interface BrowserPanelProps {
      * keeps a place for developer tools, usable once the host offers them.
      */
     inspectable?: boolean;
-    /**
-     * What a tab that has not been anywhere yet shows under its address: the
-     * tools it can become, then the pages this browser visited.
-     */
-    start?: {
-        readonly tools: readonly BrowserStartTool[];
-        readonly recent: readonly BrowserStartPage[];
-    };
 }
 
 interface BrowserViewState {
@@ -405,13 +383,7 @@ export function BrowserPanel(props: BrowserPanelProps) {
                         title={view.address}
                     />
                 ) : null}
-                {props.start && view.fresh && !view.failure ? (
-                    <BrowserStart
-                        onPageOpen={load}
-                        recent={props.start.recent}
-                        tools={props.start.tools}
-                    />
-                ) : null}
+
                 {view.failure
                     ? ((page) => (
                           <div
@@ -442,53 +414,6 @@ export function BrowserPanel(props: BrowserPanelProps) {
                     : null}
             </div>
         </section>
-    );
-}
-
-function BrowserStart(props: {
-    tools: readonly BrowserStartTool[];
-    recent: readonly BrowserStartPage[];
-    onPageOpen: (url: string) => void;
-}) {
-    return (
-        <nav className="happy-browser-panel__start" data-happy-desktop-ui="browser-start">
-            <div className="happy-browser-panel__start-list">
-                {props.tools.map((tool) => (
-                    <button
-                        className="happy-browser-panel__start-row"
-                        key={tool.id}
-                        onClick={tool.onSelect}
-                        type="button"
-                    >
-                        <span className="happy-browser-panel__start-icon">
-                            <Icon name={tool.icon} size={16} />
-                        </span>
-                        <span className="happy-browser-panel__start-label">{tool.label}</span>
-                    </button>
-                ))}
-                {props.recent.length > 0 ? (
-                    <>
-                        <h3 className="happy-browser-panel__start-heading">Recent</h3>
-                        {props.recent.map((page) => (
-                            <button
-                                className="happy-browser-panel__start-row"
-                                key={page.url}
-                                onClick={() => props.onPageOpen(page.url)}
-                                title={page.url}
-                                type="button"
-                            >
-                                <span className="happy-browser-panel__start-icon">
-                                    <Icon name="globe" size={16} />
-                                </span>
-                                <span className="happy-browser-panel__start-label">
-                                    {page.label}
-                                </span>
-                            </button>
-                        ))}
-                    </>
-                ) : null}
-            </div>
-        </nav>
     );
 }
 
@@ -575,6 +500,20 @@ function browserFailureHost(url: string | undefined): string {
 function browserAddressResolve(value: string): string | undefined {
     const candidate = value.trim();
     if (!candidate) return undefined;
+    return (
+        browserAddressUrl(candidate) ??
+        `https://www.google.com/search?q=${encodeURIComponent(candidate)}`
+    );
+}
+
+/**
+ * The web address typed text names, when it names one: a full http(s) URL, or
+ * a host the way an omnibox reads it (`example.com`, `localhost:5173`). Text
+ * that is not an address — a search, a file name — answers nothing.
+ */
+export function browserAddressUrl(value: string): string | undefined {
+    const candidate = value.trim();
+    if (!candidate) return undefined;
     try {
         const parsed = new URL(candidate);
         if (parsed.protocol === "http:" || parsed.protocol === "https:") return parsed.href;
@@ -588,10 +527,10 @@ function browserAddressResolve(value: string): string | undefined {
         try {
             return new URL(`${local ? "http" : "https"}://${candidate}`).href;
         } catch {
-            // Fall through to search for malformed host-like text.
+            // Malformed host-like text is not an address.
         }
     }
-    return `https://www.google.com/search?q=${encodeURIComponent(candidate)}`;
+    return undefined;
 }
 
 function browserHostLike(value: string): boolean {

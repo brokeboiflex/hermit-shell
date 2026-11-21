@@ -165,6 +165,25 @@
     padding: 0 16px 0 8px;
 }
 
+/*
+ * A strip of card tabs stands its cards on the band with a little air at its
+ * leading edge, and draws every card at one width, as a browser does, until
+ * the band runs short.
+ */
+.happy-tabbed-pane[data-appearance="card"] {
+    --happy-tabbed-pane-tab-width: 200px;
+    --happy-tabbed-pane-tab-min-width: 96px;
+}
+
+.happy-tabbed-pane[data-appearance="card"] .happy-tabbed-pane__strip {
+    align-items: center;
+    padding-left: 6px;
+}
+
+.happy-tabbed-pane[data-appearance="card"] .happy-tabbed-pane__actions {
+    padding-left: 4px;
+}
+
 .happy-tabbed-pane__body {
     position: relative;
     display: flex;

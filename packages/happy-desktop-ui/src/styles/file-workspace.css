@@ -200,20 +200,3 @@
     gap: 4px;
     background: var(--groupped-background);
 }
-
-.happy-file-workspace-tabs > .happy-tabbed-pane__bar .happy-tabs__tab {
-    align-self: center;
-    height: 32px;
-    border: 1px solid transparent;
-    border-radius: var(--happy-radius-md);
-    font-weight: 400;
-}
-
-.happy-file-workspace-tabs > .happy-tabbed-pane__bar .happy-tabs__tab[data-active] {
-    border-color: var(--divider);
-    background: var(--surface-selected);
-}
-
-.happy-file-workspace-tabs > .happy-tabbed-pane__bar .happy-tabs__tab-underline {
-    display: none;
-}

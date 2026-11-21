@@ -212,7 +212,10 @@ export function MenuButton(props: MenuButtonProps) {
                             requestAnimationFrame(() => menuItems()[0]?.focus());
                             return;
                         }
-                        close(true);
+                        const chosen = allItems.find(
+                            (item) => item.kind === "item" && item.id === id,
+                        );
+                        if (!(chosen?.kind === "item" && chosen.stay)) close(true);
                         props.onSelect(id);
                     }}
                     {...(menuMaxHeight === undefined

@@ -2,7 +2,7 @@ import { partitionComponentProps } from "./componentProps";
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { KeyboardShortcut } from "./keyboardShortcut";
 import { type MenuItem } from "./Menu";
-import { Tabs, type TabItem, type TabsSize } from "./Tabs";
+import { Tabs, type TabItem, type TabsAppearance, type TabsSize } from "./Tabs";
 import type { TabTransferTarget } from "./tabTransfer";
 
 export type TabbedPaneProps = {
@@ -42,6 +42,8 @@ export type TabbedPaneProps = {
     /** Reports a tab moved into one of the targets. The owner performs the move. */
     onTransfer?: (tabId: string, zone: string) => void;
     size?: TabsSize;
+    /** How the tabs are drawn; see `Tabs`. */
+    appearance?: TabsAppearance;
     /**
      * Controls that ride directly after the last tab, such as an "add tab"
      * affordance. They follow the shrinkable tab scrollport so they read as the
@@ -79,6 +81,7 @@ export function TabbedPane(props: TabbedPaneProps) {
     const [local, rest] = partitionComponentProps(props, [
         "actions",
         "activeId",
+        "appearance",
         "children",
         "className",
         "closeLabel",
@@ -136,6 +139,7 @@ export function TabbedPane(props: TabbedPaneProps) {
         <div
             {...rest}
             className={["happy-tabbed-pane", local.className].filter(Boolean).join(" ")}
+            data-appearance={local.appearance ?? "underline"}
             data-happy-desktop-ui="tabbed-pane"
             data-size={local.size ?? "small"}
             data-tab-sizing={local.tabSizing ?? "equal"}
@@ -172,6 +176,7 @@ export function TabbedPane(props: TabbedPaneProps) {
                     >
                         <Tabs
                             activeId={local.activeId}
+                            appearance={local.appearance}
                             className="happy-tabbed-pane__tabs"
                             closeLabel={local.closeLabel}
                             closeShortcut={local.closeShortcut}

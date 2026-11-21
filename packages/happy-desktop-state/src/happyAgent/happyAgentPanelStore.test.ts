@@ -26,13 +26,13 @@ function panelCreate(memory = new Map<HappyAgentGroupId, HappyAgentPanelMemory>(
     return { store, terminalsOpened };
 }
 
-it("opens a new tab as a blank page beside Files", () => {
+it("opens an empty pane on a new tab", () => {
     const { store } = panelCreate();
-    store.browserAdd();
+    store.panelToggle();
     const panel = store.get();
     expect(panel.open).toBe(true);
-    expect(panel.filesViewOpen).toBe(true);
-    expect(panel.tabs).toMatchObject([{ kind: "browser", url: "about:blank", label: "New tab" }]);
+    expect(panel.filesViewOpen).toBe(false);
+    expect(panel.tabs).toMatchObject([{ kind: "newTab", label: "New tab" }]);
     expect(panel.activeViewId).toBe(panel.tabs[0]?.id);
 });
 
@@ -57,9 +57,14 @@ it("projects live browser lifetimes across scopes and saves background navigatio
     ]);
     store.tabClose(tab.id);
     expect(store.get().browserTabs).toEqual([]);
-    expect(panelCreate(memory).store.get().tabs).toEqual([]);
+    // The page is gone; the pane it was left open in opens on a new tab.
+    expect(
+        panelCreate(memory)
+            .store.get()
+            .tabs.map((tab) => tab.kind),
+    ).toEqual(["newTab"]);
     store.scopeApply(GROUP_A, AGENT);
-    store.browserAdd();
+    store.browserAdd("https://two.example/");
     let closed = false;
     store.subscribe(() => {
         closed = store.get().browserTabs.length === 0;
@@ -71,7 +76,7 @@ it("projects live browser lifetimes across scopes and saves background navigatio
 it("turns a new tab into a terminal in its place", () => {
     const { store, terminalsOpened } = panelCreate();
     store.browserAdd("https://example.com/");
-    store.browserAdd();
+    store.newTabAdd();
     const blank = store.get().tabs[1]!;
     store.terminalAdd(blank.id);
     const panel = store.get();
@@ -83,7 +88,7 @@ it("turns a new tab into a terminal in its place", () => {
 it("keeps recent pages per group and remembers them", () => {
     const memory = new Map<HappyAgentGroupId, HappyAgentPanelMemory>();
     const { store } = panelCreate(memory);
-    store.browserAdd();
+    store.browserAdd("https://one.example/");
     const tab = store.get().tabs[0]!;
     store.browserUpdate(tab.id, { url: "https://one.example/" });
     store.browserUpdate(tab.id, { url: "https://two.example/", title: "Two" });
@@ -108,20 +113,22 @@ it("keeps recent pages per group and remembers them", () => {
     ]);
 });
 
-it("closes the pane with its last tab and brings Files back", () => {
+it("closes the pane with its last tab and opens it again on a new tab", () => {
     const { store } = panelCreate();
-    store.browserAdd();
+    store.browserAdd("https://example.com/");
     const tab = store.get().tabs[0]!;
     store.filesSelect();
     store.filesClose();
     expect(store.get()).toMatchObject({ open: true, filesViewOpen: false, activeViewId: tab.id });
 
     store.tabClose(tab.id);
-    expect(store.get()).toMatchObject({ open: false, filesViewOpen: true, activeViewId: "files" });
+    expect(store.get()).toMatchObject({ open: false, filesViewOpen: false, tabs: [] });
 
     store.panelToggle();
-    store.filesClose();
-    expect(store.get()).toMatchObject({ open: false, filesViewOpen: true });
+    const reopened = store.get();
+    expect(reopened).toMatchObject({ open: true, filesViewOpen: false });
+    expect(reopened.tabs).toMatchObject([{ kind: "newTab" }]);
+    expect(reopened.activeViewId).toBe(reopened.tabs[0]?.id);
 });
 
 it("opens a live artifact as a browser tab bound to it, and selects that tab again", () => {

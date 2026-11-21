@@ -220,6 +220,12 @@
     color: var(--text);
 }
 
+/* A pane control that is on — the pane showing, or widened — holds a quiet fill. */
+.happy-desktop-app-shell__panel-toggle[aria-pressed="true"] {
+    background: var(--surface-selected);
+    color: var(--text);
+}
+
 .happy-desktop-app-shell__sidebar-controls > button:focus-visible,
 .happy-desktop-app-shell__sidebar-controls > .happy-tooltip > button:focus-visible,
 .happy-desktop-app-shell__panel-toggle:focus-visible {
@@ -313,7 +319,19 @@
     top: var(--happy-integrated-band-height);
 }
 
-/* One overlay owns the pane toggle in every state, above either tab strip. */
+/*
+ * One overlay owns the pane controls in every state, above either tab strip:
+ * the toggle alone in a 44px lane, or, beside an open pane that can be widened,
+ * the expand control and the toggle 4px apart in a 76px one.
+ */
+.happy-desktop-app-shell {
+    --happy-desktop-app-shell-panel-controls-width: 44px;
+}
+
+.happy-desktop-app-shell[data-panel-expand] {
+    --happy-desktop-app-shell-panel-controls-width: 76px;
+}
+
 .happy-desktop-app-shell__panel-controls {
     position: absolute;
     z-index: 5;
@@ -323,7 +341,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 44px;
+    gap: 4px;
+    width: var(--happy-desktop-app-shell-panel-controls-width);
     height: var(--happy-integrated-band-height, 40px);
     background: var(--groupped-background);
     /* The band's bottom rule runs on under the toggle to the window's edge. */
@@ -363,7 +382,7 @@
     top: var(--happy-integrated-band-height, 40px);
 }
 
-/* The pane toggle's 44px lane sits inside whatever the native caption buttons
+/* The pane controls' lane sits inside whatever the native caption buttons
    reserve at the window's right edge (zero unless an overlay draws them). */
 .happy-desktop-app-shell[data-panel-toggle]:not([data-panel-open])
     > .happy-desktop-app-shell__body
@@ -377,7 +396,10 @@
     > .happy-desktop-app-shell__content
     > .happy-desktop-app-shell__panel
     .happy-tabbed-pane__bar {
-    padding-right: calc(44px + var(--happy-desktop-app-shell-caption-inset, 0px));
+    padding-right: calc(
+        var(--happy-desktop-app-shell-panel-controls-width) +
+            var(--happy-desktop-app-shell-caption-inset, 0px)
+    );
 }
 
 /* The collapsed navigation owns a real column, so tabs need no floating-control inset. */

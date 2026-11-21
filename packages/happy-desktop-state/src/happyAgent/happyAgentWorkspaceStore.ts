@@ -98,6 +98,7 @@ import {
 import {
     happyAgentPanelStoreCreate,
     type HappyAgentPanelStore,
+    type HappyAgentPanelTabId,
     type HappyAgentViewPlacement,
 } from "./happyAgentPanelStore.js";
 import {
@@ -835,6 +836,13 @@ export interface HappyAgentWorkspaceSnapshot {
     readonly fileLayout: HappyAgentFileLayout;
     /** What the reader is looking for in the file listing, and what was found. */
     readonly fileSearch: HappyAgentFileSearch;
+    /**
+     * What the reader typed into a new tab of the panel, and the files of the
+     * checkout that match it. It is its own search, ranked across the whole
+     * checkout whichever listing Files shows, so typing there never filters the
+     * Files tab beside it.
+     */
+    readonly newTabSearch: HappyAgentFileSearch;
     /** Review notes left on this checkout's files, and the one being written. */
     readonly fileComments: HappyAgentFileComments;
     /** The last reference that named a file the checkout does not have, until put away. */
@@ -1267,6 +1275,8 @@ function happyAgentCommentsAttach(
 
 /** How many ranked matches the file listing asks the daemon for. */
 const FILE_SEARCH_LIMIT = 50;
+/** A new tab lists a handful of files under what was typed, not a listing. */
+const NEW_TAB_SEARCH_LIMIT = 8;
 
 /** Nothing typed, nothing found — the listing's resting state. */
 const FILE_SEARCH_IDLE: HappyAgentFileSearch = { query: "", searching: false };
@@ -1658,6 +1668,16 @@ export interface HappyAgentWorkspaceStore {
         source: HappyAgentConversationSource,
     ): Promise<void>;
     /**
+     * Starts a conversation in the named group and reads it in a chat tab of
+     * the panel rather than opening it in place: a side chat beside the one on
+     * screen. Given a new tab, the chat takes its place.
+     */
+    sideChatCreate(
+        groupId: HappyAgentGroupId,
+        input: HappyAgentSessionCreateInput,
+        replacing?: HappyAgentPanelTabId,
+    ): Promise<void>;
+    /**
      * Closes a conversation: it leaves the list durably without ending the
      * session. The caller addresses somewhere else first when the closed
      * conversation is the open one; this store does not navigate.
@@ -1930,6 +1950,8 @@ export interface HappyAgentWorkspaceStore {
      * on screen is only the part of it that has been opened.
      */
     fileSearchUpdate(query: string): void;
+    /** Records what the reader typed into a new tab and asks the daemon for matching files. */
+    newTabSearchUpdate(query: string): void;
     /**
      * Starts a review note on one line of a file, or on the file itself with
      * `lineNumber: 0`. One note is written at a time, so opening a second
@@ -2456,6 +2478,8 @@ export function happyAgentWorkspaceStoreCreate(
         memoryWrite: (groupId, memory) => client.memory.groupPanelWrite(groupId, memory),
         floatyMemoryRead: () => client.memory.floatyOpenedRead(),
         floatyMemoryWrite: (keys) => client.memory.floatyOpenedWrite(keys),
+        shortcutsMemoryRead: () => client.memory.panelShortcutsRead(),
+        shortcutsMemoryWrite: (ids) => client.memory.panelShortcutsWrite(ids),
     });
 
     const listeners = new Set<() => void>();
@@ -2583,6 +2607,9 @@ export function happyAgentWorkspaceStoreCreate(
     let fileSearch: HappyAgentFileSearch = FILE_SEARCH_IDLE;
     /** Which search request is still wanted; a later query retires an earlier one. */
     let fileSearchGeneration = 0;
+    /** A new tab's search, which ends at the checkout boundary like the listing's. */
+    let newTabSearch: HappyAgentFileSearch = FILE_SEARCH_IDLE;
+    let newTabSearchGeneration = 0;
     /**
      * Review notes on the addressed checkout. Like the search, this is what the
      * reader is doing rather than how they like things, so it is not persisted.
@@ -3087,6 +3114,7 @@ export function happyAgentWorkspaceStoreCreate(
         fileScope: "changed",
         fileLayout: HAPPY_AGENT_FILE_LAYOUT_DEFAULT,
         fileSearch: FILE_SEARCH_IDLE,
+        newTabSearch: FILE_SEARCH_IDLE,
         fileComments: FILE_COMMENTS_IDLE,
         reviews: new Map(),
         fileTreeExpanded,
@@ -3455,6 +3483,7 @@ export function happyAgentWorkspaceStoreCreate(
                 snapshot.fileScope === nextFileScope &&
                 snapshot.fileLayout === nextFileLayout &&
                 snapshot.fileSearch === fileSearch &&
+                snapshot.newTabSearch === newTabSearch &&
                 snapshot.fileComments === fileComments &&
                 snapshot.fileOpenFailure === fileOpenFailure &&
                 snapshot.reviews === reviews &&
@@ -3486,6 +3515,7 @@ export function happyAgentWorkspaceStoreCreate(
                           fileScope: nextFileScope,
                           fileLayout: nextFileLayout,
                           fileSearch,
+                          newTabSearch,
                           fileComments,
                           ...(fileOpenFailure === undefined ? {} : { fileOpenFailure }),
                           reviews,
@@ -3604,6 +3634,8 @@ export function happyAgentWorkspaceStoreCreate(
     const fileSearchReset = (): void => {
         fileSearchGeneration += 1;
         fileSearch = FILE_SEARCH_IDLE;
+        newTabSearchGeneration += 1;
+        newTabSearch = FILE_SEARCH_IDLE;
     };
 
     /**
@@ -7223,6 +7255,7 @@ export function happyAgentWorkspaceStoreCreate(
                     fileScope: "changed",
                     fileLayout: HAPPY_AGENT_FILE_LAYOUT_DEFAULT,
                     fileSearch,
+                    newTabSearch,
                     fileComments,
                     ...(fileOpenFailure === undefined ? {} : { fileOpenFailure }),
                     reviews,
@@ -7983,6 +8016,28 @@ export function happyAgentWorkspaceStoreCreate(
             }
             return list.sessionCreate(create).then(created);
         },
+        sideChatCreate: (groupId, input, replacing) => {
+            const refusal = groupConversationRefusalFind(groupId);
+            if (refusal) return Promise.reject(new Error(refusal));
+            const models = client.models.get();
+            const selection = models.type === "ready" ? models.defaultSelection : undefined;
+            const create = selection ? { ...selectionCreateFields(selection), ...input } : input;
+            const created = (location: HappyAgentSessionLocation | undefined): void => {
+                if (!location) return;
+                activityRecord({
+                    kind: "conversationCreated",
+                    source: "workspace",
+                    model: activityModel(create),
+                });
+                panel.chatTabOpen(location.sessionId, "Side chat", replacing);
+            };
+            const worktreeId = worktreeGroupIdOf(groupId);
+            if (worktreeId !== undefined) {
+                created(list.worktreeSessionStart(worktreeId, create));
+                return Promise.resolve();
+            }
+            return list.sessionCreate(create).then(created);
+        },
         conversationArchive: async (conversationId) => {
             await list.sessionArchive(conversationId);
             client.chatArchive(conversationId);
@@ -8524,6 +8579,31 @@ export function happyAgentWorkspaceStoreCreate(
         fileSearchUpdate(query) {
             if (fileSearch.query === query) return;
             fileSearchApply(query);
+            recompute();
+        },
+        newTabSearchUpdate(query) {
+            if (newTabSearch.query === query) return;
+            // A later query retires whatever an earlier one is still waiting
+            // for, so a slow answer to an abandoned prefix cannot land on a
+            // newer one.
+            const generation = ++newTabSearchGeneration;
+            const groupId = addressedGroupId;
+            const ask = query.trim() !== "" && groupId !== undefined;
+            newTabSearch = { query, searching: ask };
+            if (ask)
+                void client.filesSearch(groupId, query.trim(), NEW_TAB_SEARCH_LIMIT).then(
+                    (results) => {
+                        if (generation !== newTabSearchGeneration) return;
+                        newTabSearch = { query, results, searching: false };
+                        recompute();
+                    },
+                    () => {
+                        // A refused search makes no claim about what matched.
+                        if (generation !== newTabSearchGeneration) return;
+                        newTabSearch = { query, searching: false };
+                        recompute();
+                    },
+                );
             recompute();
         },
         commentDraftOpen(anchor) {

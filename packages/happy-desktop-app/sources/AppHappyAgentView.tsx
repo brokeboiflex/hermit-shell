@@ -179,6 +179,9 @@ import type {
 import {
     HAPPY_AGENT_FILE_LINK_READ_ONLY_REFUSAL,
     HAPPY_AGENT_PANEL_FILE_VIEW_ID,
+    HAPPY_AGENT_PANEL_SHORTCUTS,
+    HAPPY_AGENT_PANEL_SHORTCUT_LIMIT,
+    type HappyAgentPanelShortcutId,
     agentAuthor,
     happyAgentChangeTiersAssign,
     happyAgentArtifactAuthorLabel,
@@ -244,8 +247,6 @@ import {
     DevBuildMenu,
     type ArtifactLiveRenderer,
     type BrowserContentRenderer,
-    type BrowserPanelProps,
-    type BrowserStartTool,
     HtmlPreviewFrame,
     type HtmlPreviewRenderer,
     type LivePerformanceStore,
@@ -370,6 +371,8 @@ import {
     type SidebarReorder,
     type SidebarSection,
     type TabItem,
+    PanelNewTab,
+    type PanelNewTabItem,
     WindowShortcuts,
     WorkspaceLifecycleLane,
     WorkspaceLifecycleNotice,
@@ -1753,10 +1756,27 @@ function toolTabItems(
                 : tab.kind === "artifact"
                   ? ("package" as const)
                   : tab.kind === "chat"
-                    ? ("agents" as const)
+                    ? ("chat" as const)
                     : ("globe" as const),
     }));
 }
+
+/** What each thing a new tab can open is called and drawn as. */
+const NEW_TAB_ITEMS: Readonly<
+    Record<
+        HappyAgentPanelShortcutId,
+        { readonly icon: PanelNewTabItem["icon"]; readonly label: string }
+    >
+> = {
+    terminal: { icon: "terminal", label: "Terminal" },
+    files: { icon: "files", label: "Files" },
+    chat: { icon: "chat", label: "Side chat" },
+    artifact: { icon: "package", label: "Artifact" },
+    artifacts: { icon: "list", label: "Artifacts" },
+    activity: { icon: "agents", label: "Activity" },
+    usage: { icon: "clock", label: "Usage" },
+    devices: { icon: "link", label: "Devices" },
+};
 
 /**
  * What a tab holding an artifact is called: the same live title a reference
@@ -8251,6 +8271,14 @@ function HappyAgentWorkspaceSurface(props: HappyAgentWorkspaceSurfaceProps) {
                               onClick: () => props.workspace.panel.panelToggle(),
                               shortcut: APP_SHORTCUTS.panelToggle,
                           },
+                          ...(panel.open
+                              ? {
+                                    panelExpandAction: {
+                                        expanded: panel.expanded,
+                                        onClick: () => props.workspace.panel.panelExpandToggle(),
+                                    },
+                                }
+                              : {}),
                       })}
                 // The width this checkout was last left at, or the shell's own
                 // default where nobody has sized it. Passed on every render rather
@@ -8302,15 +8330,33 @@ function HappyAgentWorkspaceSurface(props: HappyAgentWorkspaceSurfaceProps) {
                                                   props.chatId as HappyAgentSessionId,
                                               )
                                               .then(
-                                                  (artifactId) => {
-                                                      panelStore.artifactViewOpen(artifactId);
-                                                      panelStore.tabClose(replacing);
-                                                  },
+                                                  (artifactId) =>
+                                                      panelStore.artifactViewOpen(
+                                                          artifactId,
+                                                          undefined,
+                                                          replacing,
+                                                      ),
                                                   () => undefined,
                                               );
                                       },
                                   }
                                 : {})}
+                            {...(sessionCreateAvailable && openGroup
+                                ? {
+                                      onSideChatNew: (replacing: HappyAgentPanelTabId) => {
+                                          if (!happyAgentOnline() || !openGroup.create) return;
+                                          void props.workspace
+                                              .sideChatCreate(
+                                                  openGroup.id,
+                                                  openGroup.create,
+                                                  replacing,
+                                              )
+                                              .catch(() => undefined);
+                                      },
+                                  }
+                                : {})}
+                            newTabSearch={workspace.newTabSearch}
+                            onNewTabSearch={(query) => props.workspace.newTabSearchUpdate(query)}
                             activity={
                                 conversation.type === "ready" ? conversation.value : undefined
                             }
@@ -11798,6 +11844,11 @@ function HappyAgentPanelBody(props: {
     canStartBrowser: boolean;
     /** Turns a new tab into a new artifact, where this Happy Agent keeps them. */
     onArtifactNew?: (replacing: HappyAgentPanelTabId) => void;
+    /** Turns a new tab into a new side chat, where a chat can be started here. */
+    onSideChatNew?: (replacing: HappyAgentPanelTabId) => void;
+    /** What a new tab's field found in the checkout. */
+    newTabSearch: HappyAgentFileSearch;
+    onNewTabSearch: (query: string) => void;
     /**
      * The open workspace's local bridges, where the host can bridge to its
      * machine. Its Happy Agent says whether Devices is offered at all.
@@ -12054,13 +12105,94 @@ function HappyAgentPanelBody(props: {
         ...toolTabItems(panelTools),
     ];
     // The strip holds what can be opened, not the panel's listings.
-    const tabs = baseTabs.filter(
-        (tab) =>
-            tab.id !== "artifacts" &&
-            tab.id !== "activity" &&
-            tab.id !== "usage" &&
-            tab.id !== "devices",
+    const tabs = baseTabs
+        .filter(
+            (tab) =>
+                tab.id !== "artifacts" &&
+                tab.id !== "activity" &&
+                tab.id !== "usage" &&
+                tab.id !== "devices",
+        )
+        .map((tab, index): TabItem => {
+            const shortcut = APP_SHORTCUTS.panelTabSelect[index];
+            return shortcut ? { ...tab, shortcut } : tab;
+        });
+    const tabSelect = (tabId: string): void => {
+        if (tabId === "files") props.store.filesSelect();
+        else if (tabId === "artifacts") props.store.artifactsSelect();
+        else if (tabId === "activity") props.onActivityOpen();
+        else if (tabId === "usage") props.onUsageOpen();
+        else if (tabId === "devices") props.store.devicesSelect();
+        else if (tabId === "preview" && props.panel.previewEntryId)
+            props.store.previewOpen(props.panel.previewEntryId);
+        else if (tabId === "change" && props.panel.changeViewPath)
+            props.store.changeViewOpen(props.panel.changeViewPath);
+        else if (tabId === HAPPY_AGENT_PANEL_FILE_VIEW_ID) props.store.fileViewOpen();
+        else if (tabId === "artifact" && props.panel.artifactView)
+            props.store.artifactViewOpen(
+                props.panel.artifactView.artifactId,
+                props.panel.artifactView.version,
+            );
+        else props.store.tabSelect(tabId as HappyAgentPanelTabId);
+    };
+    // What a new tab can become here. Something this Happy Agent does not
+    // have at all is not offered; something it has but cannot open from here
+    // right now says why.
+    const conversationAbsent = props.activity === undefined ? "Open a chat first." : undefined;
+    const newTabItems: PanelNewTabItem[] = HAPPY_AGENT_PANEL_SHORTCUTS.flatMap(
+        (id): PanelNewTabItem[] => {
+            if (id === "artifact" && !props.onArtifactNew) return [];
+            if (id === "artifacts" && !props.artifacts) return [];
+            if (id === "devices" && !props.devices) return [];
+            if (id === "chat" && !props.onSideChatNew) return [];
+            const unavailable =
+                id === "terminal"
+                    ? props.panel.terminalRefusal
+                    : id === "activity" || id === "usage"
+                      ? conversationAbsent
+                      : undefined;
+            return [
+                {
+                    id,
+                    ...NEW_TAB_ITEMS[id],
+                    ...(unavailable === undefined ? {} : { unavailable }),
+                },
+            ];
+        },
     );
+    /** Opens one of those in the new tab's place. */
+    const newTabItemOpen = (id: HappyAgentPanelShortcutId, tabId: HappyAgentPanelTabId): void => {
+        switch (id) {
+            case "terminal":
+                props.store.terminalAdd(tabId);
+                return;
+            case "files":
+                props.store.filesSelect(tabId);
+                return;
+            case "chat":
+                props.onSideChatNew?.(tabId);
+                return;
+            case "artifact":
+                props.onArtifactNew?.(tabId);
+                return;
+            case "artifacts":
+                props.store.artifactsSelect(tabId);
+                return;
+            case "devices":
+                props.store.devicesSelect(tabId);
+                return;
+            case "activity":
+                // Through the workspace, which also shows the chat's own
+                // activity panel; the new tab is behind it then and goes.
+                props.onActivityOpen();
+                props.store.tabClose(tabId);
+                return;
+            case "usage":
+                props.onUsageOpen();
+                props.store.tabClose(tabId);
+                return;
+        }
+    };
     const fileBrowser = (inPanel: boolean): ReactNode => (
         <FileBrowser
             // Only Changes has a complete total and line delta;
@@ -12148,47 +12280,35 @@ function HappyAgentPanelBody(props: {
                 id={TRANSFER_ZONE_PANEL}
                 label="Open in the side panel"
             >
+                {/* Option-Command and a digit picks the pane's tab in that
+                    place, as the key cap on each tab says. */}
+                <WindowShortcuts
+                    actions={tabs.flatMap((tab, index) => {
+                        const shortcut = APP_SHORTCUTS.panelTabSelect[index];
+                        return shortcut ? [{ run: () => tabSelect(tab.id), shortcut }] : [];
+                    })}
+                />
                 <TabbedPane
                     className="happy-file-workspace-tabs"
                     actions={
-                        props.canStartBrowser ? (
-                            <Button
-                                aria-label="New tab"
-                                icon="plus"
-                                iconOnly
-                                onClick={() => props.store.browserAdd()}
-                                size="small"
-                                variant="ghost"
-                            />
-                        ) : undefined
+                        <Button
+                            aria-label="New tab"
+                            icon="plus"
+                            iconOnly
+                            onClick={() => props.store.newTabAdd()}
+                            size="small"
+                            variant="ghost"
+                        />
                     }
                     activeId={props.panel.activeViewId}
-                    tabSizing="content"
-                    closePresentation="overlay"
+                    appearance="card"
+                    closeRevealedId={props.panel.activeViewId}
                     overflowFade
                     size="medium"
                     closeLabel="Close tab"
                     {...(props.closeShortcut ? { closeShortcut: props.closeShortcut } : {})}
                     onClose={props.onViewClose}
-                    onSelect={(tabId) => {
-                        if (tabId === "files") props.store.filesSelect();
-                        else if (tabId === "artifacts") props.store.artifactsSelect();
-                        else if (tabId === "activity") props.onActivityOpen();
-                        else if (tabId === "usage") props.onUsageOpen();
-                        else if (tabId === "devices") props.store.devicesSelect();
-                        else if (tabId === "preview" && props.panel.previewEntryId)
-                            props.store.previewOpen(props.panel.previewEntryId);
-                        else if (tabId === "change" && props.panel.changeViewPath)
-                            props.store.changeViewOpen(props.panel.changeViewPath);
-                        else if (tabId === HAPPY_AGENT_PANEL_FILE_VIEW_ID)
-                            props.store.fileViewOpen();
-                        else if (tabId === "artifact" && props.panel.artifactView)
-                            props.store.artifactViewOpen(
-                                props.panel.artifactView.artifactId,
-                                props.panel.artifactView.version,
-                            );
-                        else props.store.tabSelect(tabId as HappyAgentPanelTabId);
-                    }}
+                    onSelect={tabSelect}
                     onTransfer={(tabId) => props.onViewTransfer(tabId)}
                     tabMenuItems={(tab) =>
                         tab.id === HAPPY_AGENT_PANEL_FILE_VIEW_ID &&
@@ -12221,46 +12341,19 @@ function HappyAgentPanelBody(props: {
                         tab.id !== "change" &&
                         !(tab.id === HAPPY_AGENT_PANEL_FILE_VIEW_ID && panelFile?.linked) &&
                         // Another chat and another checkout's changes are read
-                        // beside this conversation, not opened in its place.
-                        !panelTools.some((tool) => tool.id === tab.id && tool.kind === "chat")
+                        // beside this conversation, not opened in its place; a
+                        // new tab is not anything yet that could be moved.
+                        !panelTools.some(
+                            (tool) =>
+                                tool.id === tab.id &&
+                                (tool.kind === "chat" || tool.kind === "newTab"),
+                        )
                     }
                     transferTargets={PANEL_TRANSFER_TARGETS}
                 >
                     <HappyAgentToolBodies
                         previewContext={props.previewContext}
                         activeId={props.panel.activeViewId}
-                        browserStart={(tabId) => ({
-                            tools: [
-                                {
-                                    id: "files",
-                                    icon: "files",
-                                    label: "Files",
-                                    onSelect: () => props.store.filesSelect(),
-                                },
-                                ...(props.canStartBrowser &&
-                                props.panel.terminalRefusal === undefined
-                                    ? [
-                                          {
-                                              id: "terminal",
-                                              icon: "terminal",
-                                              label: "Terminal",
-                                              onSelect: () => props.store.terminalAdd(tabId),
-                                          } satisfies BrowserStartTool,
-                                      ]
-                                    : []),
-                                ...(props.onArtifactNew
-                                    ? [
-                                          {
-                                              id: "artifact",
-                                              icon: "package",
-                                              label: "New artifact",
-                                              onSelect: () => props.onArtifactNew?.(tabId),
-                                          } satisfies BrowserStartTool,
-                                      ]
-                                    : []),
-                            ],
-                            recent: props.panel.browserRecent,
-                        })}
                         browserConnectionId={props.browserConnectionId}
                         {...(props.browserContent ? { browserContent: props.browserContent } : {})}
                         store={props.store}
@@ -12277,7 +12370,49 @@ function HappyAgentPanelBody(props: {
                                         }),
                               })}
                     />
-                    {props.panel.activeViewId === "files" ? (
+                    {activeToolTab?.kind === "newTab" ? (
+                        <PanelNewTab
+                            // Each new tab keeps what was typed into it.
+                            key={activeToolTab.id}
+                            items={newTabItems}
+                            onFileOpen={(path) => {
+                                // The file is read where the tab was; the tab
+                                // is behind it now and simply goes.
+                                props.onFilePreview(path);
+                                props.store.tabClose(activeToolTab.id);
+                            }}
+                            onItemOpen={(id) =>
+                                newTabItemOpen(id as HappyAgentPanelShortcutId, activeToolTab.id)
+                            }
+                            {...(props.canStartBrowser
+                                ? {
+                                      onPageOpen: (url: string) =>
+                                          props.store.browserAdd(url, activeToolTab.id),
+                                  }
+                                : {})}
+                            onPinnedChange={(id, pinned) =>
+                                props.store.shortcutPinnedUpdate(
+                                    id as HappyAgentPanelShortcutId,
+                                    pinned,
+                                )
+                            }
+                            onSearch={props.onNewTabSearch}
+                            pinned={props.panel.shortcuts}
+                            pinnedLimit={HAPPY_AGENT_PANEL_SHORTCUT_LIMIT}
+                            recentPages={props.panel.browserRecent}
+                            search={{
+                                query: props.newTabSearch.query,
+                                searching: props.newTabSearch.searching,
+                                ...(props.newTabSearch.results === undefined
+                                    ? {}
+                                    : {
+                                          files: props.newTabSearch.results.map(
+                                              (result) => result.path,
+                                          ),
+                                      }),
+                            }}
+                        />
+                    ) : props.panel.activeViewId === "files" ? (
                         fileBrowser(false)
                     ) : props.panel.activeViewId === "artifacts" ? (
                         props.artifacts ? (
@@ -12554,8 +12689,6 @@ function HappyAgentToolBodies(props: {
     };
     browserContent?: BrowserContentRenderer;
     browserConnectionId: string | null;
-    /** What a page that has not been anywhere offers instead of itself. */
-    browserStart?: (tabId: HappyAgentPanelTabId) => BrowserPanelProps["start"];
     /** Owning Happy Agent availability applied to retained terminal tabs. */
     happyAgentAvailability?: "reconnecting" | "unavailable";
     happyAgentAvailabilityReason?: string;
@@ -12573,7 +12706,6 @@ function HappyAgentToolBodies(props: {
                         onLocationChange={(url) => props.store.browserUpdate(tab.id, { url })}
                         onTitleChange={(title) => props.store.browserUpdate(tab.id, { title })}
                         {...(tab.artifactId === undefined ? {} : { inspectable: true })}
-                        {...(props.browserStart ? { start: props.browserStart(tab.id) } : {})}
                         {...(props.happyAgentAvailability === undefined
                             ? {}
                             : {
